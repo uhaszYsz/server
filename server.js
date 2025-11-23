@@ -81,7 +81,7 @@ function initializeInventoryAndEquipment() {
     const starterWeapon = {
         name: 'weapon',
         displayName: 'Sword',
-        weaponFile: 'test',
+        weaponFile: 'playa',
         stats: {}
     };
 
@@ -267,13 +267,27 @@ async function buildRoomWeaponData(clientsCollection) {
         const user = registeredUsers.find(u => u.username === client.username);
         if (!user) continue;
 
-        if ((!user.weaponData || !user.weaponData.emitters || user.weaponData.emitters.length === 0) &&
-            user.equipment && user.equipment.weapon && user.equipment.weapon.weaponFile) {
-            const slug = user.equipment.weapon.weaponFile;
-            const weaponData = await loadWeaponDataBySlug(slug);
-            if (weaponData) {
-                user.weaponData = { ...weaponData, slug };
+        // Migrate Sword items from 'test' to 'playa' before loading weapon data
+        if (user.equipment && user.equipment.weapon) {
+            if (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon')) {
+                user.equipment.weapon.weaponFile = 'playa';
                 needsSave = true;
+                console.log(`[buildRoomWeaponData] Migrated ${client.username}'s Sword from 'test' to 'playa'`);
+            }
+        }
+        // Always reload weapon data if equipment weaponFile doesn't match weaponData slug
+        if (user.equipment && user.equipment.weapon && user.equipment.weapon.weaponFile) {
+            const slug = user.equipment.weapon.weaponFile;
+            // Reload if weaponData doesn't exist, is empty, or slug doesn't match
+            if (!user.weaponData || !user.weaponData.emitters || user.weaponData.emitters.length === 0 || user.weaponData.slug !== slug) {
+                const weaponData = await loadWeaponDataBySlug(slug);
+                if (weaponData) {
+                    user.weaponData = { ...weaponData, slug };
+                    needsSave = true;
+                    console.log(`[buildRoomWeaponData] Reloaded weapon data for ${client.username}: slug="${slug}", emitters=${weaponData.emitters?.length || 0}`);
+                } else {
+                    console.error(`[buildRoomWeaponData] Failed to load weapon data for ${client.username}: slug="${slug}"`);
+                }
             }
         }
 
@@ -319,13 +333,27 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
 
         // Only include weaponData and stats if in the same party
         if (isInSameParty) {
-            if ((!user.weaponData || !user.weaponData.emitters || user.weaponData.emitters.length === 0) &&
-                user.equipment && user.equipment.weapon && user.equipment.weapon.weaponFile) {
-                const slug = user.equipment.weapon.weaponFile;
-                const weaponData = await loadWeaponDataBySlug(slug);
-                if (weaponData) {
-                    user.weaponData = { ...weaponData, slug };
+            // Migrate Sword items from 'test' to 'playa' before loading weapon data
+            if (user.equipment && user.equipment.weapon) {
+                if (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon')) {
+                    user.equipment.weapon.weaponFile = 'playa';
                     needsSave = true;
+                    console.log(`[buildPlayerInitData] Migrated ${client.username}'s Sword from 'test' to 'playa'`);
+                }
+            }
+            // Always reload weapon data if equipment weaponFile doesn't match weaponData slug
+            if (user.equipment && user.equipment.weapon && user.equipment.weapon.weaponFile) {
+                const slug = user.equipment.weapon.weaponFile;
+                // Reload if weaponData doesn't exist, is empty, or slug doesn't match
+                if (!user.weaponData || !user.weaponData.emitters || user.weaponData.emitters.length === 0 || user.weaponData.slug !== slug) {
+                    const weaponData = await loadWeaponDataBySlug(slug);
+                    if (weaponData) {
+                        user.weaponData = { ...weaponData, slug };
+                        needsSave = true;
+                        console.log(`[buildPlayerInitData] Reloaded weapon data for ${client.username}: slug="${slug}", emitters=${weaponData.emitters?.length || 0}`);
+                    } else {
+                        console.error(`[buildPlayerInitData] Failed to load weapon data for ${client.username}: slug="${slug}"`);
+                    }
                 }
             }
 
@@ -370,20 +398,34 @@ function migrateUserStats(user) {
         user.inventory.push({
             name: 'weapon',
             displayName: 'Sword',
-            weaponFile: 'test',
+            weaponFile: 'playa',
             stats: {}
         });
         needsSave = true;
     } else {
+        const originalInventory = JSON.parse(JSON.stringify(user.inventory)); // Deep copy for comparison
         user.inventory = user.inventory.map(item => {
             if (item && typeof item.weaponFile === 'string' && item.weaponFile === 'starter-sword') {
                 return {
                     ...item,
-                    weaponFile: 'test'
+                    weaponFile: 'playa'
                 };
+            }
+            // If it's a Sword item with 'test' or missing weaponFile, set to 'playa'
+            if (item && (item.displayName === 'Sword' || item.name === 'weapon')) {
+                if (!item.weaponFile || item.weaponFile === 'test') {
+                    return {
+                        ...item,
+                        weaponFile: 'playa'
+                    };
+                }
             }
             return item;
         });
+        // Check if inventory was actually changed
+        if (JSON.stringify(originalInventory) !== JSON.stringify(user.inventory)) {
+            needsSave = true;
+        }
     }
     
     if (!user.equipment) {
@@ -397,10 +439,13 @@ function migrateUserStats(user) {
         needsSave = true;
     } else if (user.equipment.weapon) {
         if (!user.equipment.weapon.weaponFile || user.equipment.weapon.weaponFile === 'starter-sword') {
-            user.equipment.weapon.weaponFile = 'test';
+            user.equipment.weapon.weaponFile = 'playa';
             if (!user.equipment.weapon.displayName) {
                 user.equipment.weapon.displayName = 'Sword';
             }
+            needsSave = true;
+        } else if (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon')) {
+            user.equipment.weapon.weaponFile = 'playa';
             needsSave = true;
         }
     }
@@ -648,10 +693,13 @@ wss.on('connection', (ws) => {
         const user = registeredUsers.find(u => u.username === ws.username);
         if (user) {
             let userDataChanged = false;
+            // Migrate Sword items from 'test' to 'playa' on login
             if (user.equipment && user.equipment.weapon) {
-                if (user.equipment.weapon.weaponFile === 'starter-sword') {
+                if (user.equipment.weapon.weaponFile === 'starter-sword' || 
+                    (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon'))) {
                     user.equipment.weapon.weaponFile = 'playa';
                     userDataChanged = true;
+                    console.log(`[Login] Migrated ${ws.username}'s equipped Sword from '${user.equipment.weapon.weaponFile === 'starter-sword' ? 'starter-sword' : 'test'}' to 'playa'`);
                 }
                 if (!user.equipment.weapon.displayName) {
                     user.equipment.weapon.displayName = 'Sword';
@@ -661,12 +709,17 @@ wss.on('connection', (ws) => {
                 if (!user.weaponData || user.weaponData.slug !== slug) {
                     let weaponData = await loadWeaponDataBySlug(slug);
                     if (!weaponData && slug !== 'playa') {
+                        console.log(`[Login] Failed to load weapon "${slug}" for ${ws.username}, trying 'playa'`);
                         weaponData = await loadWeaponDataBySlug('playa');
                         user.equipment.weapon.weaponFile = 'playa';
+                        userDataChanged = true;
                     }
                     if (weaponData) {
                         user.weaponData = { ...weaponData, slug: user.equipment.weapon.weaponFile || 'playa' };
                         userDataChanged = true;
+                        console.log(`[Login] Loaded weapon data for ${ws.username}: slug="${user.equipment.weapon.weaponFile}", emitters=${weaponData.emitters?.length || 0}`);
+                    } else {
+                        console.error(`[Login] Failed to load weapon data for ${ws.username}: slug="${slug}"`);
                     }
                 }
             }
@@ -733,17 +786,35 @@ wss.on('connection', (ws) => {
             try {
                 item.weaponFile = createLevelSlug(item.weaponFile);
             } catch {
-                item.weaponFile = createLevelSlug('test');
+                // If it's a Sword, default to 'playa', otherwise 'test'
+                const isSword = item.displayName === 'Sword' || item.name === 'weapon';
+                item.weaponFile = createLevelSlug(isSword ? 'playa' : 'test');
+            }
+        } else if (slotName === 'weapon') {
+            // If weapon slot and no weaponFile, set based on displayName
+            const isSword = item.displayName === 'Sword' || item.name === 'weapon';
+            item.weaponFile = isSword ? 'playa' : 'test';
+        }
+
+        // If Sword item has 'test' weaponFile, change to 'playa' BEFORE equipping
+        if (slotName === 'weapon' && (item.displayName === 'Sword' || item.name === 'weapon')) {
+            if (!item.weaponFile || item.weaponFile === 'test') {
+                item.weaponFile = 'playa';
             }
         }
 
-        // Equip the new item
+        // Equip the new item (after all weaponFile updates)
         user.equipment[slotName] = item;
 
         if (slotName === 'weapon') {
-            const weaponData = await loadWeaponDataBySlug(item.weaponFile || 'test');
+            const weaponFile = item.weaponFile || 'playa';
+            // Always reload weapon data when equipping a weapon to ensure it matches the weaponFile
+            const weaponData = await loadWeaponDataBySlug(weaponFile);
             if (weaponData) {
-                user.weaponData = { ...weaponData, slug: item.weaponFile || 'test' };
+                user.weaponData = { ...weaponData, slug: weaponFile };
+                console.log(`[EquipItem] User ${ws.username} equipped weapon with file "${weaponFile}", loaded ${weaponData.emitters?.length || 0} emitters`);
+            } else {
+                console.error(`[EquipItem] Failed to load weapon data for slug "${weaponFile}"`);
             }
         }
         
@@ -919,12 +990,21 @@ wss.on('connection', (ws) => {
             return;
         }
 
+        // Use loaded stage data if available, otherwise use the requested level file
         const requestedLevel = typeof data.level === 'string' && data.level.trim()
             ? data.level.trim()
             : DEFAULT_CAMPAIGN_LEVEL_FILE;
 
         try {
-            await sendPartyToGameRoom(party, { levelFileName: requestedLevel });
+            if (party.stageData) {
+                // Use the stage data that was loaded earlier (from local or server)
+                await sendPartyToGameRoom(party, { stageData: party.stageData, levelFileName: null });
+                // Clear the stage data after using it
+                delete party.stageData;
+            } else {
+                // No stage data loaded, use the level file
+                await sendPartyToGameRoom(party, { levelFileName: requestedLevel });
+            }
         } catch (error) {
             console.error('Failed to start level for party:', error);
         }
@@ -939,7 +1019,11 @@ wss.on('connection', (ws) => {
                 delete party.pendingStageConfirmations;
                 delete party.stageData;
                 delete party.pendingLevelFileName;
-                await sendPartyToGameRoom(party, { stageData: stageDataForParty, levelFileName: levelFileForParty });
+                // Only auto-join game room if pendingLevelFileName was set (from a different flow)
+                // For partyLoadLevel, we just load the stage but stay in lobby until partyStartLevel is called
+                if (levelFileForParty) {
+                    await sendPartyToGameRoom(party, { stageData: stageDataForParty, levelFileName: levelFileForParty });
+                }
             }
         }
       } else if (data.type === 'partyInvite') {
@@ -1020,6 +1104,36 @@ wss.on('connection', (ws) => {
                     const memberClient = clients.get(memberId);
                     if (memberClient && memberClient.readyState === ws.OPEN) {
                         memberClient.send(msgpack.encode({ type: 'enemyCreated', enemyData: data.enemyData }));
+                    }
+                }
+            }
+        }
+      } else if (data.type === 'enemyRemoved') {
+        // Team leader sends instant "enemy dead" message - broadcast to all clients in room
+        const party = findPartyByMemberId(ws.id);
+        if (party && party.leader === ws.id && data.id !== undefined) { // Only leader can remove enemies
+            const room = rooms.get(ws.room);
+            if (room) {
+                const roomClients = room.clients;
+                for (const client of roomClients) {
+                    if (client.readyState === ws.OPEN) {
+                        // Send to all clients including the leader (for consistency)
+                        client.send(msgpack.encode({ type: 'enemyRemoved', id: data.id }));
+                    }
+                }
+            }
+        }
+      } else if (data.type === 'enemyEscapeRandomX') {
+        // Team leader sends random X value for escaping enemy - broadcast to all clients in room
+        const party = findPartyByMemberId(ws.id);
+        if (party && party.leader === ws.id && data.enemyId !== undefined && data.randomX !== undefined) {
+            const room = rooms.get(ws.room);
+            if (room) {
+                const roomClients = room.clients;
+                for (const client of roomClients) {
+                    if (client.readyState === ws.OPEN) {
+                        // Send to all clients including the leader (for consistency)
+                        client.send(msgpack.encode({ type: 'enemyEscapeRandomX', enemyId: data.enemyId, randomX: data.randomX }));
                     }
                 }
             }
@@ -1392,6 +1506,102 @@ wss.on('connection', (ws) => {
                 ws.send(msgpack.encode({ type: 'error', message: 'Level not found on server' }));
             } else {
                 ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to load level' }));
+            }
+        }
+      } else if (data.type === 'changeUsername') {
+        if (!ws.username) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Not logged in' }));
+            }
+            return;
+        }
+
+        const newUsername = typeof data.newUsername === 'string' ? data.newUsername.trim() : null;
+        if (!newUsername || newUsername.length === 0) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Invalid username' }));
+            }
+            return;
+        }
+
+        // Check if username already exists
+        const existingUser = registeredUsers.find(u => u.username === newUsername);
+        if (existingUser) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Username already taken' }));
+            }
+            return;
+        }
+
+        // Find current user
+        const userIndex = registeredUsers.findIndex(u => u.username === ws.username);
+        if (userIndex === -1) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'User not found' }));
+            }
+            return;
+        }
+
+        // Update username
+        registeredUsers[userIndex].username = newUsername;
+        ws.username = newUsername; // Update WebSocket username
+
+        // Save to file
+        try {
+            await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ 
+                    type: 'changeUsernameSuccess', 
+                    newUsername: newUsername 
+                }));
+            }
+        } catch (error) {
+            console.error('Failed to save username change', error);
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Failed to save username' }));
+            }
+        }
+      } else if (data.type === 'changePassword') {
+        if (!ws.username) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Not logged in' }));
+            }
+            return;
+        }
+
+        const newPassword = typeof data.newPassword === 'string' ? data.newPassword.trim() : null;
+        if (!newPassword || newPassword.length === 0) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Invalid password' }));
+            }
+            return;
+        }
+
+        // Find current user
+        const userIndex = registeredUsers.findIndex(u => u.username === ws.username);
+        if (userIndex === -1) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'User not found' }));
+            }
+            return;
+        }
+
+        // Update password
+        registeredUsers[userIndex].password = newPassword;
+
+        // Save to file
+        try {
+            await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ 
+                    type: 'changePasswordSuccess', 
+                    newPassword: newPassword 
+                }));
+            }
+        } catch (error) {
+            console.error('Failed to save password change', error);
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Failed to save password' }));
             }
         }
       }

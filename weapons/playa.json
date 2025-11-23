@@ -28,7 +28,7 @@
             "aimPlayer": false
           },
           "bullet": {
-            "speed": 15.7,
+            "speed": 14.6,
             "color": "#ffffff",
             "alpha": 1,
             "size": 0.8,
@@ -58,7 +58,7 @@
             "reloadsCount": 0
           },
           "bullet": {
-            "speed": 15.7,
+            "speed": 14.6,
             "color": "#ffffff",
             "alpha": 1,
             "size": 0.8,
@@ -72,7 +72,7 @@
       }
     ]
   },
-  "timestamp": "2025-11-23T14:45:54.079Z",
-  "uploadedBy": "user-1763866791570",
-  "uploadedAt": "2025-11-23T14:45:54.083Z"
+  "timestamp": "2025-11-23T15:14:26.630Z",
+  "uploadedBy": "user-1763910519808",
+  "uploadedAt": "2025-11-23T15:14:26.633Z"
 }

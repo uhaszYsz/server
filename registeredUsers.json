@@ -16,7 +16,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -32,7 +32,7 @@
           "critical": 1,
           "maxHp": 1
         },
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "displayName": "Sword"
       }
     },
@@ -99,12 +99,13 @@
         "stats": {
           "maxHp": 1,
           "maxMp": 1
-        }
+        },
+        "weaponFile": "playa"
       },
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -143,7 +144,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -224,7 +225,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -237,7 +238,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -306,12 +307,13 @@
         "stats": {
           "damage": 1,
           "maxHp": 1
-        }
+        },
+        "weaponFile": "playa"
       },
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -350,7 +352,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -384,12 +386,13 @@
         "stats": {
           "damage": 1,
           "MpRegen": 1
-        }
+        },
+        "weaponFile": "playa"
       },
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -421,7 +424,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -466,7 +469,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -500,12 +503,13 @@
         "stats": {
           "MpRegen": 1,
           "block": 1
-        }
+        },
+        "weaponFile": "playa"
       },
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -544,7 +548,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -583,7 +587,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -617,12 +621,13 @@
         "stats": {
           "damage": 1,
           "defence": 1
-        }
+        },
+        "weaponFile": "playa"
       },
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -661,7 +666,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -700,7 +705,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -732,7 +737,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -745,7 +750,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -769,7 +774,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -782,7 +787,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -848,7 +853,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -861,7 +866,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -927,7 +932,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -940,7 +945,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -1033,7 +1038,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1046,7 +1051,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -1113,7 +1118,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1145,7 +1150,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1177,7 +1182,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1190,7 +1195,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -1257,7 +1262,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1270,7 +1275,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -1337,7 +1342,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1350,7 +1355,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -1417,7 +1422,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1430,7 +1435,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -1497,7 +1502,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1510,7 +1515,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -1577,7 +1582,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1590,7 +1595,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -1657,7 +1662,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1670,7 +1675,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -1737,7 +1742,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1750,7 +1755,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -1817,7 +1822,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1849,7 +1854,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1862,7 +1867,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -1929,7 +1934,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -1942,7 +1947,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -2035,7 +2040,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -2048,7 +2053,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -2141,7 +2146,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -2173,7 +2178,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -2205,7 +2210,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -2218,7 +2223,7 @@
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     },
@@ -2285,7 +2290,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -2318,7 +2323,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -2347,12 +2352,19 @@
       "block": 5,
       "knockback": 0
     },
-    "inventory": [],
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      }
+    ],
     "equipment": {
       "weapon": {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       },
       "armor": null,
@@ -2424,7 +2436,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -2456,7 +2468,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -2488,7 +2500,7 @@
       {
         "name": "weapon",
         "displayName": "Sword",
-        "weaponFile": "test",
+        "weaponFile": "playa",
         "stats": {}
       }
     ],
@@ -2500,6 +2512,830 @@
       "amulet": null
     },
     "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763910365525",
+    "password": "ed6598ff88ffcdc6",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": null,
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763910519808",
+    "password": "73427b175657fffd",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      },
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": {
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "reloads": 0,
+              "direction": 90,
+              "shootRate": 1,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 15.7,
+              "color": "#ffffff",
+              "alpha": 1,
+              "size": 0.8,
+              "scaleY": 1,
+              "spin": 0,
+              "homing": 0,
+              "shape": "circle"
+            }
+          },
+          "current": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "reloads": 0,
+              "direction": 90,
+              "shootRate": 1,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false,
+              "shootCooldownTimer": 1,
+              "currentAmmo": 100,
+              "reloadTimer": 0,
+              "reloadsCount": 0
+            },
+            "bullet": {
+              "speed": 15.7,
+              "color": "#ffffff",
+              "alpha": 1,
+              "size": 0.8,
+              "scaleY": 1,
+              "spin": 0,
+              "homing": 0,
+              "shape": "circle"
+            }
+          },
+          "loadedFrom": null
+        }
+      ],
+      "slug": "playa"
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763910883231",
+    "password": "4fe01cecf4108f60",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      },
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": {
+      "name": "playa",
+      "slug": "playa",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "reloads": 0,
+              "direction": 90,
+              "shootRate": 1,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 14.6,
+              "color": "#ffffff",
+              "alpha": 1,
+              "size": 0.8,
+              "scaleY": 1,
+              "spin": 0,
+              "homing": 0,
+              "shape": "circle"
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763911091142",
+    "password": "4152edd1592abce6",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      },
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": {
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "reloads": 0,
+              "direction": 90,
+              "shootRate": 1,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 14.6,
+              "color": "#ffffff",
+              "alpha": 1,
+              "size": 0.8,
+              "scaleY": 1,
+              "spin": 0,
+              "homing": 0,
+              "shape": "circle"
+            }
+          },
+          "current": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "reloads": 0,
+              "direction": 90,
+              "shootRate": 1,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false,
+              "shootCooldownTimer": 1,
+              "currentAmmo": 100,
+              "reloadTimer": 0,
+              "reloadsCount": 0
+            },
+            "bullet": {
+              "speed": 14.6,
+              "color": "#ffffff",
+              "alpha": 1,
+              "size": 0.8,
+              "scaleY": 1,
+              "spin": 0,
+              "homing": 0,
+              "shape": "circle"
+            }
+          },
+          "loadedFrom": null
+        }
+      ],
+      "slug": "playa"
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763911309022",
+    "password": "360c9a17762ec382",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      },
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": {
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "reloads": 0,
+              "direction": 90,
+              "shootRate": 1,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 14.6,
+              "color": "#ffffff",
+              "alpha": 1,
+              "size": 0.8,
+              "scaleY": 1,
+              "spin": 0,
+              "homing": 0,
+              "shape": "circle"
+            }
+          },
+          "current": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "reloads": 0,
+              "direction": 90,
+              "shootRate": 1,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false,
+              "shootCooldownTimer": 1,
+              "currentAmmo": 100,
+              "reloadTimer": 0,
+              "reloadsCount": 0
+            },
+            "bullet": {
+              "speed": 14.6,
+              "color": "#ffffff",
+              "alpha": 1,
+              "size": 0.8,
+              "scaleY": 1,
+              "spin": 0,
+              "homing": 0,
+              "shape": "circle"
+            }
+          },
+          "loadedFrom": null
+        }
+      ],
+      "slug": "playa"
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763911356566",
+    "password": "a543590a4f0729b3",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      },
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "playa",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "reloads": 0,
+              "direction": 90,
+              "shootRate": 1,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 14.6,
+              "color": "#ffffff",
+              "alpha": 1,
+              "size": 0.8,
+              "scaleY": 1,
+              "spin": 0,
+              "homing": 0,
+              "shape": "circle"
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763911566461",
+    "password": "11f64a67b11f4dd5",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      },
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": {
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "reloads": 0,
+              "direction": 90,
+              "shootRate": 1,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 14.6,
+              "color": "#ffffff",
+              "alpha": 1,
+              "size": 0.8,
+              "scaleY": 1,
+              "spin": 0,
+              "homing": 0,
+              "shape": "circle"
+            }
+          },
+          "current": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "reloads": 0,
+              "direction": 90,
+              "shootRate": 1,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false,
+              "shootCooldownTimer": 1,
+              "currentAmmo": 100,
+              "reloadTimer": 0,
+              "reloadsCount": 0
+            },
+            "bullet": {
+              "speed": 14.6,
+              "color": "#ffffff",
+              "alpha": 1,
+              "size": 0.8,
+              "scaleY": 1,
+              "spin": 0,
+              "homing": 0,
+              "shape": "circle"
+            }
+          },
+          "loadedFrom": null
+        }
+      ],
+      "slug": "playa"
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763912950304",
+    "password": "0168130eb2c18fac",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      },
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "playa",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "reloads": 0,
+              "direction": 90,
+              "shootRate": 1,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 14.6,
+              "color": "#ffffff",
+              "alpha": 1,
+              "size": 0.8,
+              "scaleY": 1,
+              "spin": 0,
+              "homing": 0,
+              "shape": "circle"
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763912982504",
+    "password": "c72d7f7ced531455",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": null,
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763913000260",
+    "password": "9aa79352e9bd6577",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "playa",
+        "stats": {}
+      },
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "playa",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "reloads": 0,
+              "direction": 90,
+              "shootRate": 1,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 14.6,
+              "color": "#ffffff",
+              "alpha": 1,
+              "size": 0.8,
+              "scaleY": 1,
+              "spin": 0,
+              "homing": 0,
+              "shape": "circle"
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
     "passiveAbility": null
   }
 ]
