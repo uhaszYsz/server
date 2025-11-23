@@ -1,0 +1,16 @@
+{
+  "name": "gggg",
+  "data": {
+    "name": "gggg",
+    "enemyTypes": [],
+    "waves": [
+      {
+        "spawners": []
+      }
+    ],
+    "enemySpawners": [],
+    "timestamp": "2025-11-11T04:03:01.660Z"
+  },
+  "uploadedBy": "user-1762637732085",
+  "uploadedAt": "2025-11-11T04:03:01.661Z"
+}

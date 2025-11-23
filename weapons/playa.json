@@ -1,0 +1,78 @@
+{
+  "name": "playa",
+  "weapon": {
+    "emitters": [
+      {
+        "id": 0,
+        "x": 0,
+        "y": 0,
+        "autoCycles": [],
+        "cycleCounters": {
+          "onShoot": {},
+          "onShotgun": {},
+          "onStream": {}
+        },
+        "start": {
+          "emitter": {
+            "ammo": 100,
+            "reload": 0,
+            "reloads": 0,
+            "direction": 90,
+            "shootRate": 1,
+            "shotgun": 1,
+            "arrays": 1,
+            "arraySpread": 360,
+            "streams": 5,
+            "streamSpread": 45,
+            "radius": 0,
+            "aimPlayer": false
+          },
+          "bullet": {
+            "speed": 15.7,
+            "color": "#ffffff",
+            "alpha": 1,
+            "size": 0.8,
+            "scaleY": 1,
+            "spin": 0,
+            "homing": 0,
+            "shape": "circle"
+          }
+        },
+        "current": {
+          "emitter": {
+            "ammo": 100,
+            "reload": 0,
+            "reloads": 0,
+            "direction": 90,
+            "shootRate": 1,
+            "shotgun": 1,
+            "arrays": 1,
+            "arraySpread": 360,
+            "streams": 5,
+            "streamSpread": 45,
+            "radius": 0,
+            "aimPlayer": false,
+            "shootCooldownTimer": 1,
+            "currentAmmo": 100,
+            "reloadTimer": 0,
+            "reloadsCount": 0
+          },
+          "bullet": {
+            "speed": 15.7,
+            "color": "#ffffff",
+            "alpha": 1,
+            "size": 0.8,
+            "scaleY": 1,
+            "spin": 0,
+            "homing": 0,
+            "shape": "circle"
+          }
+        },
+        "loadedFrom": null
+      }
+    ]
+  },
+  "timestamp": "2025-11-23T14:45:54.079Z",
+  "uploadedBy": "user-1763866791570",
+  "uploadedAt": "2025-11-23T14:45:54.083Z"
+}

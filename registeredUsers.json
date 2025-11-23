@@ -1,0 +1,2505 @@
+[
+  {
+    "username": "user-1762190480910",
+    "password": "ee53b2c0fc94ae5b",
+    "stats": {
+      "maxHp": 101,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 6,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "stats": {
+          "critical": 1,
+          "maxHp": 1
+        },
+        "weaponFile": "test",
+        "displayName": "Sword"
+      }
+    },
+    "weaponData": {
+      "name": "wpn",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "direction": 0,
+              "shootRate": 2,
+              "shotgun": 1,
+              "arrays": 3,
+              "arraySpread": 360,
+              "streams": 11,
+              "streamSpread": 360,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 4.9,
+              "color": "#00ffff",
+              "alpha": 1,
+              "size": 1,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 1,
+              "pulsate": 0.3
+            }
+          },
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762194620047",
+    "password": "55540cdbb9051383",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "stats": {
+          "maxHp": 1,
+          "maxMp": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762637732085",
+    "password": "f993695c3b19a9ef",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "helmet",
+        "stats": {
+          "MpRegen": 1,
+          "block": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": {
+      "name": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 100,
+              "reload": 0,
+              "direction": 0,
+              "shootRate": 5,
+              "shotgun": 1,
+              "arrays": 3,
+              "arraySpread": 360,
+              "streams": 5,
+              "streamSpread": 45,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 2.5,
+              "color": "#00ffff",
+              "alpha": 1,
+              "size": 1,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 1,
+              "pulsate": 0.3
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": "bullet_cleanse"
+  },
+  {
+    "username": "user-1762724472449",
+    "password": "6b0f263c429ec10e",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "legs",
+        "stats": {
+          "magic": 1,
+          "defence": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762741682802",
+    "password": "784af4b5fcbb39e8",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "stats": {
+          "damage": 1,
+          "maxHp": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762741891676",
+    "password": "ca13b12d02e97d22",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "body",
+        "stats": {
+          "defence": 1,
+          "maxMp": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762742260744",
+    "password": "14b78dcf96320c73",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "stats": {
+          "damage": 1,
+          "MpRegen": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762751332808",
+    "password": "c8df133ec8a09566",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 6,
+      "magic": 6,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": {
+        "name": "legs",
+        "stats": {
+          "magic": 1,
+          "defence": 1
+        }
+      },
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762834213095",
+    "password": "d6a1d9dec1c47ccb",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "gloves",
+        "stats": {
+          "critical": 1,
+          "maxMp": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762834222467",
+    "password": "b620852d5f6d09ff",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "stats": {
+          "MpRegen": 1,
+          "block": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762844853548",
+    "password": "e34d974f66f810ce",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "body",
+        "stats": {
+          "magic": 1,
+          "MpRegen": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762844879543",
+    "password": "6128c89936549960",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "gloves",
+        "stats": {
+          "defence": 1,
+          "maxHp": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762844880368",
+    "password": "e7021033c59684a7",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "stats": {
+          "damage": 1,
+          "defence": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762914462520",
+    "password": "2291347e9ed28d1f",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "gloves",
+        "stats": {
+          "defence": 1,
+          "critical": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762914525220",
+    "password": "4dee7d297b1218cc",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "boots",
+        "stats": {
+          "maxMp": 1,
+          "damage": 1
+        }
+      },
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762914541545",
+    "password": "e21eb6529b812265",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762915167676",
+    "password": "92ba7a6f796c854c",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "Sword",
+      "emitters": [
+        {
+          "id": null,
+          "x": 30,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 0,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 6,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 1.8,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762916881701",
+    "password": "0c4304da6ed3b467",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "Sword",
+      "emitters": [
+        {
+          "id": null,
+          "x": 30,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 0,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 6,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 1.8,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762917272073",
+    "password": "2a84a333d9e37013",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "current": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false,
+              "shootCooldownTimer": 3,
+              "currentAmmo": 0,
+              "reloadTimer": 0
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null
+        }
+      ],
+      "slug": "test"
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762919121517",
+    "password": "01f0dc0fdf92ce17",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762922982555",
+    "password": "11a9017bcc1c4022",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762922985004",
+    "password": "780ed9ce3f6cf90f",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762923395356",
+    "password": "d5e381fcdf8e0daf",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762923452221",
+    "password": "9bd83780718b3fb1",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762923737766",
+    "password": "5c110edf7b32b8b3",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762924433761",
+    "password": "b60789f21426fcd1",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762925669880",
+    "password": "18847e232b2674a6",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762925792257",
+    "password": "a38c1707f14e9eb5",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762925812072",
+    "password": "b95a024ab088e97a",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762926475074",
+    "password": "36ce1f016ef6f1f0",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "test",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762926491694",
+    "password": "dcb6696516a716b8",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762926495092",
+    "password": "061aeb02f1d801cc",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "test",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762927774022",
+    "password": "fad7454ffa93d062",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "current": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false,
+              "shootCooldownTimer": 3,
+              "currentAmmo": 0,
+              "reloadTimer": 0
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null
+        }
+      ],
+      "slug": "test"
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762927942116",
+    "password": "5ffd72a32c30e64e",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "current": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false,
+              "shootCooldownTimer": 3,
+              "currentAmmo": 0,
+              "reloadTimer": 0
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null
+        }
+      ],
+      "slug": "test"
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1762996866176",
+    "password": "15a9ef7a5fe69f84",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763185384817",
+    "password": "ba65472dd9fa6702",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763321811276",
+    "password": "71420f44011376b0",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    },
+    "weaponData": {
+      "name": "test",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763833959659",
+    "password": "44ecf1c3abfe740f",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": "bullet_cleanse"
+  },
+  {
+    "username": "user-1763834856043",
+    "password": "c09dd148ce2e5c73",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "helmet": null,
+      "body": null,
+      "gloves": null,
+      "legs": null,
+      "boots": null,
+      "weapon": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763866791570",
+    "password": "9fbe17fa759a8286",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [],
+    "equipment": {
+      "weapon": {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      },
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": {
+      "name": "Sword",
+      "slug": "test",
+      "emitters": [
+        {
+          "id": 0,
+          "x": 0,
+          "y": 0,
+          "autoCycles": [],
+          "cycleCounters": {
+            "onShoot": {},
+            "onShotgun": {},
+            "onStream": {}
+          },
+          "start": {
+            "emitter": {
+              "ammo": 0,
+              "reload": 0,
+              "direction": 91,
+              "shootRate": 3,
+              "shotgun": 1,
+              "arrays": 1,
+              "arraySpread": 0,
+              "streams": 1,
+              "streamSpread": 0,
+              "radius": 0,
+              "aimPlayer": false
+            },
+            "bullet": {
+              "speed": 20,
+              "color": "#ffcc66",
+              "alpha": 1,
+              "size": 10,
+              "scaleY": 1,
+              "homing": 0,
+              "glowPower": 0.3,
+              "pulsate": 0
+            }
+          },
+          "loadedFrom": null,
+          "waveId": 0
+        }
+      ]
+    },
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763866937363",
+    "password": "c20cce3e5fd90273",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": null,
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763866946629",
+    "password": "1ed348ac0b951b11",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": null,
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  },
+  {
+    "username": "user-1763866990853",
+    "password": "fb54386731d36c24",
+    "stats": {
+      "maxHp": 100,
+      "maxMp": 50,
+      "MpRegen": 1,
+      "damage": 10,
+      "defence": 5,
+      "magic": 5,
+      "critical": 5,
+      "block": 5,
+      "knockback": 0
+    },
+    "inventory": [
+      {
+        "name": "weapon",
+        "displayName": "Sword",
+        "weaponFile": "test",
+        "stats": {}
+      }
+    ],
+    "equipment": {
+      "weapon": null,
+      "armor": null,
+      "hat": null,
+      "ring": null,
+      "amulet": null
+    },
+    "weaponData": null,
+    "passiveAbility": null
+  }
+]
