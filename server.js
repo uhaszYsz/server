@@ -29,10 +29,10 @@ await Promise.all([
 ]);
 
 // Equipment slots
-const EQUIPMENT_SLOTS = ['weapon', 'armor', 'hat', 'ring', 'amulet'];
+const EQUIPMENT_SLOTS = ['weapon', 'armor', 'hat', 'ring', 'spellcard'];
 
 // Available stats for items
-const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'damage', 'defence', 'magic', 'critical', 'block', 'knockback'];
+const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback'];
 
 const PASSIVE_ABILITIES = ['healing_aura', 'super_hit', 'bullet_cleanse'];
 
@@ -67,9 +67,6 @@ function getDefaultStats() {
         maxHp: 100,
         maxMp: 50,
         MpRegen: 1.0,
-        damage: 10,
-        defence: 5,
-        magic: 5,
         critical: 5,
         block: 5,
         knockback: 0
@@ -85,18 +82,36 @@ function initializeInventoryAndEquipment() {
         stats: {}
     };
 
+    // Create ring items for each passive ability
+    const passiveAbilityRings = PASSIVE_ABILITIES.map(abilityId => ({
+        name: 'ring',
+        displayName: getPassiveAbilityDisplayName(abilityId),
+        passiveAbility: abilityId, // Store which passive ability this ring grants
+        stats: {}
+    }));
+
     return {
-        inventory: [starterWeapon],
+        inventory: [starterWeapon, ...passiveAbilityRings],
         equipment: {
             weapon: null,
             armor: null,
             hat: null,
             ring: null,
-            amulet: null
+            spellcard: null
         },
         weaponData: null,
         passiveAbility: null
     };
+}
+
+// Helper function to get display name for passive ability rings
+function getPassiveAbilityDisplayName(abilityId) {
+    const names = {
+        'healing_aura': 'Healing Ring',
+        'super_hit': 'Super Hit Ring',
+        'bullet_cleanse': 'Cleanse Ring'
+    };
+    return names[abilityId] || abilityId;
 }
 
 function normalizeLevelName(rawName) {
@@ -434,7 +449,7 @@ function migrateUserStats(user) {
             armor: null,
             hat: null,
             ring: null,
-            amulet: null
+            spellcard: null
         };
         needsSave = true;
     } else if (user.equipment.weapon) {
@@ -495,9 +510,12 @@ try {
 
 let globalTimer = Date.now();
 
-// Create WebSocket server on port 8080
-const wss = new WebSocketServer({ port: 8080 });
-console.log('✅ WebSocket server running on ws://localhost:8080');
+// Create WebSocket server on port 8080, listening on all interfaces
+const wss = new WebSocketServer({ 
+    port: 8080,
+    host: '0.0.0.0' // Listen on all network interfaces
+});
+console.log('✅ WebSocket server running on ws://0.0.0.0:8080 (accessible from all IPs)');
 
 // Server tick
 setInterval(() => {
@@ -645,10 +663,12 @@ async function sendPartyToGameRoom(party, options = {}) {
     }
 }
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
   ws.id = nextClientId++;
   ws.room = null; // Track which room the client is in
   clients.set(ws.id, ws);
+  const clientIP = req.socket.remoteAddress;
+  console.log(`✅ Client connected: ID=${ws.id}, IP=${clientIP}, Total clients: ${clients.size}`);
   ensurePartyForClient(ws);
 
   ws.on('message', async (message) => {
@@ -777,8 +797,13 @@ wss.on('connection', (ws) => {
         user.inventory.splice(inventoryIndex, 1);
         
         // If there's already an item in that slot, move it back to inventory
-        if (user.equipment[slotName]) {
-            user.inventory.push(user.equipment[slotName]);
+        const oldItem = user.equipment[slotName];
+        if (oldItem) {
+            user.inventory.push(oldItem);
+            // If unequipping a ring with passive ability, clear passive ability
+            if (slotName === 'ring' && oldItem.passiveAbility) {
+                user.passiveAbility = null;
+            }
         }
         
         // Sanitize weapon file slug if present
@@ -805,6 +830,15 @@ wss.on('connection', (ws) => {
 
         // Equip the new item (after all weaponFile updates)
         user.equipment[slotName] = item;
+
+        // If equipping a ring, set passive ability based on ring's passiveAbility property
+        if (slotName === 'ring') {
+            if (item.passiveAbility) {
+                user.passiveAbility = item.passiveAbility;
+            } else {
+                // If equipping a ring without passiveAbility, clear passive ability
+                user.passiveAbility = null;
+            }
 
         if (slotName === 'weapon') {
             const weaponFile = item.weaponFile || 'playa';
@@ -957,6 +991,7 @@ wss.on('connection', (ws) => {
             client.send(msgpack.encode({
               type: 'playerUpdate',
               id: ws.id,
+              username: ws.username || null, // Include username so clients can identify their own data
               data: data.text,
               targetTime: targetTime
             }));
@@ -1613,6 +1648,7 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
+    console.log(`❌ Client disconnected: ID=${ws.id}, Total clients: ${clients.size - 1}`);
     clients.delete(ws.id);
     
     // Handle party disconnection
