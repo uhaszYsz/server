@@ -1077,6 +1077,27 @@ wss.on('connection', (ws, req) => {
             }));
           }
         }
+      } else if (data.type === 'playerHit' && ws.room) {
+        // Leader sends player hit message - forward to the hit player
+        const room = rooms.get(ws.room);
+        if (!room) return;
+        
+        // Find the target player by username
+        const targetUsername = data.playerId;
+        for (const client of room.clients) {
+            if (client.username === targetUsername && client.readyState === ws.OPEN) {
+                client.send(msgpack.encode({
+                    type: 'playerHit',
+                    playerId: data.playerId,
+                    damage: data.damage,
+                    knockbackTime: data.knockbackTime,
+                    knockbackPower: data.knockbackPower,
+                    knockbackDirX: data.knockbackDirX,
+                    knockbackDirY: data.knockbackDirY
+                }));
+                break; // Only send to the target player
+            }
+        }
       } else if (data.type === 'partyLoadLevel') {
         const party = findPartyByMemberId(ws.id);
         if (party && party.leader === ws.id) {

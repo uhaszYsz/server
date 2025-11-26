@@ -36,6 +36,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -143,6 +161,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -199,6 +235,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -298,6 +352,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -405,6 +477,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -461,6 +551,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -520,6 +628,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -569,6 +695,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -633,6 +777,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -691,6 +853,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -748,6 +928,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -804,6 +1002,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -863,6 +1079,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -919,6 +1153,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -977,6 +1229,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -1026,6 +1296,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -1081,6 +1369,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -1179,6 +1485,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -1275,6 +1599,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -1400,6 +1742,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -1498,6 +1858,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -1548,6 +1926,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -1597,6 +1993,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -1696,6 +2110,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -1793,6 +2225,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -1892,6 +2342,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -1989,6 +2457,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -2088,6 +2574,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -2185,6 +2689,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -2284,6 +2806,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -2382,6 +2922,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -2431,6 +2989,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -2529,6 +3105,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -2654,6 +3248,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -2778,6 +3390,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -2828,6 +3458,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -2877,6 +3525,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -2976,6 +3642,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -3027,6 +3711,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -3077,6 +3779,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -3176,6 +3896,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -3225,6 +3963,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -3276,6 +4032,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -3326,6 +4100,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -3375,6 +4167,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -3503,6 +4313,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -3601,6 +4429,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -3729,6 +4575,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -3856,6 +4720,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -3954,6 +4836,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
@@ -4082,6 +4982,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -4181,6 +5099,24 @@
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
         "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
+        "stats": {}
       }
     ],
     "equipment": {
@@ -4230,6 +5166,24 @@
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Shield Spellcard",
+        "activeAbility": "shield",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Heal Zone Spellcard",
+        "activeAbility": "heal_zone",
+        "stats": {}
+      },
+      {
+        "name": "spellcard",
+        "displayName": "Explosion Spellcard",
+        "activeAbility": "explosion",
         "stats": {}
       }
     ],
