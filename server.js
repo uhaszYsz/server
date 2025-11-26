@@ -839,6 +839,7 @@ wss.on('connection', (ws, req) => {
                 // If equipping a ring without passiveAbility, clear passive ability
                 user.passiveAbility = null;
             }
+        }
 
         if (slotName === 'weapon') {
             const weaponFile = item.weaponFile || 'playa';
