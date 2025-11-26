@@ -482,6 +482,27 @@ function migrateUserStats(user) {
         needsSave = true;
     }
     
+    // Ensure user has all passive ability rings in inventory
+    const existingRingAbilities = new Set();
+    user.inventory.forEach(item => {
+        if (item && item.name === 'ring' && item.passiveAbility) {
+            existingRingAbilities.add(item.passiveAbility);
+        }
+    });
+    
+    // Add missing rings
+    PASSIVE_ABILITIES.forEach(abilityId => {
+        if (!existingRingAbilities.has(abilityId)) {
+            user.inventory.push({
+                name: 'ring',
+                displayName: getPassiveAbilityDisplayName(abilityId),
+                passiveAbility: abilityId,
+                stats: {}
+            });
+            needsSave = true;
+        }
+    });
+    
     return { user, needsSave };
 }
 
