@@ -73,6 +73,19 @@ function getDefaultStats() {
     };
 }
 
+// Active ability IDs for spellcards
+const ACTIVE_ABILITIES = ['shield', 'heal_zone', 'explosion'];
+
+// Helper function to get display name for spellcard abilities
+function getSpellcardDisplayName(abilityId) {
+    const names = {
+        'shield': 'Shield Spellcard',
+        'heal_zone': 'Heal Zone Spellcard',
+        'explosion': 'Explosion Spellcard'
+    };
+    return names[abilityId] || 'Spellcard';
+}
+
 // Initialize inventory and equipment for new players
 function initializeInventoryAndEquipment() {
     const starterWeapon = {
@@ -90,8 +103,16 @@ function initializeInventoryAndEquipment() {
         stats: {}
     }));
 
+    // Create spellcard items for each active ability
+    const spellcards = ACTIVE_ABILITIES.map(abilityId => ({
+        name: 'spellcard',
+        displayName: getSpellcardDisplayName(abilityId),
+        activeAbility: abilityId, // Store which active ability this spellcard grants
+        stats: {}
+    }));
+
     return {
-        inventory: [starterWeapon, ...passiveAbilityRings],
+        inventory: [starterWeapon, ...passiveAbilityRings, ...spellcards],
         equipment: {
             weapon: null,
             armor: null,
@@ -497,6 +518,27 @@ function migrateUserStats(user) {
                 name: 'ring',
                 displayName: getPassiveAbilityDisplayName(abilityId),
                 passiveAbility: abilityId,
+                stats: {}
+            });
+            needsSave = true;
+        }
+    });
+    
+    // Ensure user has all spellcard abilities in inventory
+    const existingSpellcardAbilities = new Set();
+    user.inventory.forEach(item => {
+        if (item && item.name === 'spellcard' && item.activeAbility) {
+            existingSpellcardAbilities.add(item.activeAbility);
+        }
+    });
+    
+    // Add missing spellcards
+    ACTIVE_ABILITIES.forEach(abilityId => {
+        if (!existingSpellcardAbilities.has(abilityId)) {
+            user.inventory.push({
+                name: 'spellcard',
+                displayName: getSpellcardDisplayName(abilityId),
+                activeAbility: abilityId,
                 stats: {}
             });
             needsSave = true;
@@ -1016,6 +1058,22 @@ wss.on('connection', (ws, req) => {
               username: ws.username || null, // Include username so clients can identify their own data
               data: data.text,
               targetTime: targetTime
+            }));
+          }
+        }
+      } else if (data.type === 'abilityActivation' && ws.room) {
+        // Broadcast ability activation to all clients in the room
+        const room = rooms.get(ws.room);
+        if (!room) return;
+        const roomClients = room.clients;
+
+        for (const client of roomClients) {
+          if (client.readyState === ws.OPEN) {
+            client.send(msgpack.encode({
+              type: 'abilityActivation',
+              abilityId: data.abilityId,
+              timestamp: data.timestamp,
+              playerId: ws.id
             }));
           }
         }
