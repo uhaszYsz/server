@@ -1101,6 +1101,7 @@ wss.on('connection', (ws, req) => {
       } else if (data.type === 'partyLoadLevel') {
         const party = findPartyByMemberId(ws.id);
         if (party && party.leader === ws.id) {
+            console.log(`[PartyLoadLevel] leader=${ws.username || ws.id} stageDataBytes=${JSON.stringify(data.stageData || {}).length}`);
             party.stageData = data.stageData;
             party.pendingStageConfirmations = new Set(party.members);
 
@@ -1132,6 +1133,7 @@ wss.on('connection', (ws, req) => {
             : DEFAULT_CAMPAIGN_LEVEL_FILE;
 
         try {
+            console.log(`[PartyStartLevel] leader=${ws.username || ws.id} hasStageData=${party.stageData ? 'yes' : 'no'} requestedLevel=${requestedLevel}`);
             if (party.stageData) {
                 // Use the stage data that was loaded earlier (from local or server)
                 await sendPartyToGameRoom(party, { stageData: party.stageData, levelFileName: null });
