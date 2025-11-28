@@ -1153,11 +1153,11 @@ wss.on('connection', (ws, req) => {
                 const stageDataForParty = party.stageData;
                 const levelFileForParty = party.pendingLevelFileName ?? null;
                 delete party.pendingStageConfirmations;
-                delete party.stageData;
-                delete party.pendingLevelFileName;
                 // Only auto-join game room if pendingLevelFileName was set (from a different flow)
                 // For partyLoadLevel, we just load the stage but stay in lobby until partyStartLevel is called
                 if (levelFileForParty) {
+                    delete party.pendingLevelFileName;
+                    delete party.stageData;
                     await sendPartyToGameRoom(party, { stageData: stageDataForParty, levelFileName: levelFileForParty });
                 }
             }
@@ -1210,6 +1210,20 @@ wss.on('connection', (ws, req) => {
         }
 
         inviterParty.members.add(ws.id);
+
+        // If the party already has stage data loaded (leader used partyLoadLevel), send it to the new member
+        if (inviterParty.stageData) {
+            const newMemberClient = clients.get(ws.id);
+            if (newMemberClient) {
+                const openState = newMemberClient.OPEN ?? newMemberClient.constructor?.OPEN ?? 1;
+                if (newMemberClient.readyState === openState) {
+                    newMemberClient.send(msgpack.encode({
+                        type: 'stageData',
+                        stageData: inviterParty.stageData
+                    }));
+                }
+            }
+        }
 
         broadcastPartyUpdate(inviterParty);
       } else if (data.type === 'chatMessage') {
