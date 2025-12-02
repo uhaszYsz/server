@@ -95,24 +95,8 @@ function initializeInventoryAndEquipment() {
         stats: {}
     };
 
-    // Create ring items for each passive ability
-    const passiveAbilityRings = PASSIVE_ABILITIES.map(abilityId => ({
-        name: 'ring',
-        displayName: getPassiveAbilityDisplayName(abilityId),
-        passiveAbility: abilityId, // Store which passive ability this ring grants
-        stats: {}
-    }));
-
-    // Create spellcard items for each active ability
-    const spellcards = ACTIVE_ABILITIES.map(abilityId => ({
-        name: 'spellcard',
-        displayName: getSpellcardDisplayName(abilityId),
-        activeAbility: abilityId, // Store which active ability this spellcard grants
-        stats: {}
-    }));
-
     return {
-        inventory: [starterWeapon, ...passiveAbilityRings, ...spellcards],
+        inventory: [starterWeapon], // Only sword in inventory for new users
         equipment: {
             weapon: null,
             armor: null,
