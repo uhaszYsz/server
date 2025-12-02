@@ -1976,46 +1976,63 @@ wss.on('connection', (ws, req) => {
         for (const memberId of party.members) {
             const memberClient = clients.get(memberId);
             if (memberClient && memberClient.username && room.clients.has(memberClient)) {
-                // Generate random loot: armor, hat, or amulet
-                const lootTypes = ['armor', 'hat', 'amulet'];
+                // Generate random loot: any equipment slot (except weapon)
+                const lootTypes = ['armor', 'hat', 'amulet', 'ring', 'spellcard'];
                 const itemType = lootTypes[Math.floor(Math.random() * lootTypes.length)];
                 
-                // Determine number of slots based on item type
-                const slotCounts = {
-                    armor: 3,
-                    hat: 2,
-                    amulet: 1
-                };
-                const slotCount = slotCounts[itemType];
-                
-                // Generate stats for the item
-                const availableStats = [...ITEM_STATS];
-                const stats = [];
-                
-                for (let i = 0; i < slotCount; i++) {
-                    const randomIndex = Math.floor(Math.random() * availableStats.length);
-                    const selectedStat = availableStats[randomIndex];
-                    availableStats.splice(randomIndex, 1); // Remove to prevent duplicates
-                    
-                    // First stat gets 2x bonus, others get 1x
-                    const value = i === 0 ? 2 : 1;
-                    stats.push({
-                        stat: selectedStat,
-                        value: value
-                    });
-                }
-                
-                const displayNames = {
-                    armor: 'Armor',
-                    hat: 'Hat',
-                    amulet: 'Amulet'
-                };
-                
-                const lootItem = {
+                // Create loot item based on type
+                let lootItem = {
                     name: itemType,
-                    displayName: displayNames[itemType] || itemType,
-                    stats: stats
+                    stats: [] // Default to empty stats
                 };
+                
+                // Set display name and special properties based on item type
+                if (itemType === 'ring') {
+                    // Random passive ability for ring (no stats)
+                    const randomPassiveAbility = PASSIVE_ABILITIES[Math.floor(Math.random() * PASSIVE_ABILITIES.length)];
+                    lootItem.displayName = getPassiveAbilityDisplayName(randomPassiveAbility);
+                    lootItem.passiveAbility = randomPassiveAbility;
+                } else if (itemType === 'spellcard') {
+                    // Random active ability for spellcard (no stats)
+                    const randomActiveAbility = ACTIVE_ABILITIES[Math.floor(Math.random() * ACTIVE_ABILITIES.length)];
+                    lootItem.displayName = getSpellcardDisplayName(randomActiveAbility);
+                    lootItem.activeAbility = randomActiveAbility;
+                } else {
+                    // Regular items (armor, hat, amulet) - have stats
+                    const displayNames = {
+                        armor: 'Armor',
+                        hat: 'Hat',
+                        amulet: 'Amulet'
+                    };
+                    lootItem.displayName = displayNames[itemType] || itemType;
+                    
+                    // Determine number of slots based on item type
+                    const slotCounts = {
+                        armor: 3,
+                        hat: 2,
+                        amulet: 1
+                    };
+                    const slotCount = slotCounts[itemType];
+                    
+                    // Generate stats for the item
+                    const availableStats = [...ITEM_STATS];
+                    const stats = [];
+                    
+                    for (let i = 0; i < slotCount; i++) {
+                        const randomIndex = Math.floor(Math.random() * availableStats.length);
+                        const selectedStat = availableStats[randomIndex];
+                        availableStats.splice(randomIndex, 1); // Remove to prevent duplicates
+                        
+                        // First stat gets 2x bonus, others get 1x
+                        const value = i === 0 ? 2 : 1;
+                        stats.push({
+                            stat: selectedStat,
+                            value: value
+                        });
+                    }
+                    
+                    lootItem.stats = stats;
+                }
                 
                 lootForPlayers[memberClient.username] = lootItem;
                 
@@ -2027,8 +2044,15 @@ wss.on('connection', (ws, req) => {
                     }
                     user.inventory.push(lootItem);
                     inventoryUpdated = true;
-                    const firstStat = stats[0].stat;
-                    console.log(`📦 Added ${itemType} to ${memberClient.username}'s inventory with ${slotCount} stats (${firstStat} +${stats[0].value})`);
+                    const itemDesc = itemType === 'ring' ? `${lootItem.displayName} (${itemType})` : 
+                                   itemType === 'spellcard' ? `${lootItem.displayName} (${itemType})` : 
+                                   itemType;
+                    if (lootItem.stats && lootItem.stats.length > 0) {
+                        const firstStat = lootItem.stats[0].stat;
+                        console.log(`📦 Added ${itemDesc} to ${memberClient.username}'s inventory with ${lootItem.stats.length} stats (${firstStat} +${lootItem.stats[0].value})`);
+                    } else {
+                        console.log(`📦 Added ${itemDesc} to ${memberClient.username}'s inventory`);
+                    }
                 }
             }
         }
