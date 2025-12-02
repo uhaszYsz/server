@@ -592,6 +592,41 @@ let nextClientId = 1;
 const clients = new Map(); // Map to store clients by ID
 const parties = new Map(); // Map to store parties
 
+// Initialize lobby rooms for each campaign level on server startup
+async function initializeCampaignLevelLobbies() {
+    try {
+        const files = await fs.readdir(campaignLevelsDirectory);
+        const levelFiles = files.filter(file => file.endsWith('.json'));
+        
+        console.log(`📋 Found ${levelFiles.length} campaign level(s) - creating lobby rooms...`);
+        
+        for (const fileName of levelFiles) {
+            const levelName = path.parse(fileName).name; // Remove .json extension
+            const roomName = `lobby_${levelName}`;
+            
+            // Create lobby room for this campaign level
+            rooms.set(roomName, {
+                type: 'lobby',
+                level: fileName,
+                clients: new Set()
+            });
+            
+            console.log(`  ✅ Created lobby room: "${roomName}" for level "${fileName}"`);
+        }
+        
+        if (levelFiles.length === 0) {
+            console.log(`  ℹ️  No campaign levels found in ${campaignLevelsDirectory}`);
+        } else {
+            console.log(`✅ Initialized ${levelFiles.length} campaign level lobby room(s)`);
+        }
+    } catch (error) {
+        console.error('❌ Failed to initialize campaign level lobbies:', error);
+    }
+}
+
+// Initialize campaign level lobbies on server startup
+await initializeCampaignLevelLobbies();
+
 function findPartyByMemberId(memberId) {
     for (const party of parties.values()) {
         if (party.members.has(memberId)) {
@@ -1096,6 +1131,81 @@ wss.on('connection', (ws, req) => {
                     knockbackDirY: data.knockbackDirY
                 }));
                 break; // Only send to the target player
+            }
+        }
+      } else if (data.type === 'playerDamageReport' && ws.room) {
+        const room = rooms.get(ws.room);
+        if (!room) return;
+        const party = findPartyByMemberId(ws.id);
+        if (!party) return;
+        
+        // Check if fun mode is enabled (default to false)
+        // We'll determine this by checking if hp is in the message (fun mode ON sends hp, fun mode OFF doesn't)
+        const funModeEnabled = data.hp !== undefined;
+        
+        if (funModeEnabled) {
+            // Fun mode ON: Broadcast to everyone directly
+            for (const client of room.clients) {
+                if (client.readyState === ws.OPEN) {
+                    client.send(msgpack.encode({
+                        type: 'playerDamageReport',
+                        playerId: ws.username || data.playerId,
+                        damage: data.damage,
+                        hp: data.hp,
+                        knockbackDirX: data.knockbackDirX,
+                        knockbackDirY: data.knockbackDirY
+                    }));
+                }
+            }
+        } else {
+            // Fun mode OFF: 
+            // If leader sent this (with hp field), it's the broadcast - send to everyone
+            // Otherwise, forward to leader for processing
+            if (party.leader === ws.id && data.hp !== undefined) {
+                // Leader is broadcasting with authoritative HP - send to everyone
+                for (const client of room.clients) {
+                    if (client.readyState === ws.OPEN) {
+                        client.send(msgpack.encode({
+                            type: 'playerDamageReport',
+                            playerId: data.playerId,
+                            damage: data.damage,
+                            hp: data.hp,
+                            knockbackDirX: data.knockbackDirX,
+                            knockbackDirY: data.knockbackDirY
+                        }));
+                    }
+                }
+            } else {
+                // Forward to leader for processing (leader will send broadcast with hp)
+                const leaderClient = clients.get(party.leader);
+                if (leaderClient && leaderClient.readyState === ws.OPEN) {
+                    leaderClient.send(msgpack.encode({
+                        type: 'playerDamageReport',
+                        playerId: ws.username || data.playerId,
+                        damage: data.damage,
+                        currentHp: data.currentHp,
+                        knockbackDirX: data.knockbackDirX,
+                        knockbackDirY: data.knockbackDirY
+                    }));
+                }
+            }
+        }
+      } else if (data.type === 'playerHpUpdate' && ws.room) {
+        // Leader sends HP update - broadcast to all party members
+        const party = findPartyByMemberId(ws.id);
+        if (!party || party.leader !== ws.id) return; // Only leader can send HP updates
+        
+        const room = rooms.get(ws.room);
+        if (!room) return;
+        
+        // Broadcast to all party members
+        for (const memberId of party.members) {
+            const memberClient = clients.get(memberId);
+            if (memberClient && memberClient.readyState === ws.OPEN && memberClient.room === ws.room) {
+                memberClient.send(msgpack.encode({
+                    type: 'playerHpUpdate',
+                    players: data.players
+                }));
             }
         }
       } else if (data.type === 'partyLoadLevel') {

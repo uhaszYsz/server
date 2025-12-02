@@ -1,0 +1,274 @@
+{
+  "name": "stagweeee",
+  "data": {
+    "name": "stagweeee",
+    "folder": null,
+    "enemyTypes": [
+      {
+        "name": "New Enemy",
+        "folder": null,
+        "enemy": {
+          "hp": 100,
+          "size": 30,
+          "collisionSize": 12,
+          "isBoss": false,
+          "boss": "",
+          "bossScale": 0.5,
+          "bossOffsetX": 0,
+          "bossOffsetY": 0,
+          "sprite": "5",
+          "spriteScale": 1,
+          "spriteOffsetX": 0,
+          "spriteOffsetY": 0,
+          "enemyAnimationSpeed": 0.15,
+          "attacks": [
+            {
+              "name": "Attack 1",
+              "emitters": [
+                {
+                  "id": 0,
+                  "x": 0,
+                  "y": 0,
+                  "autoCycles": [],
+                  "cycleCounters": {
+                    "onShoot": {},
+                    "onShotgun": {},
+                    "onStream": {}
+                  },
+                  "start": {
+                    "emitter": {
+                      "ammo": 100,
+                      "reload": 0,
+                      "reloads": 0,
+                      "direction": 0,
+                      "shootRate": 30,
+                      "shotgun": 1,
+                      "arrays": 1,
+                      "arraySpread": 360,
+                      "streams": 1,
+                      "streamSpread": 45,
+                      "radius": 0,
+                      "aimPlayer": true
+                    },
+                    "bullet": {
+                      "speed": 5,
+                      "color": "#ffffff",
+                      "alpha": 1,
+                      "size": 2,
+                      "scaleY": 1,
+                      "spin": 0,
+                      "homing": 0,
+                      "shape": "circle",
+                      "particlesCount": 20,
+                      "particlesSize": 1,
+                      "particlesLife": 6,
+                      "particlesColorStart": "#ffffff",
+                      "particlesColorEnd": "#ff0000",
+                      "particlesShape": "circle",
+                      "particlesSpeedMin": 0.2,
+                      "particlesSpeedMax": 0.6
+                    }
+                  },
+                  "current": {
+                    "emitter": {
+                      "ammo": 100,
+                      "reload": 0,
+                      "reloads": 0,
+                      "direction": 0,
+                      "shootRate": 30,
+                      "shotgun": 1,
+                      "arrays": 1,
+                      "arraySpread": 360,
+                      "streams": 1,
+                      "streamSpread": 45,
+                      "radius": 0,
+                      "aimPlayer": true,
+                      "shootCooldownTimer": 7,
+                      "currentAmmo": 100,
+                      "reloadTimer": 0,
+                      "reloadsCount": 0
+                    },
+                    "bullet": {
+                      "speed": 5,
+                      "color": "#ffffff",
+                      "alpha": 1,
+                      "size": 2,
+                      "scaleY": 1,
+                      "spin": 0,
+                      "homing": 0,
+                      "shape": "circle",
+                      "particlesCount": 20,
+                      "particlesSize": 1,
+                      "particlesLife": 6,
+                      "particlesColorStart": "#ffffff",
+                      "particlesColorEnd": "#ff0000",
+                      "particlesShape": "circle",
+                      "particlesSpeedMin": 0.2,
+                      "particlesSpeedMax": 0.6
+                    }
+                  },
+                  "waveId": 0
+                }
+              ],
+              "cooldown": 0,
+              "phase": 1
+            }
+          ],
+          "emitters": [
+            {
+              "id": 0,
+              "x": 0,
+              "y": 0,
+              "autoCycles": [],
+              "cycleCounters": {
+                "onShoot": {},
+                "onShotgun": {},
+                "onStream": {}
+              },
+              "start": {
+                "emitter": {
+                  "ammo": 100,
+                  "reload": 0,
+                  "reloads": 0,
+                  "direction": 0,
+                  "shootRate": 30,
+                  "shotgun": 1,
+                  "arrays": 1,
+                  "arraySpread": 360,
+                  "streams": 1,
+                  "streamSpread": 45,
+                  "radius": 0,
+                  "aimPlayer": true
+                },
+                "bullet": {
+                  "speed": 5,
+                  "color": "#ffffff",
+                  "alpha": 1,
+                  "size": 2,
+                  "scaleY": 1,
+                  "spin": 0,
+                  "homing": 0,
+                  "shape": "circle",
+                  "particlesCount": 20,
+                  "particlesSize": 1,
+                  "particlesLife": 6,
+                  "particlesColorStart": "#ffffff",
+                  "particlesColorEnd": "#ff0000",
+                  "particlesShape": "circle",
+                  "particlesSpeedMin": 0.2,
+                  "particlesSpeedMax": 0.6
+                }
+              },
+              "current": {
+                "emitter": {
+                  "ammo": 100,
+                  "reload": 0,
+                  "reloads": 0,
+                  "direction": 0,
+                  "shootRate": 30,
+                  "shotgun": 1,
+                  "arrays": 1,
+                  "arraySpread": 360,
+                  "streams": 1,
+                  "streamSpread": 45,
+                  "radius": 0,
+                  "aimPlayer": true,
+                  "shootCooldownTimer": 7,
+                  "currentAmmo": 100,
+                  "reloadTimer": 0,
+                  "reloadsCount": 0
+                },
+                "bullet": {
+                  "speed": 5,
+                  "color": "#ffffff",
+                  "alpha": 1,
+                  "size": 2,
+                  "scaleY": 1,
+                  "spin": 0,
+                  "homing": 0,
+                  "shape": "circle",
+                  "particlesCount": 20,
+                  "particlesSize": 1,
+                  "particlesLife": 6,
+                  "particlesColorStart": "#ffffff",
+                  "particlesColorEnd": "#ff0000",
+                  "particlesShape": "circle",
+                  "particlesSpeedMin": 0.2,
+                  "particlesSpeedMax": 0.6
+                }
+              }
+            }
+          ]
+        },
+        "timestamp": "2025-12-02T06:51:43.692Z",
+        "isOutdated": false,
+        "noFile": false
+      }
+    ],
+    "waves": [
+      {
+        "spawners": [
+          0
+        ]
+      },
+      {
+        "spawners": [
+          1
+        ]
+      }
+    ],
+    "enemySpawners": [
+      {
+        "id": 0,
+        "x": 15,
+        "y": 295,
+        "startX": 15,
+        "startY": 295,
+        "enemiesCount": 10,
+        "spawnCooldown": 5,
+        "spawnDelay": 0,
+        "spawnDirection": 0,
+        "speed": 1,
+        "acceleration": 0,
+        "homing": 0,
+        "formation": false,
+        "formationPoints": [],
+        "formationWaitTime": 150,
+        "enabled": false,
+        "cooldownCurrent": 0,
+        "directionCurrent": 0,
+        "autoCycles": [],
+        "cycleCounters": {},
+        "spawnedCount": 0,
+        "enemyType": "New Enemy"
+      },
+      {
+        "id": 1,
+        "x": 15,
+        "y": 135,
+        "startX": 15,
+        "startY": 135,
+        "enemiesCount": 10,
+        "spawnCooldown": 5,
+        "spawnDelay": 0,
+        "spawnDirection": 0,
+        "speed": 1,
+        "acceleration": 0,
+        "homing": 0,
+        "formation": false,
+        "formationPoints": [],
+        "formationWaitTime": 150,
+        "enabled": false,
+        "cooldownCurrent": 0,
+        "directionCurrent": 0,
+        "autoCycles": [],
+        "cycleCounters": {},
+        "spawnedCount": 0,
+        "enemyType": "New Enemy"
+      }
+    ],
+    "timestamp": "2025-12-02T06:55:55.811Z"
+  },
+  "uploadedBy": "user-1764646657144",
+  "uploadedAt": "2025-12-02T06:55:56.068Z"
+}
