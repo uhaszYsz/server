@@ -1836,8 +1836,10 @@ wss.on('connection', (ws, req) => {
         // Get stats from leader's message
         const stats = data.stats || null;
 
-        // Generate loot for each party member
+        // Generate loot for each party member and add to their inventory
         const lootForPlayers = {};
+        let inventoryUpdated = false;
+        
         for (const memberId of party.members) {
             const memberClient = clients.get(memberId);
             if (memberClient && memberClient.username && room.clients.has(memberClient)) {
@@ -1846,13 +1848,33 @@ wss.on('connection', (ws, req) => {
                 const availableStats = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback'];
                 const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
                 
-                lootForPlayers[memberClient.username] = {
+                const lootItem = {
                     name: itemType,
+                    displayName: itemType === 'armor' ? 'Armor' : 'Hat',
                     stats: {
                         [randomStat]: 1
                     }
                 };
+                
+                lootForPlayers[memberClient.username] = lootItem;
+                
+                // Add loot item to player's inventory
+                const user = registeredUsers.find(u => u.username === memberClient.username);
+                if (user) {
+                    if (!user.inventory) {
+                        user.inventory = [];
+                    }
+                    user.inventory.push(lootItem);
+                    inventoryUpdated = true;
+                    console.log(`📦 Added ${itemType} to ${memberClient.username}'s inventory with ${randomStat} +1`);
+                }
             }
+        }
+        
+        // Save updated inventories to file
+        if (inventoryUpdated) {
+            await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+            console.log(`💾 Saved updated inventories to file`);
         }
 
         // Send loot and stats to each party member
@@ -1871,7 +1893,7 @@ wss.on('connection', (ws, req) => {
             }
         }
 
-        // Delete game room after sending stats and loot
+        // Delete game room after sending stats and loot (and adding items to inventory)
         if (room && room.type === 'game' && ws.room) {
             rooms.delete(ws.room);
             console.log(`🗑️ Deleted game room: ${ws.room}`);
