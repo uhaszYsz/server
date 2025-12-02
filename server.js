@@ -1978,7 +1978,9 @@ wss.on('connection', (ws, req) => {
             if (memberClient && memberClient.username && room.clients.has(memberClient)) {
                 // Generate random loot: any equipment slot (except weapon)
                 const lootTypes = ['armor', 'hat', 'amulet', 'ring', 'spellcard'];
-                const itemType = lootTypes[Math.floor(Math.random() * lootTypes.length)];
+                const randomIndex = Math.floor(Math.random() * lootTypes.length);
+                const itemType = lootTypes[randomIndex];
+                console.log(`[LootGeneration] Random index: ${randomIndex}, Selected type: ${itemType}`);
                 
                 // Create loot item based on type
                 let lootItem = {
