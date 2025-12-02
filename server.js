@@ -1871,6 +1871,12 @@ wss.on('connection', (ws, req) => {
             }
         }
 
+        // Delete game room after sending stats and loot
+        if (room && room.type === 'game' && ws.room) {
+            rooms.delete(ws.room);
+            console.log(`🗑️ Deleted game room: ${ws.room}`);
+        }
+
         console.log(`✅ Raid completed in room ${ws.room} by party led by ${ws.username}`);
       } else if (data.type === 'changeUsername') {
         if (!ws.username) {
@@ -2011,9 +2017,6 @@ wss.on('connection', (ws, req) => {
     if (ws.room && rooms.has(ws.room)) {
       const room = rooms.get(ws.room);
       room.clients.delete(ws);
-      if (room.clients.size === 0) {
-        rooms.delete(ws.room);
-      }
       
       // Notify other clients that this player has disconnected
       for (const client of room.clients) {
