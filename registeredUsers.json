@@ -17,43 +17,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -64,10 +64,16 @@
       "boots": null,
       "weapon": {
         "name": "weapon",
-        "stats": {
-          "critical": 1,
-          "maxHp": 1
-        },
+        "stats": [
+          {
+            "stat": "critical",
+            "value": 1
+          },
+          {
+            "stat": "maxHp",
+            "value": 1
+          }
+        ],
         "weaponFile": "playa",
         "displayName": "Sword"
       }
@@ -132,53 +138,59 @@
     "inventory": [
       {
         "name": "weapon",
-        "stats": {
-          "maxHp": 1,
-          "maxMp": 1
-        },
+        "stats": [
+          {
+            "stat": "maxHp",
+            "value": 1
+          },
+          {
+            "stat": "maxMp",
+            "value": 1
+          }
+        ],
         "weaponFile": "playa"
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -208,52 +220,58 @@
     "inventory": [
       {
         "name": "helmet",
-        "stats": {
-          "MpRegen": 1,
-          "block": 1
-        }
+        "stats": [
+          {
+            "stat": "MpRegen",
+            "value": 1
+          },
+          {
+            "stat": "block",
+            "value": 1
+          }
+        ]
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -325,52 +343,58 @@
     "inventory": [
       {
         "name": "legs",
-        "stats": {
-          "magic": 1,
-          "defence": 1
-        }
+        "stats": [
+          {
+            "stat": "magic",
+            "value": 1
+          },
+          {
+            "stat": "defence",
+            "value": 1
+          }
+        ]
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -383,7 +407,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -448,53 +472,59 @@
     "inventory": [
       {
         "name": "weapon",
-        "stats": {
-          "damage": 1,
-          "maxHp": 1
-        },
+        "stats": [
+          {
+            "stat": "damage",
+            "value": 1
+          },
+          {
+            "stat": "maxHp",
+            "value": 1
+          }
+        ],
         "weaponFile": "playa"
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -524,52 +554,58 @@
     "inventory": [
       {
         "name": "body",
-        "stats": {
-          "defence": 1,
-          "maxMp": 1
-        }
+        "stats": [
+          {
+            "stat": "defence",
+            "value": 1
+          },
+          {
+            "stat": "maxMp",
+            "value": 1
+          }
+        ]
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -599,53 +635,59 @@
     "inventory": [
       {
         "name": "weapon",
-        "stats": {
-          "damage": 1,
-          "MpRegen": 1
-        },
+        "stats": [
+          {
+            "stat": "damage",
+            "value": 1
+          },
+          {
+            "stat": "MpRegen",
+            "value": 1
+          }
+        ],
         "weaponFile": "playa"
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -677,43 +719,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -722,10 +764,16 @@
       "gloves": null,
       "legs": {
         "name": "legs",
-        "stats": {
-          "magic": 1,
-          "defence": 1
-        }
+        "stats": [
+          {
+            "stat": "magic",
+            "value": 1
+          },
+          {
+            "stat": "defence",
+            "value": 1
+          }
+        ]
       },
       "boots": null,
       "weapon": null
@@ -749,52 +797,58 @@
     "inventory": [
       {
         "name": "gloves",
-        "stats": {
-          "critical": 1,
-          "maxMp": 1
-        }
+        "stats": [
+          {
+            "stat": "critical",
+            "value": 1
+          },
+          {
+            "stat": "maxMp",
+            "value": 1
+          }
+        ]
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -824,53 +878,59 @@
     "inventory": [
       {
         "name": "weapon",
-        "stats": {
-          "MpRegen": 1,
-          "block": 1
-        },
+        "stats": [
+          {
+            "stat": "MpRegen",
+            "value": 1
+          },
+          {
+            "stat": "block",
+            "value": 1
+          }
+        ],
         "weaponFile": "playa"
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -900,52 +960,58 @@
     "inventory": [
       {
         "name": "body",
-        "stats": {
-          "magic": 1,
-          "MpRegen": 1
-        }
+        "stats": [
+          {
+            "stat": "magic",
+            "value": 1
+          },
+          {
+            "stat": "MpRegen",
+            "value": 1
+          }
+        ]
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -975,52 +1041,58 @@
     "inventory": [
       {
         "name": "gloves",
-        "stats": {
-          "defence": 1,
-          "maxHp": 1
-        }
+        "stats": [
+          {
+            "stat": "defence",
+            "value": 1
+          },
+          {
+            "stat": "maxHp",
+            "value": 1
+          }
+        ]
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -1050,53 +1122,59 @@
     "inventory": [
       {
         "name": "weapon",
-        "stats": {
-          "damage": 1,
-          "defence": 1
-        },
+        "stats": [
+          {
+            "stat": "damage",
+            "value": 1
+          },
+          {
+            "stat": "defence",
+            "value": 1
+          }
+        ],
         "weaponFile": "playa"
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -1126,52 +1204,58 @@
     "inventory": [
       {
         "name": "gloves",
-        "stats": {
-          "defence": 1,
-          "critical": 1
-        }
+        "stats": [
+          {
+            "stat": "defence",
+            "value": 1
+          },
+          {
+            "stat": "critical",
+            "value": 1
+          }
+        ]
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -1201,52 +1285,58 @@
     "inventory": [
       {
         "name": "boots",
-        "stats": {
-          "maxMp": 1,
-          "damage": 1
-        }
+        "stats": [
+          {
+            "stat": "maxMp",
+            "value": 1
+          },
+          {
+            "stat": "damage",
+            "value": 1
+          }
+        ]
       },
       {
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -1278,43 +1368,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -1327,7 +1417,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": null,
@@ -1351,43 +1441,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -1400,7 +1490,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -1466,43 +1556,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -1515,7 +1605,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -1581,43 +1671,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -1630,7 +1720,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -1723,43 +1813,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -1772,7 +1862,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -1839,43 +1929,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -1907,43 +1997,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -1975,43 +2065,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -2024,7 +2114,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -2091,43 +2181,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -2140,7 +2230,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -2207,43 +2297,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -2256,7 +2346,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -2323,43 +2413,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -2372,7 +2462,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -2439,43 +2529,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -2488,7 +2578,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -2555,43 +2645,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -2604,7 +2694,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -2671,43 +2761,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -2720,7 +2810,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -2787,43 +2877,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -2836,7 +2926,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -2903,43 +2993,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -2971,43 +3061,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -3020,7 +3110,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -3087,43 +3177,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -3136,7 +3226,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -3229,43 +3319,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -3278,7 +3368,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -3371,43 +3461,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -3439,43 +3529,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -3507,43 +3597,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -3556,7 +3646,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       }
     },
     "weaponData": {
@@ -3623,43 +3713,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -3692,43 +3782,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -3761,43 +3851,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -3805,7 +3895,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       "armor": null,
       "hat": null,
@@ -3877,43 +3967,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -3945,43 +4035,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -4013,43 +4103,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -4081,43 +4171,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -4149,43 +4239,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -4193,7 +4283,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       "armor": null,
       "hat": null,
@@ -4294,43 +4384,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -4338,7 +4428,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       "armor": null,
       "hat": null,
@@ -4411,43 +4501,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -4455,7 +4545,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       "armor": null,
       "hat": null,
@@ -4556,43 +4646,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -4600,7 +4690,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       "armor": null,
       "hat": null,
@@ -4701,43 +4791,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -4745,7 +4835,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       "armor": null,
       "hat": null,
@@ -4818,43 +4908,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -4862,7 +4952,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       "armor": null,
       "hat": null,
@@ -4963,43 +5053,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -5007,7 +5097,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       "armor": null,
       "hat": null,
@@ -5080,43 +5170,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -5148,43 +5238,43 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Healing Ring",
         "passiveAbility": "healing_aura",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
         "passiveAbility": "super_hit",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
         "passiveAbility": "bullet_cleanse",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Shield Spellcard",
         "activeAbility": "shield",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Heal Zone Spellcard",
         "activeAbility": "heal_zone",
-        "stats": {}
+        "stats": []
       },
       {
         "name": "spellcard",
         "displayName": "Explosion Spellcard",
         "activeAbility": "explosion",
-        "stats": {}
+        "stats": []
       }
     ],
     "equipment": {
@@ -5192,7 +5282,7 @@
         "name": "weapon",
         "displayName": "Sword",
         "weaponFile": "playa",
-        "stats": {}
+        "stats": []
       },
       "armor": null,
       "hat": null,

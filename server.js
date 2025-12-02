@@ -29,7 +29,7 @@ await Promise.all([
 ]);
 
 // Equipment slots
-const EQUIPMENT_SLOTS = ['weapon', 'armor', 'hat', 'ring', 'spellcard'];
+const EQUIPMENT_SLOTS = ['weapon', 'armor', 'hat', 'amulet', 'ring', 'spellcard'];
 
 // Available stats for items
 const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback'];
@@ -38,22 +38,22 @@ const PASSIVE_ABILITIES = ['healing_aura', 'super_hit', 'bullet_cleanse'];
 
 // Generate a random item for a given slot
 function generateRandomItem(slotName) {
-    // Get 2 random stats from the available stats
+    // Get 2 random stats from the available stats (no duplicates)
     const availableStats = [...ITEM_STATS];
     const selectedStats = [];
     
-    // Pick 2 random stats
+    // Pick 2 random stats (prevent duplicates)
     for (let i = 0; i < 2; i++) {
         const randomIndex = Math.floor(Math.random() * availableStats.length);
         selectedStats.push(availableStats[randomIndex]);
         availableStats.splice(randomIndex, 1); // Remove selected stat to avoid duplicates
     }
     
-    // Create stat bonuses object with +1 for each selected stat
-    const statBonuses = {};
-    selectedStats.forEach(stat => {
-        statBonuses[stat] = 1;
-    });
+    // Create stat bonuses array with +1 for each selected stat
+    const statBonuses = selectedStats.map(stat => ({
+        stat: stat,
+        value: 1
+    }));
     
     return {
         name: slotName,
@@ -92,7 +92,7 @@ function initializeInventoryAndEquipment() {
         name: 'weapon',
         displayName: 'Sword',
         weaponFile: 'playa',
-        stats: {}
+        stats: [] // Empty stats array
     };
 
     return {
@@ -101,6 +101,7 @@ function initializeInventoryAndEquipment() {
             weapon: null,
             armor: null,
             hat: null,
+            amulet: null,
             ring: null,
             spellcard: null
         },
@@ -419,13 +420,28 @@ function migrateUserStats(user) {
             name: 'weapon',
             displayName: 'Sword',
             weaponFile: 'playa',
-            stats: {}
+            stats: []
         });
         needsSave = true;
     } else {
         const originalInventory = JSON.parse(JSON.stringify(user.inventory)); // Deep copy for comparison
         user.inventory = user.inventory.map(item => {
-            if (item && typeof item.weaponFile === 'string' && item.weaponFile === 'starter-sword') {
+            if (!item) return item;
+            
+            // Migrate stats from object format to array format
+            if (item.stats && typeof item.stats === 'object' && !Array.isArray(item.stats)) {
+                // Convert object format {maxHp: 1, critical: 1} to array format [{stat: 'maxHp', value: 1}, ...]
+                item.stats = Object.entries(item.stats).map(([stat, value]) => ({
+                    stat: stat,
+                    value: value
+                }));
+                needsSave = true;
+            } else if (!item.stats) {
+                // Ensure stats is always an array
+                item.stats = [];
+            }
+            
+            if (typeof item.weaponFile === 'string' && item.weaponFile === 'starter-sword') {
                 return {
                     ...item,
                     weaponFile: 'playa'
@@ -453,20 +469,39 @@ function migrateUserStats(user) {
             weapon: null,
             armor: null,
             hat: null,
+            amulet: null,
             ring: null,
             spellcard: null
         };
         needsSave = true;
-    } else if (user.equipment.weapon) {
-        if (!user.equipment.weapon.weaponFile || user.equipment.weapon.weaponFile === 'starter-sword') {
-            user.equipment.weapon.weaponFile = 'playa';
-            if (!user.equipment.weapon.displayName) {
-                user.equipment.weapon.displayName = 'Sword';
+    } else {
+        // Migrate equipment items' stats from object to array format
+        Object.keys(user.equipment).forEach(slotName => {
+            const equippedItem = user.equipment[slotName];
+            if (equippedItem && equippedItem.stats && typeof equippedItem.stats === 'object' && !Array.isArray(equippedItem.stats)) {
+                // Convert object format to array format
+                equippedItem.stats = Object.entries(equippedItem.stats).map(([stat, value]) => ({
+                    stat: stat,
+                    value: value
+                }));
+                needsSave = true;
+            } else if (equippedItem && !equippedItem.stats) {
+                // Ensure stats is always an array
+                equippedItem.stats = [];
             }
-            needsSave = true;
-        } else if (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon')) {
-            user.equipment.weapon.weaponFile = 'playa';
-            needsSave = true;
+        });
+        
+        if (user.equipment.weapon) {
+            if (!user.equipment.weapon.weaponFile || user.equipment.weapon.weaponFile === 'starter-sword') {
+                user.equipment.weapon.weaponFile = 'playa';
+                if (!user.equipment.weapon.displayName) {
+                    user.equipment.weapon.displayName = 'Sword';
+                }
+                needsSave = true;
+            } else if (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon')) {
+                user.equipment.weapon.weaponFile = 'playa';
+                needsSave = true;
+            }
         }
     }
     
@@ -502,7 +537,7 @@ function migrateUserStats(user) {
                 name: 'ring',
                 displayName: getPassiveAbilityDisplayName(abilityId),
                 passiveAbility: abilityId,
-                stats: {}
+                stats: []
             });
             needsSave = true;
         }
@@ -523,7 +558,7 @@ function migrateUserStats(user) {
                 name: 'spellcard',
                 displayName: getSpellcardDisplayName(abilityId),
                 activeAbility: abilityId,
-                stats: {}
+                stats: []
             });
             needsSave = true;
         }
@@ -711,13 +746,15 @@ async function sendPartyToGameRoom(party, options = {}) {
     const gameRoomName = leaderClient.username;
     let roomEntry = rooms.get(gameRoomName);
     if (!roomEntry) {
-        roomEntry = { type: 'game', level: resolvedLevelFile || DEFAULT_CAMPAIGN_LEVEL_FILE, clients: new Set() };
+        roomEntry = { type: 'game', level: resolvedLevelFile || DEFAULT_CAMPAIGN_LEVEL_FILE, clients: new Set(), startTime: null };
     } else {
         roomEntry.type = 'game';
         roomEntry.level = resolvedLevelFile || DEFAULT_CAMPAIGN_LEVEL_FILE;
         if (!roomEntry.clients) {
             roomEntry.clients = new Set();
         }
+        // Reset start time when creating a new game (room might be reused)
+        roomEntry.startTime = null;
     }
     rooms.set(gameRoomName, roomEntry);
 
@@ -943,10 +980,12 @@ wss.on('connection', (ws, req) => {
         
         // Apply equipment bonuses
         Object.values(user.equipment).forEach(equippedItem => {
-            if (equippedItem && equippedItem.stats) {
-                Object.entries(equippedItem.stats).forEach(([stat, bonus]) => {
+            if (equippedItem && Array.isArray(equippedItem.stats)) {
+                equippedItem.stats.forEach(statEntry => {
+                    const stat = statEntry.stat;
+                    const value = statEntry.value;
                     if (user.stats[stat] !== undefined) {
-                        user.stats[stat] += bonus;
+                        user.stats[stat] += value;
                     }
                 });
             }
@@ -966,7 +1005,81 @@ wss.on('connection', (ws, req) => {
             }
         }));
         
-        console.log(`User ${ws.username} equipped ${item.name} in ${slotName} slot`);
+        console.log(`[EquipItem] User ${ws.username} equipped ${slotName}`);
+      } else if (data.type === 'rerollItem') {
+        // Handle rerolling item stats
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        const userIndex = registeredUsers.findIndex(u => u.username === ws.username);
+        if (userIndex === -1) {
+            ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            return;
+        }
+        
+        const user = registeredUsers[userIndex];
+        const inventoryIndex = data.inventoryIndex;
+        
+        // Validate inventory index
+        if (inventoryIndex === undefined || inventoryIndex < 0 || inventoryIndex >= user.inventory.length) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Invalid inventory index' }));
+            return;
+        }
+        
+        const item = user.inventory[inventoryIndex];
+        if (!item) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Item not found in inventory' }));
+            return;
+        }
+        
+        // Validate item has stats array with at least 2 stats
+        if (!Array.isArray(item.stats) || item.stats.length < 2) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Item must have at least 2 stats to reroll' }));
+            return;
+        }
+        
+        // Keep first stat, reroll the rest
+        const firstStat = item.stats[0];
+        const rerollCount = item.stats.length - 1;
+        
+        // Get available stats excluding the first stat
+        const availableStats = ITEM_STATS.filter(stat => stat !== firstStat.stat);
+        
+        // Reroll remaining stats (duplicates allowed, but not same as first stat)
+        const rerolledStats = [];
+        for (let i = 0; i < rerollCount; i++) {
+            const randomIndex = Math.floor(Math.random() * availableStats.length);
+            const selectedStat = availableStats[randomIndex];
+            // Value is 1 for rerolled stats (not 2x like first stat)
+            rerolledStats.push({
+                stat: selectedStat,
+                value: 1
+            });
+        }
+        
+        // Update item stats: keep first, replace rest
+        item.stats = [firstStat, ...rerolledStats];
+        
+        // Save to file
+        await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+        
+        // Send success response with updated player data
+        ws.send(msgpack.encode({
+            type: 'rerollSuccess',
+            playerData: {
+                stats: user.stats,
+                inventory: user.inventory,
+                equipment: user.equipment,
+                passiveAbility: user.passiveAbility || null
+            }
+        }));
+        
+        console.log(`[RerollItem] User ${ws.username} rerolled stats for item at index ${inventoryIndex}`);
+      } else if (data.type === 'partyInvite') {
+        console.log
+        (`User ${ws.username} equipped ${item.name} in ${slotName} slot`);
       } else if (data.type === 'setPassiveAbility') {
         if (!ws.username) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
@@ -1796,6 +1909,32 @@ wss.on('connection', (ws, req) => {
                 ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to load level' }));
             }
         }
+      } else if (data.type === 'gameReady') {
+        // Handle game ready message from party leader to start timer
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+
+        // Find the party this player belongs to
+        const party = findPartyByMemberId(ws.id);
+        if (!party || party.leader !== ws.id) {
+            console.warn(`Non-leader ${ws.username} tried to send gameReady`);
+            return; // Only leader can send ready
+        }
+
+        // Get the game room
+        const room = ws.room ? rooms.get(ws.room) : null;
+        if (!room || room.type !== 'game') {
+            console.warn(`Party leader ${ws.username} sent gameReady but not in a game room`);
+            return;
+        }
+
+        // Set start time for this game room (only if not already set)
+        if (!room.startTime) {
+            room.startTime = Date.now();
+            console.log(`⏱️ Game room ${ws.room} started timer at ${room.startTime}`);
+        }
       } else if (data.type === 'raidCompleted') {
         // Only accept raid completion from party leader
         if (!ws.username) {
@@ -1817,6 +1956,16 @@ wss.on('connection', (ws, req) => {
             return;
         }
 
+        // Calculate server-side elapsed time
+        let serverTime = null;
+        if (room.startTime) {
+            const elapsedMs = Date.now() - room.startTime;
+            serverTime = Math.round(elapsedMs / 1000); // Convert to seconds
+            console.log(`⏱️ Game room ${ws.room} completed in ${serverTime} seconds (server time)`);
+        } else {
+            console.warn(`⚠️ Game room ${ws.room} completed but no start time was recorded`);
+        }
+
         // Get stats from leader's message
         const stats = data.stats || null;
 
@@ -1827,17 +1976,45 @@ wss.on('connection', (ws, req) => {
         for (const memberId of party.members) {
             const memberClient = clients.get(memberId);
             if (memberClient && memberClient.username && room.clients.has(memberClient)) {
-                // Generate random loot: armor or hat with 1 random stat
-                const itemType = Math.random() < 0.5 ? 'armor' : 'hat';
-                const availableStats = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback'];
-                const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
+                // Generate random loot: armor, hat, or amulet
+                const lootTypes = ['armor', 'hat', 'amulet'];
+                const itemType = lootTypes[Math.floor(Math.random() * lootTypes.length)];
+                
+                // Determine number of slots based on item type
+                const slotCounts = {
+                    armor: 3,
+                    hat: 2,
+                    amulet: 1
+                };
+                const slotCount = slotCounts[itemType];
+                
+                // Generate stats for the item
+                const availableStats = [...ITEM_STATS];
+                const stats = [];
+                
+                for (let i = 0; i < slotCount; i++) {
+                    const randomIndex = Math.floor(Math.random() * availableStats.length);
+                    const selectedStat = availableStats[randomIndex];
+                    availableStats.splice(randomIndex, 1); // Remove to prevent duplicates
+                    
+                    // First stat gets 2x bonus, others get 1x
+                    const value = i === 0 ? 2 : 1;
+                    stats.push({
+                        stat: selectedStat,
+                        value: value
+                    });
+                }
+                
+                const displayNames = {
+                    armor: 'Armor',
+                    hat: 'Hat',
+                    amulet: 'Amulet'
+                };
                 
                 const lootItem = {
                     name: itemType,
-                    displayName: itemType === 'armor' ? 'Armor' : 'Hat',
-                    stats: {
-                        [randomStat]: 1
-                    }
+                    displayName: displayNames[itemType] || itemType,
+                    stats: stats
                 };
                 
                 lootForPlayers[memberClient.username] = lootItem;
@@ -1850,7 +2027,8 @@ wss.on('connection', (ws, req) => {
                     }
                     user.inventory.push(lootItem);
                     inventoryUpdated = true;
-                    console.log(`📦 Added ${itemType} to ${memberClient.username}'s inventory with ${randomStat} +1`);
+                    const firstStat = stats[0].stat;
+                    console.log(`📦 Added ${itemType} to ${memberClient.username}'s inventory with ${slotCount} stats (${firstStat} +${stats[0].value})`);
                 }
             }
         }
@@ -1867,12 +2045,22 @@ wss.on('connection', (ws, req) => {
             if (memberClient && memberClient.username && memberClient.readyState === ws.OPEN) {
                 const playerLoot = lootForPlayers[memberClient.username];
                 if (playerLoot) {
+                    // Create stats object with server-calculated time
+                    const statsWithServerTime = stats ? { ...stats } : {};
+                    if (serverTime !== null) {
+                        statsWithServerTime.serverTime = serverTime;
+                    }
+                    
                     memberClient.send(msgpack.encode({
                         type: 'raidLoot',
                         loot: playerLoot,
-                        stats: stats // Include stats in the message
+                        stats: statsWithServerTime // Include stats with server time
                     }));
-                    console.log(`🎁 Sent loot to ${memberClient.username}: ${playerLoot.name} with ${Object.keys(playerLoot.stats)[0]}`);
+                    // Get first stat for logging
+                    const firstStat = Array.isArray(playerLoot.stats) && playerLoot.stats.length > 0 
+                        ? playerLoot.stats[0].stat 
+                        : 'unknown';
+                    console.log(`🎁 Sent loot to ${memberClient.username}: ${playerLoot.name} with ${firstStat}`);
                 }
             }
         }
