@@ -1739,6 +1739,48 @@ wss.on('connection', (ws, req) => {
             console.error('Failed to list levels', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to list levels' }));
         }
+      } else if (data.type === 'listLobbyRooms') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+
+        try {
+            const lobbyRooms = [];
+            for (const [roomName, roomData] of rooms.entries()) {
+                if (roomData.type === 'lobby' && roomName.startsWith('lobby_')) {
+                    // Try to get level name from the level file
+                    let levelName = roomData.level || 'Unknown';
+                    if (roomData.level) {
+                        try {
+                            const levelData = await loadCampaignLevelByName(roomData.level);
+                            levelName = levelData.name || levelData.data?.name || roomData.level;
+                        } catch (error) {
+                            // Use filename if we can't load the level
+                            levelName = roomData.level.replace('.json', '');
+                        }
+                    }
+                    
+                    lobbyRooms.push({
+                        roomName: roomName,
+                        level: roomData.level,
+                        levelName: levelName,
+                        playerCount: roomData.clients ? roomData.clients.size : 0
+                    });
+                }
+            }
+
+            // Sort by level name
+            lobbyRooms.sort((a, b) => a.levelName.localeCompare(b.levelName));
+
+            ws.send(msgpack.encode({
+                type: 'lobbyRoomsList',
+                rooms: lobbyRooms
+            }));
+        } catch (error) {
+            console.error('Failed to list lobby rooms', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to list lobby rooms' }));
+        }
       } else if (data.type === 'getLevel') {
         if (!ws.username) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
@@ -1770,6 +1812,66 @@ wss.on('connection', (ws, req) => {
                 ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to load level' }));
             }
         }
+      } else if (data.type === 'raidCompleted') {
+        // Only accept raid completion from party leader
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+
+        // Find the party this player belongs to
+        const party = findPartyByMemberId(ws.id);
+        if (!party || party.leader !== ws.id) {
+            console.warn(`Non-leader ${ws.username} tried to report raid completion`);
+            return; // Only leader can report completion
+        }
+
+        // Get all party members in the same room
+        const room = ws.room ? rooms.get(ws.room) : null;
+        if (!room) {
+            console.warn(`Party leader ${ws.username} reported completion but not in a room`);
+            return;
+        }
+
+        // Get stats from leader's message
+        const stats = data.stats || null;
+
+        // Generate loot for each party member
+        const lootForPlayers = {};
+        for (const memberId of party.members) {
+            const memberClient = clients.get(memberId);
+            if (memberClient && memberClient.username && room.clients.has(memberClient)) {
+                // Generate random loot: armor or hat with 1 random stat
+                const itemType = Math.random() < 0.5 ? 'armor' : 'hat';
+                const availableStats = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback'];
+                const randomStat = availableStats[Math.floor(Math.random() * availableStats.length)];
+                
+                lootForPlayers[memberClient.username] = {
+                    name: itemType,
+                    stats: {
+                        [randomStat]: 1
+                    }
+                };
+            }
+        }
+
+        // Send loot and stats to each party member
+        for (const memberId of party.members) {
+            const memberClient = clients.get(memberId);
+            if (memberClient && memberClient.username && memberClient.readyState === ws.OPEN) {
+                const playerLoot = lootForPlayers[memberClient.username];
+                if (playerLoot) {
+                    memberClient.send(msgpack.encode({
+                        type: 'raidLoot',
+                        loot: playerLoot,
+                        stats: stats // Include stats in the message
+                    }));
+                    console.log(`🎁 Sent loot to ${memberClient.username}: ${playerLoot.name} with ${Object.keys(playerLoot.stats)[0]}`);
+                }
+            }
+        }
+
+        console.log(`✅ Raid completed in room ${ws.room} by party led by ${ws.username}`);
       } else if (data.type === 'changeUsername') {
         if (!ws.username) {
             if (ws.readyState === ws.OPEN) {
