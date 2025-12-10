@@ -554,7 +554,11 @@ async function sendPartyToGameRoom(party, options = {}) {
     }
 
     if (!resolvedStageData && !resolvedLevelFile) {
-        resolvedLevelFile = DEFAULT_CAMPAIGN_LEVEL_FILE;
+        // No level specified - send error instead of using default
+        if (leaderClient.readyState === openState) {
+            leaderClient.send(msgpack.encode({ type: 'error', message: 'No level specified for game room.' }));
+        }
+        return;
     }
 
     if (!resolvedStageData && resolvedLevelFile) {
@@ -573,10 +577,10 @@ async function sendPartyToGameRoom(party, options = {}) {
     const gameRoomName = leaderClient.username;
     let roomEntry = rooms.get(gameRoomName);
     if (!roomEntry) {
-        roomEntry = { type: 'game', level: resolvedLevelFile || DEFAULT_CAMPAIGN_LEVEL_FILE, clients: new Set(), startTime: null };
+        roomEntry = { type: 'game', level: resolvedLevelFile || null, clients: new Set(), startTime: null };
     } else {
         roomEntry.type = 'game';
-        roomEntry.level = resolvedLevelFile || DEFAULT_CAMPAIGN_LEVEL_FILE;
+        roomEntry.level = resolvedLevelFile || null;
         if (!roomEntry.clients) {
             roomEntry.clients = new Set();
         }
@@ -950,15 +954,35 @@ wss.on('connection', (ws, req) => {
         // Add to new room
         ws.room = room;
         if (!rooms.has(room)) {
-          // Default room type is 'lobby'
-          rooms.set(room, { type: 'lobby', level: DEFAULT_CAMPAIGN_LEVEL_FILE, clients: new Set() });
+          // Only create lobby room if it's a campaign level lobby (starts with 'lobby_')
+          // Otherwise, create a generic room without a level
+          const isCampaignLobby = room.startsWith('lobby_');
+          rooms.set(room, { 
+            type: 'lobby', 
+            level: isCampaignLobby ? null : null, // Will be set from database if it exists
+            clients: new Set() 
+          });
         }
         const updatedRoom = rooms.get(room);
         if (!updatedRoom.clients) {
           updatedRoom.clients = new Set();
         }
-        if (updatedRoom.level === undefined) {
-          updatedRoom.level = DEFAULT_CAMPAIGN_LEVEL_FILE;
+        // Only set level if it's a campaign lobby and level is not already set
+        if (updatedRoom.level === undefined && room.startsWith('lobby_')) {
+          // Try to load the level from database based on room name
+          const levelSlug = room.replace('lobby_', '').replace('.json', '');
+          try {
+            const level = await db.getCampaignLevelBySlug(levelSlug);
+            if (level) {
+              updatedRoom.level = `${level.slug}.json`;
+            } else {
+              updatedRoom.level = null;
+            }
+          } catch (error) {
+            updatedRoom.level = null;
+          }
+        } else if (updatedRoom.level === undefined) {
+          updatedRoom.level = null;
         }
         updatedRoom.clients.add(ws);
 
