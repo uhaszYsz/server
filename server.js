@@ -5,6 +5,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { Encoder } from 'msgpackr';
+import * as db from './database.js';
 
 const msgpack = new Encoder({
     useRecords: false
@@ -12,7 +13,6 @@ const msgpack = new Encoder({
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const registeredUsersPath = path.join(__dirname, 'registeredUsers.json');
 const levelsDirectory = path.join(__dirname, 'levels');
 const campaignLevelsDirectory = path.join(__dirname, 'campaignLevels');
 const weaponsDirectory = path.join(__dirname, 'weapons');
@@ -32,7 +32,7 @@ await Promise.all([
 const EQUIPMENT_SLOTS = ['weapon', 'armor', 'hat', 'amulet', 'ring', 'spellcard'];
 
 // Available stats for items
-const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback'];
+const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback', 'recovery', 'reload'];
 
 const PASSIVE_ABILITIES = ['healing_aura', 'super_hit', 'bullet_cleanse'];
 
@@ -69,7 +69,9 @@ function getDefaultStats() {
         MpRegen: 1.0,
         critical: 5,
         block: 5,
-        knockback: 0
+        knockback: 0,
+        recovery: 0,
+        reload: 0
     };
 }
 
@@ -281,18 +283,19 @@ async function loadWeaponDataBySlug(slug) {
 async function buildRoomWeaponData(clientsCollection) {
     const data = [];
     if (!clientsCollection) return data;
-    let needsSave = false;
 
     for (const client of clientsCollection) {
         if (!client || !client.username) continue;
-        const user = registeredUsers.find(u => u.username === client.username);
+        const user = await db.getUserByUsername(client.username);
         if (!user) continue;
+
+        let userModified = false;
 
         // Migrate Sword items from 'test' to 'playa' before loading weapon data
         if (user.equipment && user.equipment.weapon) {
             if (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon')) {
                 user.equipment.weapon.weaponFile = 'playa';
-                needsSave = true;
+                userModified = true;
                 console.log(`[buildRoomWeaponData] Migrated ${client.username}'s Sword from 'test' to 'playa'`);
             }
         }
@@ -304,7 +307,7 @@ async function buildRoomWeaponData(clientsCollection) {
                 const weaponData = await loadWeaponDataBySlug(slug);
                 if (weaponData) {
                     user.weaponData = { ...weaponData, slug };
-                    needsSave = true;
+                    userModified = true;
                     console.log(`[buildRoomWeaponData] Reloaded weapon data for ${client.username}: slug="${slug}", emitters=${weaponData.emitters?.length || 0}`);
                 } else {
                     console.error(`[buildRoomWeaponData] Failed to load weapon data for ${client.username}: slug="${slug}"`);
@@ -317,10 +320,11 @@ async function buildRoomWeaponData(clientsCollection) {
             playerId: client.id,
             weaponData: user.weaponData || null
         });
-    }
-
-    if (needsSave) {
-        await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+        
+        // Save user if it was modified
+        if (userModified) {
+            await db.updateUser(client.username, user);
+        }
     }
 
     return data;
@@ -328,7 +332,6 @@ async function buildRoomWeaponData(clientsCollection) {
 
 async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
     const payload = [];
-    let needsSave = false;
 
     // Get the party of the joining client (if any)
     const joiningClientParty = joiningClientId ? findPartyByMemberId(joiningClientId) : null;
@@ -337,7 +340,7 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
         if (!client || !client.username) continue;
         if (roomName && client.room !== roomName) continue;
 
-        const user = registeredUsers.find(u => u.username === client.username);
+        const user = await db.getUserByUsername(client.username);
         if (!user) continue;
 
         // Check if this client is in the same party as the joining client
@@ -352,13 +355,15 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
             username: client.username
         };
 
+        let userModified = false;
+
         // Only include weaponData and stats if in the same party
         if (isInSameParty) {
             // Migrate Sword items from 'test' to 'playa' before loading weapon data
             if (user.equipment && user.equipment.weapon) {
                 if (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon')) {
                     user.equipment.weapon.weaponFile = 'playa';
-                    needsSave = true;
+                    userModified = true;
                     console.log(`[buildPlayerInitData] Migrated ${client.username}'s Sword from 'test' to 'playa'`);
                 }
             }
@@ -370,7 +375,7 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
                     const weaponData = await loadWeaponDataBySlug(slug);
                     if (weaponData) {
                         user.weaponData = { ...weaponData, slug };
-                        needsSave = true;
+                        userModified = true;
                         console.log(`[buildPlayerInitData] Reloaded weapon data for ${client.username}: slug="${slug}", emitters=${weaponData.emitters?.length || 0}`);
                     } else {
                         console.error(`[buildPlayerInitData] Failed to load weapon data for ${client.username}: slug="${slug}"`);
@@ -391,204 +396,19 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
         });
 
         payload.push(entry);
-    }
-
-    if (needsSave) {
-        await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+        
+        // Save user if it was modified
+        if (userModified) {
+            await db.updateUser(client.username, user);
+        }
     }
 
     return payload;
 }
 
-// Migrate existing users to have stats, inventory, and equipment if they don't have them
-function migrateUserStats(user) {
-    let needsSave = false;
-    
-    if (!user.stats) {
-        user.stats = getDefaultStats();
-        needsSave = true;
-    }
-    
-    if (!user.inventory) {
-        user.inventory = [];
-        needsSave = true;
-    }
-
-    const hasWeaponItem = user.inventory.some(item => item && item.weaponFile);
-    if (!hasWeaponItem) {
-        user.inventory.push({
-            name: 'weapon',
-            displayName: 'Sword',
-            weaponFile: 'playa',
-            stats: []
-        });
-        needsSave = true;
-    } else {
-        const originalInventory = JSON.parse(JSON.stringify(user.inventory)); // Deep copy for comparison
-        user.inventory = user.inventory.map(item => {
-            if (!item) return item;
-            
-            // Migrate stats from object format to array format
-            if (item.stats && typeof item.stats === 'object' && !Array.isArray(item.stats)) {
-                // Convert object format {maxHp: 1, critical: 1} to array format [{stat: 'maxHp', value: 1}, ...]
-                item.stats = Object.entries(item.stats).map(([stat, value]) => ({
-                    stat: stat,
-                    value: value
-                }));
-                needsSave = true;
-            } else if (!item.stats) {
-                // Ensure stats is always an array
-                item.stats = [];
-            }
-            
-            if (typeof item.weaponFile === 'string' && item.weaponFile === 'starter-sword') {
-                return {
-                    ...item,
-                    weaponFile: 'playa'
-                };
-            }
-            // If it's a Sword item with 'test' or missing weaponFile, set to 'playa'
-            if (item && (item.displayName === 'Sword' || item.name === 'weapon')) {
-                if (!item.weaponFile || item.weaponFile === 'test') {
-                    return {
-                        ...item,
-                        weaponFile: 'playa'
-                    };
-                }
-            }
-            return item;
-        });
-        // Check if inventory was actually changed
-        if (JSON.stringify(originalInventory) !== JSON.stringify(user.inventory)) {
-            needsSave = true;
-        }
-    }
-    
-    if (!user.equipment) {
-        user.equipment = {
-            weapon: null,
-            armor: null,
-            hat: null,
-            amulet: null,
-            ring: null,
-            spellcard: null
-        };
-        needsSave = true;
-    } else {
-        // Migrate equipment items' stats from object to array format
-        Object.keys(user.equipment).forEach(slotName => {
-            const equippedItem = user.equipment[slotName];
-            if (equippedItem && equippedItem.stats && typeof equippedItem.stats === 'object' && !Array.isArray(equippedItem.stats)) {
-                // Convert object format to array format
-                equippedItem.stats = Object.entries(equippedItem.stats).map(([stat, value]) => ({
-                    stat: stat,
-                    value: value
-                }));
-                needsSave = true;
-            } else if (equippedItem && !equippedItem.stats) {
-                // Ensure stats is always an array
-                equippedItem.stats = [];
-            }
-        });
-        
-        if (user.equipment.weapon) {
-            if (!user.equipment.weapon.weaponFile || user.equipment.weapon.weaponFile === 'starter-sword') {
-                user.equipment.weapon.weaponFile = 'playa';
-                if (!user.equipment.weapon.displayName) {
-                    user.equipment.weapon.displayName = 'Sword';
-                }
-                needsSave = true;
-            } else if (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon')) {
-                user.equipment.weapon.weaponFile = 'playa';
-                needsSave = true;
-            }
-        }
-    }
-    
-    // Add weaponData field if it doesn't exist
-    if (user.weaponData === undefined) {
-        user.weaponData = null;
-        needsSave = true;
-    }
-
-    if (user.equipment && user.equipment.weapon && user.equipment.weapon.weaponFile) {
-        if (!user.weaponData || !user.weaponData.slug || user.weaponData.slug !== user.equipment.weapon.weaponFile) {
-            needsSave = true;
-        }
-    }
-    
-    if (user.passiveAbility === undefined) {
-        user.passiveAbility = null;
-        needsSave = true;
-    }
-    
-    // Ensure user has all passive ability rings in inventory
-    const existingRingAbilities = new Set();
-    user.inventory.forEach(item => {
-        if (item && item.name === 'ring' && item.passiveAbility) {
-            existingRingAbilities.add(item.passiveAbility);
-        }
-    });
-    
-    // Add missing rings
-    PASSIVE_ABILITIES.forEach(abilityId => {
-        if (!existingRingAbilities.has(abilityId)) {
-            user.inventory.push({
-                name: 'ring',
-                displayName: getPassiveAbilityDisplayName(abilityId),
-                passiveAbility: abilityId,
-                stats: []
-            });
-            needsSave = true;
-        }
-    });
-    
-    // Ensure user has all spellcard abilities in inventory
-    const existingSpellcardAbilities = new Set();
-    user.inventory.forEach(item => {
-        if (item && item.name === 'spellcard' && item.activeAbility) {
-            existingSpellcardAbilities.add(item.activeAbility);
-        }
-    });
-    
-    // Add missing spellcards
-    ACTIVE_ABILITIES.forEach(abilityId => {
-        if (!existingSpellcardAbilities.has(abilityId)) {
-            user.inventory.push({
-                name: 'spellcard',
-                displayName: getSpellcardDisplayName(abilityId),
-                activeAbility: abilityId,
-                stats: []
-            });
-            needsSave = true;
-        }
-    });
-    
-    return { user, needsSave };
-}
-
-let registeredUsers = [];
-try {
-    const data = await fs.readFile(registeredUsersPath);
-    registeredUsers = JSON.parse(data);
-    // Migrate existing users to include stats, inventory, and equipment
-    let needsSave = false;
-    registeredUsers = registeredUsers.map(user => {
-        const { user: migratedUser, needsSave: userNeedsSave } = migrateUserStats(user);
-        if (userNeedsSave) needsSave = true;
-        return migratedUser;
-    });
-    // Save migrated data back if any migration occurred
-    if (needsSave) {
-        await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
-    }
-} catch (error) {
-    if (error.code === 'ENOENT') {
-        await fs.writeFile(registeredUsersPath, JSON.stringify([]));
-    } else {
-        throw error;
-    }
-}
+// Initialize database
+await db.initDatabase();
+await db.migrateFromJSON();
 
 let globalTimer = Date.now();
 
@@ -807,11 +627,10 @@ wss.on('connection', (ws, req) => {
             weaponData: inventoryData.weaponData,
             passiveAbility: inventoryData.passiveAbility
         };
-        registeredUsers.push(newUser);
-        await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+        await db.createUser(newUser);
         ws.send(msgpack.encode({ type: 'registerSuccess', username, password }));
       } else if (data.type === 'login') {
-        const user = registeredUsers.find(u => u.username === data.username && u.password === data.password);
+        const user = await db.findUser(data.username, data.password);
         if (user) {
             ws.username = user.username; // Store username on successful login
             ws.send(msgpack.encode({ 
@@ -829,7 +648,7 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
-        const user = registeredUsers.find(u => u.username === ws.username);
+        const user = await db.getUserByUsername(ws.username);
         if (user) {
             let userDataChanged = false;
             // Migrate Sword items from 'test' to 'playa' on login
@@ -863,7 +682,7 @@ wss.on('connection', (ws, req) => {
                 }
             }
             if (userDataChanged) {
-                await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+                await db.updateUser(ws.username, user);
             }
             ws.send(msgpack.encode({
                 type: 'playerData',
@@ -884,13 +703,11 @@ wss.on('connection', (ws, req) => {
             return;
         }
         
-        const userIndex = registeredUsers.findIndex(u => u.username === ws.username);
-        if (userIndex === -1) {
+        const user = await db.getUserByUsername(ws.username);
+        if (!user) {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
             return;
         }
-        
-        const user = registeredUsers[userIndex];
         const inventoryIndex = data.inventoryIndex;
         
         // Validate inventory index
@@ -991,8 +808,8 @@ wss.on('connection', (ws, req) => {
             }
         });
         
-        // Save to file
-        await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+        // Save to database
+        await db.updateUser(ws.username, user);
         
         // Send success response with updated player data
         ws.send(msgpack.encode({
@@ -1013,13 +830,11 @@ wss.on('connection', (ws, req) => {
             return;
         }
         
-        const userIndex = registeredUsers.findIndex(u => u.username === ws.username);
-        if (userIndex === -1) {
+        const user = await db.getUserByUsername(ws.username);
+        if (!user) {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
             return;
         }
-        
-        const user = registeredUsers[userIndex];
         const inventoryIndex = data.inventoryIndex;
         
         // Validate inventory index
@@ -1062,8 +877,8 @@ wss.on('connection', (ws, req) => {
         // Update item stats: keep first, replace rest
         item.stats = [firstStat, ...rerolledStats];
         
-        // Save to file
-        await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+        // Save to database
+        await db.updateUser(ws.username, user);
         
         // Send success response with updated player data
         ws.send(msgpack.encode({
@@ -1092,16 +907,15 @@ wss.on('connection', (ws, req) => {
             return;
         }
 
-        const userIndex = registeredUsers.findIndex(u => u.username === ws.username);
-        if (userIndex === -1) {
+        const user = await db.getUserByUsername(ws.username);
+        if (!user) {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
             return;
         }
 
-        const user = registeredUsers[userIndex];
         user.passiveAbility = abilityId;
 
-        await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+        await db.updateUser(ws.username, user);
 
         const payload = {
             stats: user.stats,
@@ -1190,6 +1004,22 @@ wss.on('connection', (ws, req) => {
               username: ws.username || null, // Include username so clients can identify their own data
               data: data.text,
               targetTime: targetTime
+            }));
+          }
+        }
+      } else if (data.type === 'blockShield' && ws.room) {
+        // Broadcast block shield instantly to all clients in the room (no buffering)
+        const room = rooms.get(ws.room);
+        if (!room) return;
+        const roomClients = room.clients;
+
+        for (const client of roomClients) {
+          if (client.readyState === ws.OPEN) {
+            client.send(msgpack.encode({
+              type: 'blockShield',
+              x: data.x,
+              y: data.y,
+              playerId: ws.id
             }));
           }
         }
@@ -1504,13 +1334,11 @@ wss.on('connection', (ws, req) => {
             return;
         }
         
-        const userIndex = registeredUsers.findIndex(u => u.username === ws.username);
-        if (userIndex === -1) {
+        const user = await db.getUserByUsername(ws.username);
+        if (!user) {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
             return;
         }
-        
-        const user = registeredUsers[userIndex];
         
         // Store weapon data
         const incomingWeapon = data.weaponData ? { ...data.weaponData } : null;
@@ -1539,8 +1367,8 @@ wss.on('connection', (ws, req) => {
             }
         }
         
-        // Save to file
-        await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+        // Save to database
+        await db.updateUser(ws.username, user);
         
         // Send success response
         ws.send(msgpack.encode({
@@ -2039,12 +1867,13 @@ wss.on('connection', (ws, req) => {
                 lootForPlayers[memberClient.username] = lootItem;
                 
                 // Add loot item to player's inventory
-                const user = registeredUsers.find(u => u.username === memberClient.username);
+                const user = await db.getUserByUsername(memberClient.username);
                 if (user) {
                     if (!user.inventory) {
                         user.inventory = [];
                     }
                     user.inventory.push(lootItem);
+                    await db.updateUser(memberClient.username, user);
                     inventoryUpdated = true;
                     const itemDesc = itemType === 'ring' ? `${lootItem.displayName} (${itemType})` : 
                                    itemType === 'spellcard' ? `${lootItem.displayName} (${itemType})` : 
@@ -2059,10 +1888,9 @@ wss.on('connection', (ws, req) => {
             }
         }
         
-        // Save updated inventories to file
+        // Inventories are already saved to database in the loop above
         if (inventoryUpdated) {
-            await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
-            console.log(`💾 Saved updated inventories to file`);
+            console.log(`💾 Saved updated inventories to database`);
         }
 
         // Send loot and stats to each party member
@@ -2115,7 +1943,7 @@ wss.on('connection', (ws, req) => {
         }
 
         // Check if username already exists
-        const existingUser = registeredUsers.find(u => u.username === newUsername);
+        const existingUser = await db.usernameExists(newUsername);
         if (existingUser) {
             if (ws.readyState === ws.OPEN) {
                 ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Username already taken' }));
@@ -2123,22 +1951,19 @@ wss.on('connection', (ws, req) => {
             return;
         }
 
-        // Find current user
-        const userIndex = registeredUsers.findIndex(u => u.username === ws.username);
-        if (userIndex === -1) {
+        // Get current user
+        const user = await db.getUserByUsername(ws.username);
+        if (!user) {
             if (ws.readyState === ws.OPEN) {
                 ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'User not found' }));
             }
             return;
         }
 
-        // Update username
-        registeredUsers[userIndex].username = newUsername;
-        ws.username = newUsername; // Update WebSocket username
-
-        // Save to file
+        // Update username in database
         try {
-            await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+            await db.updateUsername(ws.username, newUsername);
+            ws.username = newUsername; // Update WebSocket username
             if (ws.readyState === ws.OPEN) {
                 ws.send(msgpack.encode({ 
                     type: 'changeUsernameSuccess', 
@@ -2167,9 +1992,9 @@ wss.on('connection', (ws, req) => {
             return;
         }
 
-        // Find current user
-        const userIndex = registeredUsers.findIndex(u => u.username === ws.username);
-        if (userIndex === -1) {
+        // Get current user
+        const user = await db.getUserByUsername(ws.username);
+        if (!user) {
             if (ws.readyState === ws.OPEN) {
                 ws.send(msgpack.encode({ type: 'changePasswordError', message: 'User not found' }));
             }
@@ -2177,11 +2002,11 @@ wss.on('connection', (ws, req) => {
         }
 
         // Update password
-        registeredUsers[userIndex].password = newPassword;
+        user.password = newPassword;
 
-        // Save to file
+        // Save to database
         try {
-            await fs.writeFile(registeredUsersPath, JSON.stringify(registeredUsers, null, 2));
+            await db.updateUser(ws.username, user);
             if (ws.readyState === ws.OPEN) {
                 ws.send(msgpack.encode({ 
                     type: 'changePasswordSuccess', 
