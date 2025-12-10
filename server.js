@@ -462,13 +462,17 @@ async function initializeCampaignLevelLobbies() {
 // Initialize campaign level lobbies on server startup
 await initializeCampaignLevelLobbies();
 
-// Helper function to join player to first available campaign lobby
+// Helper function to join player to "main" campaign lobby
 async function joinFirstCampaignLobby(ws) {
     try {
-        const campaignLevels = await db.getAllCampaignLevels();
-        if (campaignLevels.length > 0) {
-            const firstLevel = campaignLevels[0];
-            const roomName = `lobby_${firstLevel.slug}`;
+        // Look for campaign level with name "main" (slug will be "main")
+        const mainLevel = await db.getCampaignLevelBySlug('main');
+        if (!mainLevel) {
+            console.log('ℹ️  No "main" campaign level found, skipping auto-join');
+            return;
+        }
+        
+        const roomName = `lobby_main`;
             
             // Remove from old room if any
             if (ws.room && rooms.has(ws.room)) {
@@ -480,7 +484,7 @@ async function joinFirstCampaignLobby(ws) {
             if (!rooms.has(roomName)) {
                 rooms.set(roomName, {
                     type: 'lobby',
-                    level: `${firstLevel.slug}.json`,
+                    level: `${mainLevel.slug}.json`,
                     clients: new Set()
                 });
             }
@@ -499,7 +503,8 @@ async function joinFirstCampaignLobby(ws) {
                 type: 'roomUpdate', 
                 room: roomName, 
                 roomType: roomData.type, 
-                level: roomData.level ?? null 
+                level: roomData.level ?? null,
+                autoJoined: true // Flag to indicate this was an auto-join
             }));
             
             // Send player init data to the joining client (so they see existing players)
@@ -541,7 +546,7 @@ async function joinFirstCampaignLobby(ws) {
                 }
             }
             
-            console.log(`✅ Auto-joined ${ws.username || 'client'} to first campaign lobby: ${roomName} (level: ${firstLevel.name})`);
+            console.log(`✅ Auto-joined ${ws.username || 'client'} to "main" campaign lobby: ${roomName} (level: ${mainLevel.name})`);
         }
     } catch (error) {
         console.error('❌ Failed to join first campaign lobby:', error);
