@@ -2019,6 +2019,75 @@ wss.on('connection', (ws, req) => {
                 ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Failed to save password' }));
             }
         }
+      } else if (data.type === 'getForumCategories') {
+        try {
+            const categories = await db.getForumCategories();
+            ws.send(msgpack.encode({ type: 'forumCategories', categories }));
+        } catch (error) {
+            console.error('Failed to get forum categories', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to get forum categories' }));
+        }
+      } else if (data.type === 'getForumThreads') {
+        if (!data.categoryId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Category ID required' }));
+            return;
+        }
+        try {
+            const threads = await db.getForumThreads(data.categoryId);
+            ws.send(msgpack.encode({ type: 'forumThreads', threads }));
+        } catch (error) {
+            console.error('Failed to get forum threads', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to get forum threads' }));
+        }
+      } else if (data.type === 'getForumThread') {
+        if (!data.threadId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Thread ID required' }));
+            return;
+        }
+        try {
+            const thread = await db.getForumThread(data.threadId);
+            if (!thread) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Thread not found' }));
+                return;
+            }
+            const posts = await db.getForumPosts(data.threadId);
+            ws.send(msgpack.encode({ type: 'forumThread', thread, posts }));
+        } catch (error) {
+            console.error('Failed to get forum thread', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to get forum thread' }));
+        }
+      } else if (data.type === 'createForumThread') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        if (!data.categoryId || !data.title) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Category ID and title required' }));
+            return;
+        }
+        try {
+            const threadId = await db.createForumThread(data.categoryId, data.title, ws.username);
+            ws.send(msgpack.encode({ type: 'forumThreadCreated', threadId }));
+        } catch (error) {
+            console.error('Failed to create forum thread', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to create forum thread' }));
+        }
+      } else if (data.type === 'createForumPost') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        if (!data.threadId || !data.content) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Thread ID and content required' }));
+            return;
+        }
+        try {
+            const postId = await db.createForumPost(data.threadId, ws.username, data.content);
+            ws.send(msgpack.encode({ type: 'forumPostCreated', postId }));
+        } catch (error) {
+            console.error('Failed to create forum post', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to create forum post' }));
+        }
       }
 
     } catch (err) {
