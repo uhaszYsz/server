@@ -462,6 +462,50 @@ async function initializeCampaignLevelLobbies() {
 // Initialize campaign level lobbies on server startup
 await initializeCampaignLevelLobbies();
 
+// Helper function to join player to first available campaign lobby
+async function joinFirstCampaignLobby(ws) {
+    try {
+        const campaignLevels = await db.getAllCampaignLevels();
+        if (campaignLevels.length > 0) {
+            const firstLevel = campaignLevels[0];
+            const roomName = `lobby_${firstLevel.slug}`;
+            
+            // Remove from old room if any
+            if (ws.room && rooms.has(ws.room)) {
+                const oldRoom = rooms.get(ws.room);
+                oldRoom.clients.delete(ws);
+            }
+            
+            // Create lobby room if it doesn't exist
+            if (!rooms.has(roomName)) {
+                rooms.set(roomName, {
+                    type: 'lobby',
+                    level: `${firstLevel.slug}.json`,
+                    clients: new Set()
+                });
+            }
+            
+            const updatedRoom = rooms.get(roomName);
+            if (!updatedRoom.clients) {
+                updatedRoom.clients = new Set();
+            }
+            updatedRoom.clients.add(ws);
+            ws.room = roomName;
+            
+            const roomData = rooms.get(roomName);
+            ws.send(msgpack.encode({ 
+                type: 'roomUpdate', 
+                room: roomName, 
+                roomType: roomData.type, 
+                level: roomData.level ?? null 
+            }));
+            console.log(`✅ Auto-joined ${ws.username || 'client'} to first campaign lobby: ${roomName} (level: ${firstLevel.name})`);
+        }
+    } catch (error) {
+        console.error('❌ Failed to join first campaign lobby:', error);
+    }
+}
+
 function findPartyByMemberId(memberId) {
     for (const party of parties.values()) {
         if (party.members.has(memberId)) {
@@ -639,7 +683,10 @@ wss.on('connection', (ws, req) => {
             passiveAbility: inventoryData.passiveAbility
         };
         await db.createUser(newUser);
+        ws.username = username; // Store username
         ws.send(msgpack.encode({ type: 'registerSuccess', username, password }));
+        // Auto-join first campaign lobby
+        await joinFirstCampaignLobby(ws);
       } else if (data.type === 'login') {
         const user = await db.findUser(data.username, data.password);
         if (user) {
@@ -650,6 +697,8 @@ wss.on('connection', (ws, req) => {
             }));
             const party = ensurePartyForClient(ws);
             broadcastPartyUpdate(party);
+            // Auto-join first campaign lobby
+            await joinFirstCampaignLobby(ws);
         } else {
             ws.send(msgpack.encode({ type: 'loginFail' }));
         }
