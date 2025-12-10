@@ -14,9 +14,8 @@ const msgpack = new Encoder({
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const levelsDirectory = path.join(__dirname, 'levels');
-const campaignLevelsDirectory = path.join(__dirname, 'campaignLevels');
 const weaponsDirectory = path.join(__dirname, 'weapons');
-const DEFAULT_CAMPAIGN_LEVEL_FILE = 'lev.json';
+const DEFAULT_CAMPAIGN_LEVEL_FILE = 'lev.json'; // Default slug for campaign level
 
 const MAX_LEVEL_NAME_LENGTH = 64;
 const MAX_LEVEL_DATA_BYTES = 256 * 1024; // 256 KB
@@ -24,7 +23,6 @@ const LEVEL_SLUG_REGEX = /^[a-z0-9]+[a-z0-9-_]*$/;
 
 await Promise.all([
     fs.mkdir(levelsDirectory, { recursive: true }),
-    fs.mkdir(campaignLevelsDirectory, { recursive: true }),
     fs.mkdir(weaponsDirectory, { recursive: true })
 ]);
 
@@ -408,7 +406,6 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
 
 // Initialize database
 await db.initDatabase();
-await db.migrateFromJSON();
 
 let globalTimer = Date.now();
 
@@ -434,29 +431,28 @@ const parties = new Map(); // Map to store parties
 // Initialize lobby rooms for each campaign level on server startup
 async function initializeCampaignLevelLobbies() {
     try {
-        const files = await fs.readdir(campaignLevelsDirectory);
-        const levelFiles = files.filter(file => file.endsWith('.json'));
+        // Load campaign levels from database
+        const campaignLevels = await db.getAllCampaignLevels();
         
-        console.log(`📋 Found ${levelFiles.length} campaign level(s) - creating lobby rooms...`);
+        console.log(`📋 Found ${campaignLevels.length} campaign level(s) - creating lobby rooms...`);
         
-        for (const fileName of levelFiles) {
-            const levelName = path.parse(fileName).name; // Remove .json extension
-            const roomName = `lobby_${levelName}`;
+        for (const level of campaignLevels) {
+            const roomName = `lobby_${level.slug}`;
             
             // Create lobby room for this campaign level
             rooms.set(roomName, {
                 type: 'lobby',
-                level: fileName,
+                level: `${level.slug}.json`, // Keep .json extension for compatibility
                 clients: new Set()
             });
             
-            console.log(`  ✅ Created lobby room: "${roomName}" for level "${fileName}"`);
+            console.log(`  ✅ Created lobby room: "${roomName}" for level "${level.name}" (${level.slug})`);
         }
         
-        if (levelFiles.length === 0) {
-            console.log(`  ℹ️  No campaign levels found in ${campaignLevelsDirectory}`);
+        if (campaignLevels.length === 0) {
+            console.log(`  ℹ️  No campaign levels found in database`);
         } else {
-            console.log(`✅ Initialized ${levelFiles.length} campaign level lobby room(s)`);
+            console.log(`✅ Initialized ${campaignLevels.length} campaign level lobby room(s)`);
         }
     } catch (error) {
         console.error('❌ Failed to initialize campaign level lobbies:', error);
@@ -509,13 +505,24 @@ async function loadCampaignLevelByName(levelFileName) {
         return null;
     }
 
-    if (trimmed.includes('..') || trimmed.includes('/') || trimmed.includes('\\')) {
+    // Remove .json extension if present to get slug
+    const slug = trimmed.endsWith('.json') ? trimmed.slice(0, -5) : trimmed;
+    
+    if (slug.includes('..') || slug.includes('/') || slug.includes('\\')) {
         throw new Error('Invalid level file name');
     }
 
-    const levelFilePath = path.join(campaignLevelsDirectory, trimmed);
-    const fileContents = await fs.readFile(levelFilePath, 'utf8');
-    return JSON.parse(fileContents);
+    // Load from database
+    const level = await db.getCampaignLevelBySlug(slug);
+    if (!level) {
+        return null;
+    }
+
+    // Return in the same format as before for compatibility
+    return {
+        name: level.name,
+        data: level.data
+    };
 }
 
 async function sendPartyToGameRoom(party, options = {}) {
@@ -1610,20 +1617,23 @@ wss.on('connection', (ws, req) => {
             const { fileName, sanitizedPayload } = sanitizeLevelPayload(levelPayload);
             const uploaderUsername = ws.username;
 
-            const targetPath = path.resolve(campaignLevelsDirectory, `${fileName}.json`);
-            const pathWithinCampaign = path.relative(campaignLevelsDirectory, targetPath);
-
-            if (pathWithinCampaign.startsWith('..') || pathWithinCampaign.includes(path.sep + '..')) {
-                throw new Error('Invalid level name');
+            if (!uploaderUsername) {
+                throw new Error('Unable to determine uploader username');
             }
 
-            const enrichedPayload = {
-                ...sanitizedPayload,
-                uploadedBy: uploaderUsername,
-                uploadedAt: new Date().toISOString()
-            };
+            // Save to database instead of filesystem
+            await db.createCampaignLevel(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderUsername);
 
-            await fs.writeFile(targetPath, JSON.stringify(enrichedPayload, null, 2));
+            // Update lobby rooms if needed
+            const roomName = `lobby_${fileName}`;
+            if (!rooms.has(roomName)) {
+                rooms.set(roomName, {
+                    type: 'lobby',
+                    level: `${fileName}.json`,
+                    clients: new Set()
+                });
+                console.log(`✅ Created lobby room for new campaign level: "${roomName}"`);
+            }
 
             ws.send(msgpack.encode({
                 type: 'uploadedLevelSuccess',

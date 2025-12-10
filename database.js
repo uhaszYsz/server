@@ -7,7 +7,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const dbPath = path.join(__dirname, 'users.db');
-const registeredUsersPath = path.join(__dirname, 'registeredUsers.json');
 
 let db = null;
 
@@ -107,10 +106,29 @@ export function initDatabase() {
                                 }
                                 console.log('✅ Stages table initialized');
                                 
-                                // Initialize default categories
-                                initForumCategories().then(() => {
-                                    resolve();
-                                }).catch(reject);
+                                // Create campaign_levels table for campaign levels
+                                db.run(`
+                                    CREATE TABLE IF NOT EXISTS campaign_levels (
+                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        slug TEXT UNIQUE NOT NULL,
+                                        name TEXT NOT NULL,
+                                        data TEXT NOT NULL,
+                                        uploaded_by TEXT NOT NULL,
+                                        uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                        FOREIGN KEY (uploaded_by) REFERENCES users(username)
+                                    )
+                                `, (err) => {
+                                    if (err) {
+                                        reject(err);
+                                        return;
+                                    }
+                                    console.log('✅ Campaign levels table initialized');
+                                    
+                                    // Initialize default categories
+                                    initForumCategories().then(() => {
+                                        resolve();
+                                    }).catch(reject);
+                                });
                             });
                         });
                     });
@@ -120,46 +138,6 @@ export function initDatabase() {
     });
 }
 
-// Migrate data from JSON to SQLite
-export async function migrateFromJSON() {
-    try {
-        // Check if JSON file exists
-        try {
-            await fs.access(registeredUsersPath);
-        } catch {
-            console.log('ℹ️  No existing registeredUsers.json file found, skipping migration');
-            return;
-        }
-
-        // Check if database already has users
-        const existingUsers = await getAllUsers();
-        if (existingUsers.length > 0) {
-            console.log('ℹ️  Database already has users, skipping migration');
-            return;
-        }
-
-        // Read JSON file
-        const jsonData = await fs.readFile(registeredUsersPath, 'utf8');
-        const users = JSON.parse(jsonData);
-
-        if (!Array.isArray(users) || users.length === 0) {
-            console.log('ℹ️  No users to migrate');
-            return;
-        }
-
-        console.log(`📦 Migrating ${users.length} users from JSON to SQLite...`);
-
-        // Insert users into database
-        for (const user of users) {
-            await createUser(user);
-        }
-
-        console.log(`✅ Successfully migrated ${users.length} users to SQLite`);
-    } catch (error) {
-        console.error('❌ Error during migration:', error);
-        throw error;
-    }
-}
 
 // Create a new user
 export function createUser(user) {
@@ -707,6 +685,121 @@ export function updateStage(slug, name, data) {
 export function deleteStage(slug) {
     return new Promise((resolve, reject) => {
         db.run('DELETE FROM stages WHERE slug = ?', [slug], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
+// Campaign level functions
+export function createCampaignLevel(slug, name, data, uploadedBy) {
+    return new Promise((resolve, reject) => {
+        const stmt = db.prepare(`
+            INSERT INTO campaign_levels (slug, name, data, uploaded_by, uploaded_at)
+            VALUES (?, ?, ?, ?, ?)
+        `);
+
+        stmt.run(
+            slug,
+            name,
+            JSON.stringify(data),
+            uploadedBy,
+            new Date().toISOString(),
+            function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.lastID);
+                }
+            }
+        );
+
+        stmt.finalize();
+    });
+}
+
+export function getCampaignLevelBySlug(slug) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT * FROM campaign_levels WHERE slug = ?', [slug], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            if (!row) {
+                resolve(null);
+                return;
+            }
+
+            // Parse JSON data
+            const level = {
+                id: row.id,
+                slug: row.slug,
+                name: row.name,
+                data: JSON.parse(row.data),
+                uploadedBy: row.uploaded_by,
+                uploadedAt: row.uploaded_at
+            };
+
+            resolve(level);
+        });
+    });
+}
+
+export function getAllCampaignLevels() {
+    return new Promise((resolve, reject) => {
+        db.all('SELECT * FROM campaign_levels ORDER BY uploaded_at DESC', (err, rows) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            // Parse JSON data for each level
+            const levels = rows.map(row => ({
+                id: row.id,
+                slug: row.slug,
+                name: row.name,
+                data: JSON.parse(row.data),
+                uploadedBy: row.uploaded_by,
+                uploadedAt: row.uploaded_at
+            }));
+
+            resolve(levels);
+        });
+    });
+}
+
+export function updateCampaignLevel(slug, name, data) {
+    return new Promise((resolve, reject) => {
+        const stmt = db.prepare(`
+            UPDATE campaign_levels 
+            SET name = ?, data = ?
+            WHERE slug = ?
+        `);
+
+        stmt.run(
+            name,
+            JSON.stringify(data),
+            slug,
+            function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.changes > 0);
+                }
+            }
+        );
+
+        stmt.finalize();
+    });
+}
+
+export function deleteCampaignLevel(slug) {
+    return new Promise((resolve, reject) => {
+        db.run('DELETE FROM campaign_levels WHERE slug = ?', [slug], function(err) {
             if (err) {
                 reject(err);
             } else {
