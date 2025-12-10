@@ -1009,6 +1009,16 @@ wss.on('connection', (ws, req) => {
                     }
                 }
             }
+          } catch (error) {
+            console.error(`Error checking campaign level for room ${room}:`, error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to join lobby room' }));
+            return;
+          }
+        } else {
+          // Not a campaign lobby - don't create room, just reject
+          ws.send(msgpack.encode({ type: 'error', message: 'Only campaign lobby rooms are allowed' }));
+          return;
+        }
       }
 
       // When a client sends a message to their room
