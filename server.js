@@ -1545,6 +1545,30 @@ wss.on('connection', (ws, req) => {
             // Save to database instead of filesystem
             await db.createStage(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderUsername);
 
+            // Automatically create a forum thread for the uploaded level
+            try {
+                // Get "Shared" parent category
+                const sharedCategory = await db.getForumCategoryByName('Shared', null);
+                if (sharedCategory) {
+                    // Get "Levels" subcategory under "Shared"
+                    const levelsCategory = await db.getForumCategoryByName('Levels', sharedCategory.id);
+                    if (levelsCategory) {
+                        // Create thread with level name as title
+                        const threadTitle = sanitizedPayload.name || fileName;
+                        const threadId = await db.createForumThread(levelsCategory.id, threadTitle, uploaderUsername);
+                        
+                        // Create first post with [level]slug[/level] BBCode
+                        const postContent = `[level]${fileName}[/level]`;
+                        await db.createForumPost(threadId, uploaderUsername, postContent);
+                        
+                        console.log(`✅ Auto-created forum thread for level: ${threadTitle} (thread ID: ${threadId})`);
+                    }
+                }
+            } catch (forumError) {
+                // Don't fail the level upload if forum thread creation fails
+                console.error('Failed to create forum thread for uploaded level', forumError);
+            }
+
             ws.send(msgpack.encode({
                 type: 'uploadedLevelSuccess',
                 name: sanitizedPayload.name,

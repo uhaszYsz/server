@@ -487,6 +487,23 @@ export function getForumCategories() {
     });
 }
 
+export function getForumCategoryByName(name, parentId = null) {
+    return new Promise((resolve, reject) => {
+        const query = parentId !== null 
+            ? 'SELECT * FROM forum_categories WHERE name = ? AND parent_id = ?'
+            : 'SELECT * FROM forum_categories WHERE name = ? AND parent_id IS NULL';
+        const params = parentId !== null ? [name, parentId] : [name];
+        
+        db.get(query, params, (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(row);
+        });
+    });
+}
+
 export function getForumThreads(categoryId) {
     return new Promise((resolve, reject) => {
         db.all(`
