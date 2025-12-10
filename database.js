@@ -404,10 +404,11 @@ function initForumCategories() {
                                 if (err) {
                                     console.error('Error updating old category name:', err);
                                 }
+                            });
                                 
-                                // Delete Tutorials category if it exists (user doesn't want it)
-                                db.run('DELETE FROM forum_categories WHERE name = ? AND parent_id = ?',
-                                    ['Tutorials', discussionsId], (err) => {
+                            // Delete Tutorials category if it exists (user doesn't want it)
+                            db.run('DELETE FROM forum_categories WHERE name = ? AND parent_id = ?',
+                                ['Tutorials', discussionsId], (err) => {
                                     if (err) {
                                         console.error('Error deleting Tutorials category:', err);
                                     }
