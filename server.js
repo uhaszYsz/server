@@ -951,68 +951,64 @@ wss.on('connection', (ws, req) => {
           oldRoom.clients.delete(ws);
         }
 
-        // Add to new room
-        ws.room = room;
-        if (!rooms.has(room)) {
-          // Only create lobby room if it's a campaign level lobby (starts with 'lobby_')
-          // Otherwise, create a generic room without a level
-          const isCampaignLobby = room.startsWith('lobby_');
-          rooms.set(room, { 
-            type: 'lobby', 
-            level: isCampaignLobby ? null : null, // Will be set from database if it exists
-            clients: new Set() 
-          });
-        }
-        const updatedRoom = rooms.get(room);
-        if (!updatedRoom.clients) {
-          updatedRoom.clients = new Set();
-        }
-        // Only set level if it's a campaign lobby and level is not already set
-        if (updatedRoom.level === undefined && room.startsWith('lobby_')) {
-          // Try to load the level from database based on room name
+        // Only allow joining campaign lobby rooms that exist
+        // Campaign lobbies start with 'lobby_' and must have a corresponding campaign level in the database
+        if (room.startsWith('lobby_')) {
           const levelSlug = room.replace('lobby_', '').replace('.json', '');
+          
+          // Check if campaign level exists in database
           try {
             const level = await db.getCampaignLevelBySlug(levelSlug);
-            if (level) {
-              updatedRoom.level = `${level.slug}.json`;
-            } else {
-              updatedRoom.level = null;
+            if (!level) {
+              // Campaign level doesn't exist - reject join
+              ws.send(msgpack.encode({ type: 'error', message: `Campaign level "${levelSlug}" not found` }));
+              return;
             }
-          } catch (error) {
-            updatedRoom.level = null;
-          }
-        } else if (updatedRoom.level === undefined) {
-          updatedRoom.level = null;
-        }
-        updatedRoom.clients.add(ws);
-
-        const roomData = rooms.get(room);
-        ws.send(msgpack.encode({ type: 'roomUpdate', room: room, roomType: roomData.type, level: roomData.level ?? null }));
-        console.log(`Client joined room: ${room} (type: ${roomData.type})`);
-
-        if (roomData.type === 'game') {
-            const initPayload = await buildPlayerInitDataForRoom(room, ws.id);
-            if (initPayload.length > 0) {
-                console.log(`[RoomWeapons] Sending playerInitData to ${ws.username} with ${initPayload.length} entries`);
-                ws.send(msgpack.encode({
-                    type: 'playerInitData',
-                    players: initPayload
-                }));
+            
+            // Create lobby room if it doesn't exist
+            if (!rooms.has(room)) {
+              rooms.set(room, {
+                type: 'lobby',
+                level: `${level.slug}.json`,
+                clients: new Set()
+              });
             }
+            
+            const updatedRoom = rooms.get(room);
+            if (!updatedRoom.clients) {
+              updatedRoom.clients = new Set();
+            }
+            updatedRoom.clients.add(ws);
+            ws.room = room;
 
-            const weaponPayload = await buildRoomWeaponData(roomData.clients ? [...roomData.clients] : []);
-            if (weaponPayload.length > 0) {
-                const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
-                for (const client of roomData.clients) {
-                    if (client && client.readyState === openState) {
-                        client.send(msgpack.encode({
-                            type: 'roomWeaponData',
-                            roomWeaponData: weaponPayload
-                        }));
+            const roomData = rooms.get(room);
+            ws.send(msgpack.encode({ type: 'roomUpdate', room: room, roomType: roomData.type, level: roomData.level ?? null }));
+            console.log(`Client joined campaign lobby room: ${room} (level: ${level.name})`);
+            
+            // Handle game room logic if needed
+            if (roomData.type === 'game') {
+                const initPayload = await buildPlayerInitDataForRoom(room, ws.id);
+                if (initPayload.length > 0) {
+                    console.log(`[RoomWeapons] Sending playerInitData to ${ws.username} with ${initPayload.length} entries`);
+                    ws.send(msgpack.encode({
+                        type: 'playerInitData',
+                        players: initPayload
+                    }));
+                }
+
+                const weaponPayload = await buildRoomWeaponData(roomData.clients ? [...roomData.clients] : []);
+                if (weaponPayload.length > 0) {
+                    const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
+                    for (const client of roomData.clients) {
+                        if (client && client.readyState === openState) {
+                            client.send(msgpack.encode({
+                                type: 'roomWeaponData',
+                                roomWeaponData: weaponPayload
+                            }));
+                        }
                     }
                 }
             }
-        }
       }
 
       // When a client sends a message to their room
