@@ -2024,7 +2024,20 @@ wss.on('connection', (ws, req) => {
       } else if (data.type === 'getForumCategories') {
         try {
             const categories = await db.getForumCategories();
-            ws.send(msgpack.encode({ type: 'forumCategories', categories }));
+            // Get stats for each category
+            const categoriesWithStats = await Promise.all(categories.map(async (cat) => {
+                if (cat.parent_id) {
+                    // Only get stats for subcategories (not parent categories)
+                    const stats = await db.getForumCategoryStats(cat.id);
+                    return {
+                        ...cat,
+                        threadCount: stats.threadCount,
+                        totalPostCount: stats.totalPostCount
+                    };
+                }
+                return cat;
+            }));
+            ws.send(msgpack.encode({ type: 'forumCategories', categories: categoriesWithStats }));
         } catch (error) {
             console.error('Failed to get forum categories', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to get forum categories' }));

@@ -523,6 +523,28 @@ export function getForumThreads(categoryId) {
     });
 }
 
+export function getForumCategoryStats(categoryId) {
+    return new Promise((resolve, reject) => {
+        db.get(`
+            SELECT 
+                COUNT(DISTINCT t.id) as thread_count,
+                COUNT(p.id) as total_post_count
+            FROM forum_threads t
+            LEFT JOIN forum_posts p ON p.thread_id = t.id
+            WHERE t.category_id = ?
+        `, [categoryId], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve({
+                threadCount: row.thread_count || 0,
+                totalPostCount: row.total_post_count || 0
+            });
+        });
+    });
+}
+
 export function getForumThread(threadId) {
     return new Promise((resolve, reject) => {
         db.get('SELECT * FROM forum_threads WHERE id = ?', [threadId], (err, row) => {
