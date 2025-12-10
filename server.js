@@ -473,81 +473,80 @@ async function joinFirstCampaignLobby(ws) {
         }
         
         const roomName = `lobby_main`;
-            
-            // Remove from old room if any
-            if (ws.room && rooms.has(ws.room)) {
-                const oldRoom = rooms.get(ws.room);
-                oldRoom.clients.delete(ws);
+        
+        // Remove from old room if any
+        if (ws.room && rooms.has(ws.room)) {
+            const oldRoom = rooms.get(ws.room);
+            oldRoom.clients.delete(ws);
+        }
+        
+        // Create lobby room if it doesn't exist
+        if (!rooms.has(roomName)) {
+            rooms.set(roomName, {
+                type: 'lobby',
+                level: `${mainLevel.slug}.json`,
+                clients: new Set()
+            });
+        }
+        
+        const updatedRoom = rooms.get(roomName);
+        if (!updatedRoom.clients) {
+            updatedRoom.clients = new Set();
+        }
+        updatedRoom.clients.add(ws);
+        ws.room = roomName;
+        
+        const roomData = rooms.get(roomName);
+        
+        // Send room update to the joining client
+        ws.send(msgpack.encode({ 
+            type: 'roomUpdate', 
+            room: roomName, 
+            roomType: roomData.type, 
+            level: roomData.level ?? null,
+            autoJoined: true // Flag to indicate this was an auto-join
+        }));
+        
+        // Send player init data to the joining client (so they see existing players)
+        if (ws.username) {
+            const initPayload = await buildPlayerInitDataForRoom(roomName, ws.id);
+            if (initPayload.length > 0) {
+                ws.send(msgpack.encode({
+                    type: 'playerInitData',
+                    players: initPayload
+                }));
             }
             
-            // Create lobby room if it doesn't exist
-            if (!rooms.has(roomName)) {
-                rooms.set(roomName, {
-                    type: 'lobby',
-                    level: `${mainLevel.slug}.json`,
-                    clients: new Set()
-                });
+            // Send room weapon data to the joining client
+            const weaponPayload = await buildRoomWeaponData(roomData.clients ? [...roomData.clients] : []);
+            if (weaponPayload.length > 0) {
+                ws.send(msgpack.encode({
+                    type: 'roomWeaponData',
+                    roomWeaponData: weaponPayload
+                }));
             }
-            
-            const updatedRoom = rooms.get(roomName);
-            if (!updatedRoom.clients) {
-                updatedRoom.clients = new Set();
-            }
-            updatedRoom.clients.add(ws);
-            ws.room = roomName;
-            
-            const roomData = rooms.get(roomName);
-            
-            // Send room update to the joining client
-            ws.send(msgpack.encode({ 
-                type: 'roomUpdate', 
-                room: roomName, 
-                roomType: roomData.type, 
-                level: roomData.level ?? null,
-                autoJoined: true // Flag to indicate this was an auto-join
-            }));
-            
-            // Send player init data to the joining client (so they see existing players)
-            if (ws.username) {
-                const initPayload = await buildPlayerInitDataForRoom(roomName, ws.id);
-                if (initPayload.length > 0) {
-                    ws.send(msgpack.encode({
-                        type: 'playerInitData',
-                        players: initPayload
-                    }));
-                }
-                
-                // Send room weapon data to the joining client
-                const weaponPayload = await buildRoomWeaponData(roomData.clients ? [...roomData.clients] : []);
-                if (weaponPayload.length > 0) {
-                    ws.send(msgpack.encode({
-                        type: 'roomWeaponData',
-                        roomWeaponData: weaponPayload
-                    }));
-                }
-            }
-            
-            // Notify other clients in the room that a new player joined
-            const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
-            for (const client of roomData.clients) {
-                if (client !== ws && client && client.readyState === openState && client.username) {
-                    // Send the new player's data to existing clients
-                    const newPlayerData = await buildPlayerInitDataForRoom(roomName, ws.id);
-                    if (newPlayerData.length > 0) {
-                        // Find the new player's data in the payload
-                        const newPlayer = newPlayerData.find(p => p.id === ws.id);
-                        if (newPlayer) {
-                            client.send(msgpack.encode({
-                                type: 'playerInitData',
-                                players: [newPlayer]
-                            }));
-                        }
+        }
+        
+        // Notify other clients in the room that a new player joined
+        const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
+        for (const client of roomData.clients) {
+            if (client !== ws && client && client.readyState === openState && client.username) {
+                // Send the new player's data to existing clients
+                const newPlayerData = await buildPlayerInitDataForRoom(roomName, ws.id);
+                if (newPlayerData.length > 0) {
+                    // Find the new player's data in the payload
+                    const newPlayer = newPlayerData.find(p => p.id === ws.id);
+                    if (newPlayer) {
+                        client.send(msgpack.encode({
+                            type: 'playerInitData',
+                            players: [newPlayer]
+                        }));
                     }
                 }
             }
-            
-            console.log(`✅ Auto-joined ${ws.username || 'client'} to "main" campaign lobby: ${roomName} (level: ${mainLevel.name})`);
         }
+        
+        console.log(`✅ Auto-joined ${ws.username || 'client'} to "main" campaign lobby: ${roomName} (level: ${mainLevel.name})`);
     } catch (error) {
         console.error('❌ Failed to join first campaign lobby:', error);
     }
