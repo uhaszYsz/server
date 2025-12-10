@@ -2343,7 +2343,20 @@ wss.on('connection', (ws, req) => {
         }
         try {
             const threads = await db.getForumThreads(data.categoryId);
-            ws.send(msgpack.encode({ type: 'forumThreads', threads }));
+            
+            // Get like counts for the first post of each thread
+            const threadsWithLikes = await Promise.all(threads.map(async (thread) => {
+                // Get first post (oldest) for this thread
+                const posts = await db.getForumPosts(thread.id);
+                if (posts && posts.length > 0) {
+                    const firstPost = posts[0]; // First post is the main thread post
+                    const likeCount = await db.getPostLikeCount(firstPost.id);
+                    return { ...thread, likeCount };
+                }
+                return { ...thread, likeCount: 0 };
+            }));
+            
+            ws.send(msgpack.encode({ type: 'forumThreads', threads: threadsWithLikes }));
         } catch (error) {
             console.error('Failed to get forum threads', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to get forum threads' }));
