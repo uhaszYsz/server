@@ -1866,6 +1866,68 @@ wss.on('connection', (ws, req) => {
             console.error('Failed to list levels', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to list levels' }));
         }
+      } else if (data.type === 'listCampaignLevels') {
+        // Admin only - list all campaign levels
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+
+        try {
+            const campaignLevels = await db.getAllCampaignLevels();
+            const levels = campaignLevels.map(level => ({
+                name: level.name,
+                slug: level.slug,
+                uploadedBy: level.uploadedBy,
+                uploadedAt: level.uploadedAt
+            }));
+
+            // Sort by name
+            levels.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
+            ws.send(msgpack.encode({
+                type: 'campaignLevelsList',
+                levels
+            }));
+        } catch (error) {
+            console.error('Failed to list campaign levels', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to list campaign levels' }));
+        }
+      } else if (data.type === 'deleteCampaignLevel') {
+        // Admin only - delete campaign level
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+
+        try {
+            const slug = data.slug;
+            if (!slug) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Level slug is required' }));
+                return;
+            }
+
+            // Delete from database
+            const deleted = await db.deleteCampaignLevel(slug);
+            if (deleted) {
+                // Also remove the lobby room if it exists
+                const roomName = `lobby_${slug}`;
+                if (rooms.has(roomName)) {
+                    rooms.delete(roomName);
+                    console.log(`✅ Removed lobby room for deleted campaign level: "${roomName}"`);
+                }
+
+                ws.send(msgpack.encode({
+                    type: 'deleteCampaignLevelSuccess',
+                    slug: slug
+                }));
+            } else {
+                ws.send(msgpack.encode({ type: 'error', message: 'Level not found' }));
+            }
+        } catch (error) {
+            console.error('Failed to delete campaign level', error);
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to delete campaign level' }));
+        }
       } else if (data.type === 'listLobbyRooms') {
         if (!ws.username) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
