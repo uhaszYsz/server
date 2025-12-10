@@ -472,20 +472,6 @@ function initForumCategories() {
         });
     });
 }
-                            if (err) {
-                                console.error('Error inserting subcategory:', err);
-                            }
-                            inserted++;
-                            if (inserted === subcategories.length) {
-                                resolve();
-                            }
-                        });
-                    });
-                });
-            });
-        });
-    });
-}
 
 // Forum functions
 export function getForumCategories() {
