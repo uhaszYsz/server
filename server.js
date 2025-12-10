@@ -1980,8 +1980,23 @@ wss.on('connection', (ws, req) => {
             const identifier = typeof data.slug === 'string' ? data.slug : data.name;
             const slug = ensureValidSlug(identifier);
 
-            // Get level from database
-            const stage = await db.getStageBySlug(slug);
+            // Try to get level from regular stages first
+            let stage = await db.getStageBySlug(slug);
+            
+            // If not found, try campaign levels
+            if (!stage) {
+                const campaignLevel = await db.getCampaignLevelBySlug(slug);
+                if (campaignLevel) {
+                    // Convert campaign level to stage format
+                    stage = {
+                        name: campaignLevel.name,
+                        data: campaignLevel.data,
+                        uploadedBy: campaignLevel.uploadedBy,
+                        uploadedAt: campaignLevel.uploadedAt
+                    };
+                }
+            }
+            
             if (!stage) {
                 throw new Error('Level not found on server');
             }
