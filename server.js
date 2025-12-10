@@ -498,12 +498,25 @@ async function joinFirstCampaignLobby(ws) {
         
         const roomData = rooms.get(roomName);
         
+        // Get the actual level name from database
+        let levelName = null;
+        if (roomData.level) {
+            try {
+                const levelData = await loadCampaignLevelByName(roomData.level);
+                levelName = levelData?.name || levelData?.data?.name || null;
+            } catch (error) {
+                // If we can't load the level, use the filename without .json
+                levelName = roomData.level.replace('.json', '');
+            }
+        }
+        
         // Send room update to the joining client
         ws.send(msgpack.encode({ 
             type: 'roomUpdate', 
             room: roomName, 
             roomType: roomData.type, 
             level: roomData.level ?? null,
+            levelName: levelName,
             autoJoined: true // Flag to indicate this was an auto-join
         }));
         
@@ -1077,7 +1090,26 @@ wss.on('connection', (ws, req) => {
             ws.room = room;
 
             const roomData = rooms.get(room);
-            ws.send(msgpack.encode({ type: 'roomUpdate', room: room, roomType: roomData.type, level: roomData.level ?? null }));
+            
+            // Get the actual level name from database
+            let levelName = null;
+            if (roomData.level) {
+                try {
+                    const levelData = await loadCampaignLevelByName(roomData.level);
+                    levelName = levelData?.name || levelData?.data?.name || null;
+                } catch (error) {
+                    // If we can't load the level, use the filename without .json
+                    levelName = roomData.level.replace('.json', '');
+                }
+            }
+            
+            ws.send(msgpack.encode({ 
+                type: 'roomUpdate', 
+                room: room, 
+                roomType: roomData.type, 
+                level: roomData.level ?? null,
+                levelName: levelName
+            }));
             console.log(`Client joined campaign lobby room: ${room} (level: ${level.name})`);
             
             // Handle game room logic if needed
