@@ -1766,8 +1766,13 @@ wss.on('connection', (ws, req) => {
                         const threadTitle = sanitizedPayload.name || fileName;
                         const threadId = await db.createForumThread(levelsCategory.id, threadTitle, uploaderUsername);
                         
-                        // Create first post with [level]slug[/level] BBCode
-                        const postContent = `[level]${fileName}[/level]`;
+                        // Create first post with description (if provided) followed by [level]slug[/level] BBCode
+                        let postContent = '';
+                        if (data.description && data.description.trim()) {
+                            postContent = data.description.trim() + '\n\n[level]' + fileName + '[/level]';
+                        } else {
+                            postContent = `[level]${fileName}[/level]`;
+                        }
                         await db.createForumPost(threadId, uploaderUsername, postContent);
                         
                         console.log(`✅ Auto-created forum thread for level: "${threadTitle}" (thread ID: ${threadId}, category ID: ${levelsCategory.id})`);
