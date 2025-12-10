@@ -1706,11 +1706,29 @@ wss.on('connection', (ws, req) => {
                 throw new Error('Unable to determine uploader username');
             }
 
-            // Save to database instead of filesystem
-            await db.createStage(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderUsername);
-
-            // Automatically create a forum thread for the uploaded level
-            try {
+            // Check if level already exists and is owned by this user
+            const existingLevel = await db.getStageBySlug(fileName);
+            if (existingLevel && existingLevel.uploadedBy === uploaderUsername) {
+                // Level exists and is owned by this user - ask for confirmation unless overwrite flag is set
+                if (!data.overwrite) {
+                    ws.send(msgpack.encode({
+                        type: 'levelExistsConfirm',
+                        slug: fileName,
+                        name: sanitizedPayload.name,
+                        existingName: existingLevel.name,
+                        destination: 'server'
+                    }));
+                    return;
+                }
+                // Overwrite confirmed - update existing level
+                await db.updateStage(fileName, sanitizedPayload.name, sanitizedPayload.data);
+                // Don't create forum thread for overwrites
+            } else {
+                // New level or owned by different user - create new
+                await db.createStage(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderUsername);
+                
+                // Automatically create a forum thread for new uploaded level
+                try {
                 // Get "Shared" parent category
                 let sharedCategory = await db.getForumCategoryByName('Shared', null);
                 if (!sharedCategory) {
@@ -1748,10 +1766,11 @@ wss.on('connection', (ws, req) => {
                         console.log(`✅ Auto-created forum thread for level: "${threadTitle}" (thread ID: ${threadId}, category ID: ${levelsCategory.id})`);
                     }
                 }
-            } catch (forumError) {
-                // Don't fail the level upload if forum thread creation fails
-                console.error('❌ Failed to create forum thread for uploaded level:', forumError);
-                console.error('Error stack:', forumError.stack);
+                } catch (forumError) {
+                    // Don't fail the level upload if forum thread creation fails
+                    console.error('❌ Failed to create forum thread for uploaded level:', forumError);
+                    console.error('Error stack:', forumError.stack);
+                }
             }
 
             ws.send(msgpack.encode({
@@ -1778,18 +1797,37 @@ wss.on('connection', (ws, req) => {
                 throw new Error('Unable to determine uploader username');
             }
 
-            // Save to database instead of filesystem
-            await db.createCampaignLevel(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderUsername);
-
-            // Update lobby rooms if needed
-            const roomName = `lobby_${fileName}`;
-            if (!rooms.has(roomName)) {
-                rooms.set(roomName, {
-                    type: 'lobby',
-                    level: `${fileName}.json`,
-                    clients: new Set()
-                });
-                console.log(`✅ Created lobby room for new campaign level: "${roomName}"`);
+            // Check if level already exists and is owned by this user
+            const existingLevel = await db.getCampaignLevelBySlug(fileName);
+            if (existingLevel && existingLevel.uploadedBy === uploaderUsername) {
+                // Level exists and is owned by this user - ask for confirmation unless overwrite flag is set
+                if (!data.overwrite) {
+                    ws.send(msgpack.encode({
+                        type: 'levelExistsConfirm',
+                        slug: fileName,
+                        name: sanitizedPayload.name,
+                        existingName: existingLevel.name,
+                        destination: 'campaign'
+                    }));
+                    return;
+                }
+                // Overwrite confirmed - update existing level
+                await db.updateCampaignLevel(fileName, sanitizedPayload.name, sanitizedPayload.data);
+                // Don't create/update lobby room for overwrites (it already exists)
+            } else {
+                // New level or owned by different user - create new
+                await db.createCampaignLevel(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderUsername);
+                
+                // Update lobby rooms if needed (only for new levels)
+                const roomName = `lobby_${fileName}`;
+                if (!rooms.has(roomName)) {
+                    rooms.set(roomName, {
+                        type: 'lobby',
+                        level: `${fileName}.json`,
+                        clients: new Set()
+                    });
+                    console.log(`✅ Created lobby room for new campaign level: "${roomName}"`);
+                }
             }
 
             ws.send(msgpack.encode({
