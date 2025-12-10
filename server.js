@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { Encoder } from 'msgpackr';
 import * as db from './database.js';
+import readline from 'readline';
 
 const msgpack = new Encoder({
     useRecords: false
@@ -743,6 +744,8 @@ wss.on('connection', (ws, req) => {
         };
         await db.createUser(newUser);
         ws.username = username; // Store username
+        ws.rank = 'player'; // Default rank for new users
+        ws.isAdmin = false; // New users are not admin
         ws.send(msgpack.encode({ type: 'registerSuccess', username, password }));
         // Auto-join first campaign lobby
         await joinFirstCampaignLobby(ws);
@@ -750,9 +753,12 @@ wss.on('connection', (ws, req) => {
         const user = await db.findUser(data.username, data.password);
         if (user) {
             ws.username = user.username; // Store username on successful login
+            ws.rank = user.rank || 'player'; // Set rank from user data
+            ws.isAdmin = (ws.rank === 'admin'); // Set admin flag based on rank
             ws.send(msgpack.encode({ 
                 type: 'loginSuccess', 
-                username: ws.username
+                username: ws.username,
+                rank: ws.rank
             }));
             const party = ensurePartyForClient(ws);
             broadcastPartyUpdate(party);
@@ -1899,6 +1905,11 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
+        // Check if user is admin (rank === 'admin')
+        if (ws.rank !== 'admin') {
+            ws.send(msgpack.encode({ type: 'error', message: 'Admin privileges required' }));
+            return;
+        }
 
         try {
             const slug = data.slug;
@@ -2387,6 +2398,97 @@ wss.on('connection', (ws, req) => {
             console.error('Failed to create forum post', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to create forum post' }));
         }
+      } else if (data.type === 'deleteForumThread') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        if (!data.threadId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Thread ID required' }));
+            return;
+        }
+        try {
+            // Get thread to check ownership
+            const thread = await db.getForumThread(data.threadId);
+            if (!thread) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Thread not found' }));
+                return;
+            }
+            
+            // Check permissions: admin can delete any thread, others can only delete their own
+            const isAdmin = ws.rank === 'admin';
+            const isOwner = thread.author === ws.username;
+            
+            if (!isAdmin && !isOwner) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
+                return;
+            }
+            
+            const deleted = await db.deleteForumThread(data.threadId);
+            if (deleted) {
+                ws.send(msgpack.encode({ type: 'forumThreadDeleted', threadId: data.threadId }));
+                console.log(`✅ Thread ${data.threadId} deleted by ${ws.username} (${isAdmin ? 'admin' : 'owner'})`);
+            } else {
+                ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete thread' }));
+            }
+        } catch (error) {
+            console.error('Failed to delete forum thread', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete forum thread' }));
+        }
+      } else if (data.type === 'deleteForumPost') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        if (!data.postId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Post ID required' }));
+            return;
+        }
+        try {
+            // Get post to check ownership
+            const post = await db.getForumPostById(data.postId);
+            if (!post) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Post not found' }));
+                return;
+            }
+            
+            // Check permissions: admin can delete any post, others can only delete their own
+            const isAdmin = ws.rank === 'admin';
+            const isOwner = post.author === ws.username;
+            
+            if (!isAdmin && !isOwner) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
+                return;
+            }
+            
+            const deleted = await db.deleteForumPost(data.postId);
+            if (deleted) {
+                ws.send(msgpack.encode({ type: 'forumPostDeleted', postId: data.postId, threadId: post.thread_id }));
+                console.log(`✅ Post ${data.postId} deleted by ${ws.username} (${isAdmin ? 'admin' : 'owner'})`);
+            } else {
+                ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete post' }));
+            }
+        } catch (error) {
+            console.error('Failed to delete forum post', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete forum post' }));
+        }
+      } else if (data.type === 'verifyUser') {
+        if (!data.username || !data.password) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Username and password required' }));
+            return;
+        }
+        try {
+            const verified = await db.verifyUser(data.username, data.password);
+            if (verified) {
+                ws.send(msgpack.encode({ type: 'userVerified', success: true }));
+                console.log(`✅ User "${data.username}" verified successfully`);
+            } else {
+                ws.send(msgpack.encode({ type: 'userVerified', success: false, message: 'Invalid username or password' }));
+            }
+        } catch (error) {
+            console.error('Failed to verify user', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to verify user' }));
+        }
       }
 
     } catch (err) {
@@ -2440,3 +2542,73 @@ wss.on('connection', (ws, req) => {
     }
   });
 });
+
+// Server console command handler
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+  prompt: ''
+});
+
+rl.on('line', async (input) => {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return;
+  }
+
+  const parts = trimmed.split(/\s+/);
+  const command = parts[0].toLowerCase();
+
+  if (command === 'rang' && parts.length === 3) {
+    const username = parts[1];
+    const rank = parts[2].toLowerCase();
+
+    // Validate rank
+    const validRanks = ['player', 'moderator', 'admin'];
+    if (!validRanks.includes(rank)) {
+      console.log(`❌ Invalid rank: "${rank}". Must be one of: ${validRanks.join(', ')}`);
+      return;
+    }
+
+    try {
+      // Check if user exists
+      const user = await db.getUserByUsername(username);
+      if (!user) {
+        console.log(`❌ User "${username}" not found.`);
+        return;
+      }
+
+      // Update user rank
+      const updated = await db.setUserRank(username, rank);
+      if (updated) {
+        console.log(`✅ Set rank of "${username}" to "${rank}".`);
+
+        // Update rank for all connected clients with this username
+        let updatedCount = 0;
+        for (const client of clients.values()) {
+          if (client.username === username) {
+            client.rank = rank;
+            client.isAdmin = (rank === 'admin');
+            updatedCount++;
+          }
+        }
+        if (updatedCount > 0) {
+          console.log(`✅ Updated rank for ${updatedCount} connected client(s).`);
+        }
+      } else {
+        console.log(`❌ Failed to update rank for "${username}".`);
+      }
+    } catch (error) {
+      console.error(`❌ Error setting rank:`, error.message);
+    }
+  } else if (command === 'help' || command === '?') {
+    console.log('\nAvailable server console commands:');
+    console.log('  rang <username> <rank>  - Set user rank (player, moderator, admin)');
+    console.log('  help                   - Show this help message');
+    console.log('');
+  } else {
+    console.log(`❌ Unknown command: "${command}". Type "help" for available commands.`);
+  }
+});
+
+console.log('✅ Server console ready. Type "help" for available commands.');

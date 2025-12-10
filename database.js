@@ -29,7 +29,9 @@ export function initDatabase() {
                     inventory TEXT NOT NULL,
                     equipment TEXT NOT NULL,
                     weaponData TEXT,
-                    passiveAbility TEXT
+                    passiveAbility TEXT,
+                    rank TEXT DEFAULT 'player',
+                    verified INTEGER DEFAULT 0
                 )
             `, (err) => {
                 if (err) {
@@ -37,6 +39,26 @@ export function initDatabase() {
                     return;
                 }
                 console.log('✅ Users table initialized');
+                
+                // Add rank column if it doesn't exist (migration for existing databases)
+                db.run('ALTER TABLE users ADD COLUMN rank TEXT DEFAULT \'player\'', (err) => {
+                    // Ignore error if column already exists
+                    if (err && !err.message.includes('duplicate column')) {
+                        console.warn('Warning: Could not add rank column:', err.message);
+                    } else if (!err) {
+                        console.log('✅ Rank column added to users table');
+                    }
+                });
+                
+                // Add verified column if it doesn't exist (migration for existing databases)
+                db.run('ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0', (err) => {
+                    // Ignore error if column already exists
+                    if (err && !err.message.includes('duplicate column')) {
+                        console.warn('Warning: Could not add verified column:', err.message);
+                    } else if (!err) {
+                        console.log('✅ Verified column added to users table');
+                    }
+                });
                 
                 // Create forum tables
                 db.run(`
@@ -143,8 +165,8 @@ export function initDatabase() {
 export function createUser(user) {
     return new Promise((resolve, reject) => {
         const stmt = db.prepare(`
-            INSERT INTO users (username, password, stats, inventory, equipment, weaponData, passiveAbility)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO users (username, password, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
@@ -155,6 +177,8 @@ export function createUser(user) {
             JSON.stringify(user.equipment || {}),
             user.weaponData ? JSON.stringify(user.weaponData) : null,
             user.passiveAbility || null,
+            user.rank || 'player',
+            user.verified !== undefined ? user.verified : 0,
             function(err) {
                 if (err) {
                     reject(err);
@@ -185,7 +209,9 @@ export function getAllUsers() {
                 inventory: JSON.parse(row.inventory),
                 equipment: JSON.parse(row.equipment),
                 weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                passiveAbility: row.passiveAbility || null
+                passiveAbility: row.passiveAbility || null,
+                rank: row.rank || 'player',
+                verified: row.verified !== undefined ? row.verified : 0
             }));
 
             resolve(users);
@@ -215,7 +241,9 @@ export function getUserByUsername(username) {
                 inventory: JSON.parse(row.inventory),
                 equipment: JSON.parse(row.equipment),
                 weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                passiveAbility: row.passiveAbility || null
+                passiveAbility: row.passiveAbility || null,
+                rank: row.rank || 'player',
+                verified: row.verified !== undefined ? row.verified : 0
             };
 
             resolve(user);
@@ -245,10 +273,39 @@ export function findUser(username, password) {
                 inventory: JSON.parse(row.inventory),
                 equipment: JSON.parse(row.equipment),
                 weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                passiveAbility: row.passiveAbility || null
+                passiveAbility: row.passiveAbility || null,
+                rank: row.rank || 'player',
+                verified: row.verified !== undefined ? row.verified : 0
             };
 
             resolve(user);
+        });
+    });
+}
+
+// Verify user (set verified to 1)
+export function verifyUser(username, password) {
+    return new Promise((resolve, reject) => {
+        // First check if username and password match
+        db.get('SELECT * FROM users WHERE username = ? AND password = ?', [username, password], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            
+            if (!row) {
+                resolve(false); // Invalid credentials
+                return;
+            }
+            
+            // Update verified to 1
+            db.run('UPDATE users SET verified = 1 WHERE username = ?', [username], function(updateErr) {
+                if (updateErr) {
+                    reject(updateErr);
+                } else {
+                    resolve(true); // Successfully verified
+                }
+            });
         });
     });
 }
@@ -263,7 +320,9 @@ export function updateUser(username, userData) {
                 inventory = ?,
                 equipment = ?,
                 weaponData = ?,
-                passiveAbility = ?
+                passiveAbility = ?,
+                rank = ?,
+                verified = ?
             WHERE username = ?
         `);
 
@@ -274,6 +333,8 @@ export function updateUser(username, userData) {
             JSON.stringify(userData.equipment || {}),
             userData.weaponData ? JSON.stringify(userData.weaponData) : null,
             userData.passiveAbility || null,
+            userData.rank || 'player',
+            userData.verified !== undefined ? userData.verified : 0,
             username,
             function(err) {
                 if (err) {
@@ -285,6 +346,26 @@ export function updateUser(username, userData) {
         );
 
         stmt.finalize();
+    });
+}
+
+// Set user rank
+export function setUserRank(username, rank) {
+    return new Promise((resolve, reject) => {
+        // Validate rank
+        const validRanks = ['player', 'moderator', 'admin'];
+        if (!validRanks.includes(rank.toLowerCase())) {
+            reject(new Error(`Invalid rank. Must be one of: ${validRanks.join(', ')}`));
+            return;
+        }
+        
+        db.run('UPDATE users SET rank = ? WHERE username = ?', [rank.toLowerCase(), username], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
+            }
+        });
     });
 }
 
@@ -560,6 +641,18 @@ export function getForumPosts(threadId) {
     });
 }
 
+export function getForumPostById(postId) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT * FROM forum_posts WHERE id = ?', [postId], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(row);
+        });
+    });
+}
+
 export function createForumPost(threadId, author, content) {
     return new Promise((resolve, reject) => {
         db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)', 
@@ -575,6 +668,40 @@ export function createForumPost(threadId, author, content) {
                 }
             });
             resolve(this.lastID);
+        });
+    });
+}
+
+// Delete forum thread
+export function deleteForumThread(threadId) {
+    return new Promise((resolve, reject) => {
+        // First delete all posts in the thread
+        db.run('DELETE FROM forum_posts WHERE thread_id = ?', [threadId], (err) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            // Then delete the thread
+            db.run('DELETE FROM forum_threads WHERE id = ?', [threadId], function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.changes > 0);
+                }
+            });
+        });
+    });
+}
+
+// Delete forum post
+export function deleteForumPost(postId) {
+    return new Promise((resolve, reject) => {
+        db.run('DELETE FROM forum_posts WHERE id = ?', [postId], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
+            }
         });
     });
 }
