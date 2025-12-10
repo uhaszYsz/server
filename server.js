@@ -815,7 +815,8 @@ wss.on('connection', (ws, req) => {
                     stats: user.stats,
                     inventory: user.inventory,
                     equipment: user.equipment,
-                    passiveAbility: user.passiveAbility || null
+                    passiveAbility: user.passiveAbility || null,
+                    verified: user.verified !== undefined ? user.verified : 0
                 }
             }));
         } else {
@@ -2359,7 +2360,19 @@ wss.on('connection', (ws, req) => {
                 return;
             }
             const posts = await db.getForumPosts(data.threadId);
-            ws.send(msgpack.encode({ type: 'forumThread', thread, posts }));
+            
+            // Get like info for all posts
+            const postIds = posts.map(p => p.id);
+            const likeInfo = await db.getPostLikeInfo(postIds, ws.username || null);
+            
+            // Add like info to posts
+            const postsWithLikes = posts.map(post => ({
+                ...post,
+                likeCount: likeInfo.counts[post.id] || 0,
+                userLiked: likeInfo.userLikes[post.id] || false
+            }));
+            
+            ws.send(msgpack.encode({ type: 'forumThread', thread, posts: postsWithLikes }));
         } catch (error) {
             console.error('Failed to get forum thread', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to get forum thread' }));
@@ -2488,6 +2501,50 @@ wss.on('connection', (ws, req) => {
         } catch (error) {
             console.error('Failed to verify user', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to verify user' }));
+        }
+      } else if (data.type === 'likeForumPost') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        if (!data.postId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Post ID required' }));
+            return;
+        }
+        try {
+            const liked = await db.likePost(data.postId, ws.username);
+            const likeCount = await db.getPostLikeCount(data.postId);
+            ws.send(msgpack.encode({ 
+                type: 'forumPostLiked', 
+                postId: data.postId,
+                likeCount: likeCount,
+                liked: liked
+            }));
+        } catch (error) {
+            console.error('Failed to like post', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to like post' }));
+        }
+      } else if (data.type === 'unlikeForumPost') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        if (!data.postId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Post ID required' }));
+            return;
+        }
+        try {
+            const unliked = await db.unlikePost(data.postId, ws.username);
+            const likeCount = await db.getPostLikeCount(data.postId);
+            ws.send(msgpack.encode({ 
+                type: 'forumPostUnliked', 
+                postId: data.postId,
+                likeCount: likeCount,
+                unliked: unliked
+            }));
+        } catch (error) {
+            console.error('Failed to unlike post', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to unlike post' }));
         }
       }
 

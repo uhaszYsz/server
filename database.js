@@ -110,6 +110,24 @@ export function initDatabase() {
                             }
                             console.log('✅ Forum posts table initialized');
                             
+                            // Create post_likes table to track which users liked which posts
+                            db.run(`
+                                CREATE TABLE IF NOT EXISTS forum_post_likes (
+                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    post_id INTEGER NOT NULL,
+                                    username TEXT NOT NULL,
+                                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                    FOREIGN KEY (post_id) REFERENCES forum_posts(id),
+                                    UNIQUE(post_id, username)
+                                )
+                            `, (err) => {
+                                if (err) {
+                                    console.error('Error creating forum_post_likes table:', err);
+                                } else {
+                                    console.log('✅ Forum post likes table initialized');
+                                }
+                            });
+                            
                             // Create stages table for user-uploaded levels
                             db.run(`
                                 CREATE TABLE IF NOT EXISTS stages (
@@ -696,11 +714,117 @@ export function deleteForumThread(threadId) {
 // Delete forum post
 export function deleteForumPost(postId) {
     return new Promise((resolve, reject) => {
-        db.run('DELETE FROM forum_posts WHERE id = ?', [postId], function(err) {
+        // First delete all likes for this post
+        db.run('DELETE FROM forum_post_likes WHERE post_id = ?', [postId], (err) => {
+            if (err) {
+                console.error('Error deleting post likes:', err);
+            }
+            // Then delete the post
+            db.run('DELETE FROM forum_posts WHERE id = ?', [postId], function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.changes > 0);
+                }
+            });
+        });
+    });
+}
+
+// Get like count for a post
+export function getPostLikeCount(postId) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT COUNT(*) as count FROM forum_post_likes WHERE post_id = ?', [postId], (err, row) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(row ? row.count : 0);
+            }
+        });
+    });
+}
+
+// Check if user has liked a post
+export function hasUserLikedPost(postId, username) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT * FROM forum_post_likes WHERE post_id = ? AND username = ?', [postId, username], (err, row) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(!!row);
+            }
+        });
+    });
+}
+
+// Like a post
+export function likePost(postId, username) {
+    return new Promise((resolve, reject) => {
+        db.run('INSERT OR IGNORE INTO forum_post_likes (post_id, username) VALUES (?, ?)', [postId, username], function(err) {
             if (err) {
                 reject(err);
             } else {
                 resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
+// Unlike a post
+export function unlikePost(postId, username) {
+    return new Promise((resolve, reject) => {
+        db.run('DELETE FROM forum_post_likes WHERE post_id = ? AND username = ?', [postId, username], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
+// Get like counts and user likes for multiple posts
+export function getPostLikeInfo(postIds, username) {
+    return new Promise((resolve, reject) => {
+        if (!postIds || postIds.length === 0) {
+            resolve({ counts: {}, userLikes: {} });
+            return;
+        }
+        const placeholders = postIds.map(() => '?').join(',');
+        
+        // Get like counts
+        db.all(`SELECT post_id, COUNT(*) as count FROM forum_post_likes WHERE post_id IN (${placeholders}) GROUP BY post_id`, postIds, (err, countRows) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            
+            const counts = {};
+            postIds.forEach(id => counts[id] = 0);
+            countRows.forEach(row => {
+                counts[row.post_id] = row.count;
+            });
+            
+            // Get user likes if username provided
+            if (username) {
+                db.all(`SELECT post_id FROM forum_post_likes WHERE post_id IN (${placeholders}) AND username = ?`, [...postIds, username], (err, likeRows) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    
+                    const userLikes = {};
+                    postIds.forEach(id => userLikes[id] = false);
+                    likeRows.forEach(row => {
+                        userLikes[row.post_id] = true;
+                    });
+                    
+                    resolve({ counts, userLikes });
+                });
+            } else {
+                const userLikes = {};
+                postIds.forEach(id => userLikes[id] = false);
+                resolve({ counts, userLikes });
             }
         });
     });
