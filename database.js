@@ -89,10 +89,29 @@ export function initDatabase() {
                             }
                             console.log('✅ Forum posts table initialized');
                             
-                            // Initialize default categories
-                            initForumCategories().then(() => {
-                                resolve();
-                            }).catch(reject);
+                            // Create stages table for user-uploaded levels
+                            db.run(`
+                                CREATE TABLE IF NOT EXISTS stages (
+                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    slug TEXT UNIQUE NOT NULL,
+                                    name TEXT NOT NULL,
+                                    data TEXT NOT NULL,
+                                    uploaded_by TEXT NOT NULL,
+                                    uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                    FOREIGN KEY (uploaded_by) REFERENCES users(username)
+                                )
+                            `, (err) => {
+                                if (err) {
+                                    reject(err);
+                                    return;
+                                }
+                                console.log('✅ Stages table initialized');
+                                
+                                // Initialize default categories
+                                initForumCategories().then(() => {
+                                    resolve();
+                                }).catch(reject);
+                            });
                         });
                     });
                 });
@@ -552,6 +571,121 @@ export function createForumPost(threadId, author, content) {
                 }
             });
             resolve(this.lastID);
+        });
+    });
+}
+
+// Stage functions
+export function createStage(slug, name, data, uploadedBy) {
+    return new Promise((resolve, reject) => {
+        const stmt = db.prepare(`
+            INSERT INTO stages (slug, name, data, uploaded_by, uploaded_at)
+            VALUES (?, ?, ?, ?, ?)
+        `);
+
+        stmt.run(
+            slug,
+            name,
+            JSON.stringify(data),
+            uploadedBy,
+            new Date().toISOString(),
+            function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.lastID);
+                }
+            }
+        );
+
+        stmt.finalize();
+    });
+}
+
+export function getStageBySlug(slug) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT * FROM stages WHERE slug = ?', [slug], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            if (!row) {
+                resolve(null);
+                return;
+            }
+
+            // Parse JSON data
+            const stage = {
+                id: row.id,
+                slug: row.slug,
+                name: row.name,
+                data: JSON.parse(row.data),
+                uploadedBy: row.uploaded_by,
+                uploadedAt: row.uploaded_at
+            };
+
+            resolve(stage);
+        });
+    });
+}
+
+export function getAllStages() {
+    return new Promise((resolve, reject) => {
+        db.all('SELECT * FROM stages ORDER BY uploaded_at DESC', (err, rows) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            // Parse JSON data for each stage
+            const stages = rows.map(row => ({
+                id: row.id,
+                slug: row.slug,
+                name: row.name,
+                data: JSON.parse(row.data),
+                uploadedBy: row.uploaded_by,
+                uploadedAt: row.uploaded_at
+            }));
+
+            resolve(stages);
+        });
+    });
+}
+
+export function updateStage(slug, name, data) {
+    return new Promise((resolve, reject) => {
+        const stmt = db.prepare(`
+            UPDATE stages 
+            SET name = ?, data = ?
+            WHERE slug = ?
+        `);
+
+        stmt.run(
+            name,
+            JSON.stringify(data),
+            slug,
+            function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.changes > 0);
+                }
+            }
+        );
+
+        stmt.finalize();
+    });
+}
+
+export function deleteStage(slug) {
+    return new Promise((resolve, reject) => {
+        db.run('DELETE FROM stages WHERE slug = ?', [slug], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
+            }
         });
     });
 }

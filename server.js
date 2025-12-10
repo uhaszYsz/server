@@ -1542,22 +1542,8 @@ wss.on('connection', (ws, req) => {
                 throw new Error('Unable to determine uploader username');
             }
 
-            // Use level name-based filename instead of username-based
-            // This allows players to upload multiple levels
-            const targetPath = path.resolve(levelsDirectory, `${fileName}.json`);
-            const pathWithinLevels = path.relative(levelsDirectory, targetPath);
-
-            if (pathWithinLevels.startsWith('..') || pathWithinLevels.includes(path.sep + '..')) {
-                throw new Error('Invalid level name');
-            }
-
-            const enrichedPayload = {
-                ...sanitizedPayload,
-                uploadedBy: uploaderUsername,
-                uploadedAt: new Date().toISOString()
-            };
-
-            await fs.writeFile(targetPath, JSON.stringify(enrichedPayload, null, 2));
+            // Save to database instead of filesystem
+            await db.createStage(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderUsername);
 
             ws.send(msgpack.encode({
                 type: 'uploadedLevelSuccess',
@@ -1611,48 +1597,14 @@ wss.on('connection', (ws, req) => {
         }
 
         try {
-            const files = await fs.readdir(levelsDirectory);
-            const levels = [];
-
-            for (const fileName of files) {
-                if (!fileName.endsWith('.json')) continue;
-
-                const slug = path.parse(fileName).name;
-                let safeSlug;
-
-                try {
-                    safeSlug = ensureValidSlug(slug);
-                } catch {
-                    continue;
-                }
-
-                const filePath = path.resolve(levelsDirectory, fileName);
-                const relative = path.relative(levelsDirectory, filePath);
-                if (relative.startsWith('..') || path.isAbsolute(relative)) {
-                    continue;
-                }
-
-                try {
-                    const [fileContents, stats] = await Promise.all([
-                        fs.readFile(filePath, 'utf8'),
-                        fs.stat(filePath)
-                    ]);
-
-                    const parsed = JSON.parse(fileContents);
-                    const levelName = typeof parsed.name === 'string' ? parsed.name : safeSlug;
-                    const uploadedBy = typeof parsed.uploadedBy === 'string' ? parsed.uploadedBy : null;
-                    const uploadedAt = typeof parsed.uploadedAt === 'string' ? parsed.uploadedAt : null;
-
-                    levels.push({
-                        name: levelName,
-                        slug: safeSlug,
-                        updatedAt: uploadedAt || stats.mtime.toISOString(),
-                        uploadedBy
-                    });
-                } catch (error) {
-                    console.error('Failed to process level file', fileName, error);
-                }
-            }
+            // Get levels from database
+            const stages = await db.getAllStages();
+            const levels = stages.map(stage => ({
+                name: stage.name,
+                slug: stage.slug,
+                updatedAt: stage.uploadedAt,
+                uploadedBy: stage.uploadedBy
+            }));
 
             levels.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
@@ -1715,23 +1667,28 @@ wss.on('connection', (ws, req) => {
         try {
             const identifier = typeof data.slug === 'string' ? data.slug : data.name;
             const slug = ensureValidSlug(identifier);
-            const targetPath = path.resolve(levelsDirectory, `${slug}.json`);
-            const relative = path.relative(levelsDirectory, targetPath);
 
-            if (relative.startsWith('..') || path.isAbsolute(relative)) {
-                throw new Error('Invalid level identifier');
+            // Get level from database
+            const stage = await db.getStageBySlug(slug);
+            if (!stage) {
+                throw new Error('Level not found on server');
             }
 
-            const fileContents = await fs.readFile(targetPath, 'utf8');
-            const parsed = JSON.parse(fileContents);
+            // Format level data to match expected structure
+            const levelData = {
+                name: stage.name,
+                data: stage.data,
+                uploadedBy: stage.uploadedBy,
+                uploadedAt: stage.uploadedAt
+            };
 
             ws.send(msgpack.encode({
                 type: 'levelData',
-                level: parsed
+                level: levelData
             }));
         } catch (error) {
             console.error('Failed to load level', error);
-            if (error.code === 'ENOENT') {
+            if (error.message === 'Level not found on server') {
                 ws.send(msgpack.encode({ type: 'error', message: 'Level not found on server' }));
             } else {
                 ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to load level' }));
