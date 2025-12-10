@@ -1715,6 +1715,8 @@ wss.on('connection', (ws, req) => {
 
             // Check if level already exists and is owned by this user
             const existingLevel = await db.getStageBySlug(fileName);
+            console.log(`[uploadedLevel] Level "${fileName}": existingLevel=${!!existingLevel}, ownedBy=${existingLevel?.uploadedBy}, uploader=${uploaderUsername}, overwrite=${!!data.overwrite}, description="${data.description || ''}"`);
+            
             if (existingLevel && existingLevel.uploadedBy === uploaderUsername) {
                 // Level exists and is owned by this user - ask for confirmation unless overwrite flag is set
                 if (!data.overwrite) {
@@ -1729,10 +1731,12 @@ wss.on('connection', (ws, req) => {
                 }
                 // Overwrite confirmed - update existing level
                 await db.updateStage(fileName, sanitizedPayload.name, sanitizedPayload.data);
+                console.log(`[uploadedLevel] Level "${fileName}" overwritten - no forum thread created`);
                 // Don't create forum thread for overwrites
             } else {
                 // New level or owned by different user - create new
                 await db.createStage(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderUsername);
+                console.log(`[uploadedLevel] Level "${fileName}" created - attempting to create forum thread...`);
                 
                 // Automatically create a forum thread for new uploaded level
                 try {
@@ -1749,6 +1753,7 @@ wss.on('connection', (ws, req) => {
                 }
                 
                 if (sharedCategory) {
+                    console.log(`[uploadedLevel] Found "Shared" category (ID: ${sharedCategory.id})`);
                     // Get "Levels" subcategory under "Shared"
                     let levelsCategory = await db.getForumCategoryByName('Levels', sharedCategory.id);
                     if (!levelsCategory) {
@@ -1762,21 +1767,31 @@ wss.on('connection', (ws, req) => {
                     }
                     
                     if (levelsCategory) {
+                        console.log(`[uploadedLevel] Found "Levels" category (ID: ${levelsCategory.id})`);
                         // Create thread with level name as title
                         const threadTitle = sanitizedPayload.name || fileName;
+                        console.log(`[uploadedLevel] Creating forum thread: title="${threadTitle}", author="${uploaderUsername}", categoryId=${levelsCategory.id}`);
                         const threadId = await db.createForumThread(levelsCategory.id, threadTitle, uploaderUsername);
+                        console.log(`[uploadedLevel] Forum thread created with ID: ${threadId}`);
                         
                         // Create first post with description (if provided) followed by [level]slug[/level] BBCode
                         let postContent = '';
                         if (data.description && data.description.trim()) {
                             postContent = data.description.trim() + '\n\n[level]' + fileName + '[/level]';
+                            console.log(`[uploadedLevel] Post content includes description: "${data.description.trim()}"`);
                         } else {
                             postContent = `[level]${fileName}[/level]`;
+                            console.log(`[uploadedLevel] Post content has no description`);
                         }
                         await db.createForumPost(threadId, uploaderUsername, postContent);
+                        console.log(`[uploadedLevel] Forum post created for thread ID: ${threadId}`);
                         
                         console.log(`✅ Auto-created forum thread for level: "${threadTitle}" (thread ID: ${threadId}, category ID: ${levelsCategory.id})`);
+                    } else {
+                        console.error(`[uploadedLevel] "Levels" category not found - cannot create forum thread`);
                     }
+                } else {
+                    console.error(`[uploadedLevel] "Shared" category not found - cannot create forum thread`);
                 }
                 } catch (forumError) {
                     // Don't fail the level upload if forum thread creation fails
