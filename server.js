@@ -2061,12 +2061,14 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
-        if (!data.categoryId || !data.title) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Category ID and title required' }));
+        if (!data.categoryId || !data.title || !data.content) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Category ID, title, and content required' }));
             return;
         }
         try {
             const threadId = await db.createForumThread(data.categoryId, data.title, ws.username);
+            // Create the first post with the thread content
+            await db.createForumPost(threadId, ws.username, data.content);
             ws.send(msgpack.encode({ type: 'forumThreadCreated', threadId }));
         } catch (error) {
             console.error('Failed to create forum thread', error);
