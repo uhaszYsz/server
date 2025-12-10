@@ -1548,10 +1548,30 @@ wss.on('connection', (ws, req) => {
             // Automatically create a forum thread for the uploaded level
             try {
                 // Get "Shared" parent category
-                const sharedCategory = await db.getForumCategoryByName('Shared', null);
+                let sharedCategory = await db.getForumCategoryByName('Shared', null);
+                if (!sharedCategory) {
+                    // Fallback: try to find it by getting all categories
+                    const allCategories = await db.getForumCategories();
+                    sharedCategory = allCategories.find(cat => cat.name === 'Shared' && cat.parent_id === null);
+                    if (!sharedCategory) {
+                        console.error('❌ "Shared" category not found when creating forum thread for level');
+                        console.error('Available categories:', allCategories.map(c => `${c.name} (parent: ${c.parent_id})`).join(', '));
+                    }
+                }
+                
                 if (sharedCategory) {
                     // Get "Levels" subcategory under "Shared"
-                    const levelsCategory = await db.getForumCategoryByName('Levels', sharedCategory.id);
+                    let levelsCategory = await db.getForumCategoryByName('Levels', sharedCategory.id);
+                    if (!levelsCategory) {
+                        // Fallback: try to find it by getting all categories
+                        const allCategories = await db.getForumCategories();
+                        levelsCategory = allCategories.find(cat => cat.name === 'Levels' && cat.parent_id === sharedCategory.id);
+                        if (!levelsCategory) {
+                            console.error(`❌ "Levels" category not found under "Shared" (parent ID: ${sharedCategory.id}) when creating forum thread for level`);
+                            console.error('Available subcategories:', allCategories.filter(c => c.parent_id === sharedCategory.id).map(c => c.name).join(', '));
+                        }
+                    }
+                    
                     if (levelsCategory) {
                         // Create thread with level name as title
                         const threadTitle = sanitizedPayload.name || fileName;
@@ -1561,12 +1581,13 @@ wss.on('connection', (ws, req) => {
                         const postContent = `[level]${fileName}[/level]`;
                         await db.createForumPost(threadId, uploaderUsername, postContent);
                         
-                        console.log(`✅ Auto-created forum thread for level: ${threadTitle} (thread ID: ${threadId})`);
+                        console.log(`✅ Auto-created forum thread for level: "${threadTitle}" (thread ID: ${threadId}, category ID: ${levelsCategory.id})`);
                     }
                 }
             } catch (forumError) {
                 // Don't fail the level upload if forum thread creation fails
-                console.error('Failed to create forum thread for uploaded level', forumError);
+                console.error('❌ Failed to create forum thread for uploaded level:', forumError);
+                console.error('Error stack:', forumError.stack);
             }
 
             ws.send(msgpack.encode({
