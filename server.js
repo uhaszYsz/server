@@ -7,6 +7,94 @@ import { fileURLToPath } from 'url';
 import { Encoder } from 'msgpackr';
 import * as db from './database.js';
 import readline from 'readline';
+import bcrypt from 'bcrypt';
+import DOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
+
+// Password hashing configuration
+const BCRYPT_ROUNDS = 10; // Number of salt rounds (higher = more secure but slower)
+
+// Initialize DOMPurify for XSS protection
+const window = new JSDOM('').window;
+const purify = DOMPurify(window);
+
+// Input validation constants
+const USERNAME_MIN_LENGTH = 3;
+const USERNAME_MAX_LENGTH = 20;
+const USERNAME_REGEX = /^[a-zA-Z0-9_-]+$/; // Alphanumeric, underscore, hyphen only
+const PASSWORD_MIN_LENGTH = 4;
+const PASSWORD_MAX_LENGTH = 100;
+const CHAT_MESSAGE_MAX_LENGTH = 500;
+const FORUM_TITLE_MAX_LENGTH = 200;
+const FORUM_CONTENT_MAX_LENGTH = 10000;
+
+// Input validation functions
+function validateUsername(username) {
+    if (!username || typeof username !== 'string') {
+        return { valid: false, error: 'Username is required' };
+    }
+    const trimmed = username.trim();
+    if (trimmed.length < USERNAME_MIN_LENGTH || trimmed.length > USERNAME_MAX_LENGTH) {
+        return { valid: false, error: `Username must be between ${USERNAME_MIN_LENGTH} and ${USERNAME_MAX_LENGTH} characters` };
+    }
+    if (!USERNAME_REGEX.test(trimmed)) {
+        return { valid: false, error: 'Username can only contain letters, numbers, underscores, and hyphens' };
+    }
+    return { valid: true, value: trimmed };
+}
+
+function validatePassword(password) {
+    if (!password || typeof password !== 'string') {
+        return { valid: false, error: 'Password is required' };
+    }
+    const trimmed = password.trim();
+    if (trimmed.length < PASSWORD_MIN_LENGTH || trimmed.length > PASSWORD_MAX_LENGTH) {
+        return { valid: false, error: `Password must be between ${PASSWORD_MIN_LENGTH} and ${PASSWORD_MAX_LENGTH} characters` };
+    }
+    return { valid: true, value: trimmed };
+}
+
+function validateChatMessage(message) {
+    if (!message || typeof message !== 'string') {
+        return { valid: false, error: 'Message is required' };
+    }
+    const trimmed = message.trim();
+    if (trimmed.length === 0) {
+        return { valid: false, error: 'Message cannot be empty' };
+    }
+    if (trimmed.length > CHAT_MESSAGE_MAX_LENGTH) {
+        return { valid: false, error: `Message must be ${CHAT_MESSAGE_MAX_LENGTH} characters or less` };
+    }
+    return { valid: true, value: trimmed };
+}
+
+function validateForumTitle(title) {
+    if (!title || typeof title !== 'string') {
+        return { valid: false, error: 'Title is required' };
+    }
+    const trimmed = title.trim();
+    if (trimmed.length === 0) {
+        return { valid: false, error: 'Title cannot be empty' };
+    }
+    if (trimmed.length > FORUM_TITLE_MAX_LENGTH) {
+        return { valid: false, error: `Title must be ${FORUM_TITLE_MAX_LENGTH} characters or less` };
+    }
+    return { valid: true, value: trimmed };
+}
+
+function validateForumContent(content) {
+    if (!content || typeof content !== 'string') {
+        return { valid: false, error: 'Content is required' };
+    }
+    const trimmed = content.trim();
+    if (trimmed.length === 0) {
+        return { valid: false, error: 'Content cannot be empty' };
+    }
+    if (trimmed.length > FORUM_CONTENT_MAX_LENGTH) {
+        return { valid: false, error: `Content must be ${FORUM_CONTENT_MAX_LENGTH} characters or less` };
+    }
+    return { valid: true, value: trimmed };
+}
 
 const msgpack = new Encoder({
     useRecords: false
@@ -410,12 +498,194 @@ await db.initDatabase();
 
 let globalTimer = Date.now();
 
+// ============================================================================
+// Client Authentication - Verify legitimate game client
+// ============================================================================
+// Challenge-response system: Server sends a random challenge, client must respond with correct hash
+// This is more secure than a static secret, but still not perfect (determined attackers can reverse engineer)
+
+const CLIENT_SECRET_REQUIRED = true; // Set to false to disable client verification (for testing)
+const CLIENT_SECRET_KEY = 'game_client_secret_2024_secure_token_v1'; // Shared secret key (change to random string)
+
+// Track pending challenges and verified clients
+const pendingChallenges = new Map(); // ws.id -> {challenge, timestamp}
+const verifiedClients = new Set(); // Set of ws.id that have verified
+const CHALLENGE_TIMEOUT_MS = 10000; // 10 seconds to respond to challenge
+
+// Generate a random challenge
+function generateChallenge() {
+    return crypto.randomBytes(16).toString('hex');
+}
+
+// Compute expected response: HMAC-SHA256(challenge + timestamp, secret)
+function computeExpectedResponse(challenge, timestamp) {
+    const hmac = crypto.createHmac('sha256', CLIENT_SECRET_KEY);
+    hmac.update(challenge + timestamp);
+    return hmac.digest('hex');
+}
+
+// Verify client response to challenge
+function verifyClientChallenge(ws, challenge, timestamp, response) {
+    if (!CLIENT_SECRET_REQUIRED) {
+        verifiedClients.add(ws.id);
+        return true; // Client verification disabled
+    }
+    
+    // Check if challenge exists and is not expired
+    const pending = pendingChallenges.get(ws.id);
+    if (!pending || pending.challenge !== challenge) {
+        return false; // Invalid challenge
+    }
+    
+    const now = Date.now();
+    if (now - pending.timestamp > CHALLENGE_TIMEOUT_MS) {
+        pendingChallenges.delete(ws.id);
+        return false; // Challenge expired
+    }
+    
+    // Verify response matches expected hash
+    const expectedResponse = computeExpectedResponse(challenge, timestamp);
+    if (response === expectedResponse) {
+        verifiedClients.add(ws.id);
+        pendingChallenges.delete(ws.id);
+        return true;
+    }
+    
+    return false;
+}
+
+// Send challenge to client
+function sendChallenge(ws) {
+    const challenge = generateChallenge();
+    const timestamp = Date.now();
+    pendingChallenges.set(ws.id, { challenge, timestamp });
+    
+    ws.send(msgpack.encode({
+        type: 'clientChallenge',
+        challenge: challenge,
+        timestamp: timestamp
+    }));
+}
+
+// Check if client is verified
+function isClientVerified(ws) {
+    if (!CLIENT_SECRET_REQUIRED) {
+        return true; // Client verification disabled
+    }
+    
+    return verifiedClients.has(ws.id);
+}
+
+// ============================================================================
+// DDoS Protection - Application Level
+// ============================================================================
+// Note: Hosting provides network-level DDoS protection, but we need
+// application-level protection for WebSocket-specific attacks
+
+// Connection rate limiting per IP
+const IP_CONNECTION_RATE_LIMIT = 5; // Max connections per IP per window
+const IP_CONNECTION_WINDOW_MS = 60000; // 1 minute window
+const ipConnectionAttempts = new Map(); // IP -> {count, resetTime}
+
+// Message rate limiting per connection
+const MESSAGE_RATE_LIMIT = 100; // Max messages per connection per window
+const MESSAGE_RATE_WINDOW_MS = 1000; // 1 second window
+const connectionMessageCounts = new Map(); // ws.id -> {count, resetTime}
+
+// Maximum concurrent connections
+const MAX_CONCURRENT_CONNECTIONS = 1000;
+
+// Blocked IPs (manually blocked or auto-blocked for abuse)
+const blockedIPs = new Set();
+
+// Connection timeout (close idle connections after this time)
+const CONNECTION_TIMEOUT_MS = 300000; // 5 minutes
+
+// Helper function to get client IP
+function getClientIP(req) {
+    // Check X-Forwarded-For header (if behind proxy)
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+        return forwarded.split(',')[0].trim();
+    }
+    // Fallback to socket remote address
+    return req.socket.remoteAddress || 'unknown';
+}
+
+// Check if IP is rate limited for connections
+function checkIPConnectionRateLimit(ip) {
+    if (blockedIPs.has(ip)) {
+        return { allowed: false, reason: 'IP is blocked' };
+    }
+    
+    const now = Date.now();
+    const record = ipConnectionAttempts.get(ip);
+    
+    if (!record || now > record.resetTime) {
+        // First connection or window expired, start new window
+        ipConnectionAttempts.set(ip, {
+            count: 1,
+            resetTime: now + IP_CONNECTION_WINDOW_MS
+        });
+        return { allowed: true };
+    }
+    
+    if (record.count >= IP_CONNECTION_RATE_LIMIT) {
+        // Rate limit exceeded - auto-block for 1 hour
+        blockedIPs.add(ip);
+        console.warn(`⚠️  IP ${ip} exceeded connection rate limit, auto-blocked for 1 hour`);
+        // Auto-unblock after 1 hour
+        setTimeout(() => {
+            blockedIPs.delete(ip);
+            console.log(`✅ Auto-unblocked IP ${ip} after 1 hour`);
+        }, 3600000);
+        return { allowed: false, reason: 'Connection rate limit exceeded' };
+    }
+    
+    record.count++;
+    return { allowed: true };
+}
+
+// Check if connection is rate limited for messages
+function checkMessageRateLimit(wsId) {
+    const now = Date.now();
+    const record = connectionMessageCounts.get(wsId);
+    
+    if (!record || now > record.resetTime) {
+        // First message or window expired, start new window
+        connectionMessageCounts.set(wsId, {
+            count: 1,
+            resetTime: now + MESSAGE_RATE_WINDOW_MS
+        });
+        return { allowed: true };
+    }
+    
+    if (record.count >= MESSAGE_RATE_LIMIT) {
+        return { allowed: false, reason: 'Message rate limit exceeded' };
+    }
+    
+    record.count++;
+    return { allowed: true };
+}
+
+// Clean up message rate limit records when connection closes
+function cleanupMessageRateLimit(wsId) {
+    connectionMessageCounts.delete(wsId);
+}
+
+// ============================================================================
+
 // Create WebSocket server on port 8080, listening on all interfaces
 const wss = new WebSocketServer({ 
     port: 8080,
     host: '0.0.0.0' // Listen on all network interfaces
 });
 console.log('✅ WebSocket server running on ws://0.0.0.0:8080 (accessible from all IPs)');
+console.log('🛡️  DDoS protection enabled:');
+console.log(`   - Max connections per IP: ${IP_CONNECTION_RATE_LIMIT} per ${IP_CONNECTION_WINDOW_MS/1000}s`);
+console.log(`   - Max messages per connection: ${MESSAGE_RATE_LIMIT} per ${MESSAGE_RATE_WINDOW_MS}ms`);
+console.log(`   - Max concurrent connections: ${MAX_CONCURRENT_CONNECTIONS}`);
+console.log(`   - Connection timeout: ${CONNECTION_TIMEOUT_MS/1000}s`);
 
 // Server tick
 setInterval(() => {
@@ -718,16 +988,109 @@ async function sendPartyToGameRoom(party, options = {}) {
 }
 
 wss.on('connection', (ws, req) => {
+  // Get client IP
+  const clientIP = getClientIP(req);
+  
+  // Check connection rate limit
+  const rateLimitCheck = checkIPConnectionRateLimit(clientIP);
+  if (!rateLimitCheck.allowed) {
+    console.warn(`⚠️  Connection rejected from ${clientIP}: ${rateLimitCheck.reason}`);
+    ws.close(1008, rateLimitCheck.reason);
+    return;
+  }
+  
+  // Check maximum concurrent connections
+  if (clients.size >= MAX_CONCURRENT_CONNECTIONS) {
+    console.warn(`⚠️  Connection rejected from ${clientIP}: Server at capacity (${MAX_CONCURRENT_CONNECTIONS} connections)`);
+    ws.close(1013, 'Server at capacity');
+    return;
+  }
+  
+  // Assign client ID and store connection
   ws.id = nextClientId++;
   ws.room = null; // Track which room the client is in
+  ws.clientIP = clientIP; // Store IP for logging
+  ws.lastMessageTime = Date.now(); // Track last message time for timeout
   clients.set(ws.id, ws);
-  const clientIP = req.socket.remoteAddress;
+  
   console.log(`✅ Client connected: ID=${ws.id}, IP=${clientIP}, Total clients: ${clients.size}`);
+  
+  // Set connection timeout - close idle connections
+  const timeoutId = setTimeout(() => {
+    if (ws.readyState === ws.OPEN) {
+      const idleTime = Date.now() - ws.lastMessageTime;
+      if (idleTime >= CONNECTION_TIMEOUT_MS) {
+        console.log(`⏱️  Closing idle connection: ID=${ws.id}, IP=${clientIP}, Idle: ${Math.round(idleTime/1000)}s`);
+        ws.close(1000, 'Connection timeout');
+      }
+    }
+  }, CONNECTION_TIMEOUT_MS);
+  
+  // Clear timeout on close
+  ws.on('close', () => {
+    clearTimeout(timeoutId);
+    cleanupMessageRateLimit(ws.id);
+    verifiedClients.delete(ws.id);
+    pendingChallenges.delete(ws.id);
+  });
+  
+  // Send challenge immediately on connection
+  if (CLIENT_SECRET_REQUIRED) {
+    sendChallenge(ws);
+  } else {
+    // If verification disabled, mark as verified immediately
+    verifiedClients.add(ws.id);
+  }
+  
   ensurePartyForClient(ws);
 
   ws.on('message', async (message) => {
+    // Check message rate limit
+    const messageRateCheck = checkMessageRateLimit(ws.id);
+    if (!messageRateCheck.allowed) {
+      console.warn(`⚠️  Message rate limit exceeded: ID=${ws.id}, IP=${ws.clientIP}`);
+      ws.close(1008, 'Message rate limit exceeded');
+      return;
+    }
+    
+    // Update last message time
+    ws.lastMessageTime = Date.now();
+    
+    // Check message size (prevent large message attacks)
+    const MAX_MESSAGE_SIZE = 300 * 1024; // 300 KB
+    if (message.length > MAX_MESSAGE_SIZE) {
+      console.warn(`⚠️  Message too large: ID=${ws.id}, IP=${ws.clientIP}, Size: ${message.length} bytes`);
+      ws.close(1009, 'Message too large');
+      return;
+    }
+    
     try {
       const data = msgpack.decode(message);
+      
+      // Handle client challenge response
+      if (data.type === 'clientChallengeResponse') {
+        const { challenge, timestamp, response } = data;
+        if (verifyClientChallenge(ws, challenge, timestamp, response)) {
+          console.log(`✅ Client verified: ID=${ws.id}, IP=${ws.clientIP}`);
+          ws.send(msgpack.encode({ type: 'clientVerified' }));
+          return; // Don't process further
+        } else {
+          console.warn(`⚠️  Invalid client challenge response: ID=${ws.id}, IP=${ws.clientIP}`);
+          ws.close(1008, 'Invalid client - not a legitimate game client');
+          return;
+        }
+      }
+      
+      // For all other messages (except login/register), verify client is legitimate
+      if (data.type !== 'login' && data.type !== 'quickRegister' && !isClientVerified(ws)) {
+        // If not verified and not already sent challenge, send one
+        if (!pendingChallenges.has(ws.id)) {
+          sendChallenge(ws);
+        }
+        console.warn(`⚠️  Unverified client attempted to send message: ID=${ws.id}, IP=${ws.clientIP}, Type=${data.type}`);
+        // Don't close connection, just ignore the message (client should respond to challenge)
+        return;
+      }
       
       if (data.type === 'quickRegister') {
         const username = `user-${Date.now()}`;
@@ -750,7 +1113,25 @@ wss.on('connection', (ws, req) => {
         // Auto-join first campaign lobby
         await joinFirstCampaignLobby(ws);
       } else if (data.type === 'login') {
-        const user = await db.findUser(data.username, data.password);
+        // Validate username and password
+        if (!data.username || !data.password) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Username and password required' }));
+            return;
+        }
+        
+        const usernameValidation = validateUsername(data.username);
+        if (!usernameValidation.valid) {
+            ws.send(msgpack.encode({ type: 'error', message: usernameValidation.error }));
+            return;
+        }
+        
+        const passwordValidation = validatePassword(data.password);
+        if (!passwordValidation.valid) {
+            ws.send(msgpack.encode({ type: 'error', message: passwordValidation.error }));
+            return;
+        }
+        
+        const user = await db.findUser(usernameValidation.value, passwordValidation.value);
         if (user) {
             ws.username = user.username; // Store username on successful login
             ws.rank = user.rank || 'player'; // Set rank from user data
@@ -832,6 +1213,12 @@ wss.on('connection', (ws, req) => {
         const user = await db.getUserByUsername(ws.username);
         if (!user) {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            return;
+        }
+        
+        // Authorization check: user can only equip items for themselves
+        if (user.username !== ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
             return;
         }
         const inventoryIndex = data.inventoryIndex;
@@ -961,6 +1348,12 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
             return;
         }
+        
+        // Authorization check: user can only reroll items for themselves
+        if (user.username !== ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
+            return;
+        }
         const inventoryIndex = data.inventoryIndex;
         
         // Validate inventory index
@@ -1036,6 +1429,12 @@ wss.on('connection', (ws, req) => {
         const user = await db.getUserByUsername(ws.username);
         if (!user) {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            return;
+        }
+        
+        // Authorization check: user can only set passive ability for themselves
+        if (user.username !== ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
             return;
         }
 
@@ -1437,8 +1836,26 @@ wss.on('connection', (ws, req) => {
 
         broadcastPartyUpdate(inviterParty);
       } else if (data.type === 'chatMessage') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        // Validate and sanitize message
+        const messageValidation = validateChatMessage(data.message);
+        if (!messageValidation.valid) {
+            ws.send(msgpack.encode({ type: 'error', message: messageValidation.error }));
+            return;
+        }
+        
+        // Sanitize message to prevent XSS
+        const sanitizedMessage = purify.sanitize(messageValidation.value, {
+            ALLOWED_TAGS: [], // No HTML tags allowed
+            ALLOWED_ATTR: []
+        });
+        
         const room = rooms.get(ws.room);
-        if (!room || !ws.username) return;
+        if (!room) return;
         const roomClients = room.clients;
 
         for (const client of roomClients) {
@@ -1446,7 +1863,7 @@ wss.on('connection', (ws, req) => {
                 client.send(msgpack.encode({
                     type: 'chatMessage',
                     username: ws.username,
-                    message: data.message
+                    message: sanitizedMessage
                 }));
             }
         }
@@ -2250,16 +2667,17 @@ wss.on('connection', (ws, req) => {
             return;
         }
 
-        const newUsername = typeof data.newUsername === 'string' ? data.newUsername.trim() : null;
-        if (!newUsername || newUsername.length === 0) {
+        // Validate username
+        const usernameValidation = validateUsername(data.newUsername);
+        if (!usernameValidation.valid) {
             if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Invalid username' }));
+                ws.send(msgpack.encode({ type: 'changeUsernameError', message: usernameValidation.error }));
             }
             return;
         }
 
         // Check if username already exists
-        const existingUser = await db.usernameExists(newUsername);
+        const existingUser = await db.usernameExists(usernameValidation.value);
         if (existingUser) {
             if (ws.readyState === ws.OPEN) {
                 ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Username already taken' }));
@@ -2267,7 +2685,7 @@ wss.on('connection', (ws, req) => {
             return;
         }
 
-        // Get current user
+        // Get current user - authorization check: user can only change their own username
         const user = await db.getUserByUsername(ws.username);
         if (!user) {
             if (ws.readyState === ws.OPEN) {
@@ -2275,15 +2693,23 @@ wss.on('connection', (ws, req) => {
             }
             return;
         }
+        
+        // Additional authorization check: ensure ws.username matches the user being modified
+        if (user.username !== ws.username) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Permission denied' }));
+            }
+            return;
+        }
 
         // Update username in database
         try {
-            await db.updateUsername(ws.username, newUsername);
-            ws.username = newUsername; // Update WebSocket username
+            await db.updateUsername(ws.username, usernameValidation.value);
+            ws.username = usernameValidation.value; // Update WebSocket username
             if (ws.readyState === ws.OPEN) {
                 ws.send(msgpack.encode({ 
                     type: 'changeUsernameSuccess', 
-                    newUsername: newUsername 
+                    newUsername: usernameValidation.value 
                 }));
             }
         } catch (error) {
@@ -2300,14 +2726,6 @@ wss.on('connection', (ws, req) => {
             return;
         }
 
-        const newPassword = typeof data.newPassword === 'string' ? data.newPassword.trim() : null;
-        if (!newPassword || newPassword.length === 0) {
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Invalid password' }));
-            }
-            return;
-        }
-
         // Get current user
         const user = await db.getUserByUsername(ws.username);
         if (!user) {
@@ -2316,17 +2734,51 @@ wss.on('connection', (ws, req) => {
             }
             return;
         }
+        
+        // Verify old password first
+        const oldPassword = typeof data.oldPassword === 'string' ? data.oldPassword.trim() : null;
+        if (!oldPassword) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Old password required' }));
+            }
+            return;
+        }
+        
+        const oldPasswordValid = await db.verifyPassword(oldPassword, user.password);
+        if (!oldPasswordValid) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Incorrect old password' }));
+            }
+            return;
+        }
 
-        // Update password
-        user.password = newPassword;
+        // Validate new password
+        const passwordValidation = validatePassword(data.newPassword);
+        if (!passwordValidation.valid) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changePasswordError', message: passwordValidation.error }));
+            }
+            return;
+        }
+        
+        // Authorization check: ensure user can only change their own password
+        if (user.username !== ws.username) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Permission denied' }));
+            }
+            return;
+        }
+
+        // Update password (will be hashed by updateUser)
+        user.password = passwordValidation.value;
 
         // Save to database
         try {
             await db.updateUser(ws.username, user);
             if (ws.readyState === ws.OPEN) {
                 ws.send(msgpack.encode({ 
-                    type: 'changePasswordSuccess', 
-                    newPassword: newPassword 
+                    type: 'changePasswordSuccess'
+                    // Don't send password back to client
                 }));
             }
         } catch (error) {
@@ -2415,14 +2867,40 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
-        if (!data.categoryId || !data.title || !data.content) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Category ID, title, and content required' }));
+        if (!data.categoryId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Category ID required' }));
             return;
         }
+        
+        // Validate and sanitize title
+        const titleValidation = validateForumTitle(data.title);
+        if (!titleValidation.valid) {
+            ws.send(msgpack.encode({ type: 'error', message: titleValidation.error }));
+            return;
+        }
+        
+        // Validate and sanitize content
+        const contentValidation = validateForumContent(data.content);
+        if (!contentValidation.valid) {
+            ws.send(msgpack.encode({ type: 'error', message: contentValidation.error }));
+            return;
+        }
+        
+        // Sanitize title and content to prevent XSS
+        const sanitizedTitle = purify.sanitize(titleValidation.value, {
+            ALLOWED_TAGS: [], // No HTML tags allowed in title
+            ALLOWED_ATTR: []
+        });
+        
+        const sanitizedContent = purify.sanitize(contentValidation.value, {
+            ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre'], // Allow basic formatting
+            ALLOWED_ATTR: []
+        });
+        
         try {
-            const threadId = await db.createForumThread(data.categoryId, data.title, ws.username);
+            const threadId = await db.createForumThread(data.categoryId, sanitizedTitle, ws.username);
             // Create the first post with the thread content
-            await db.createForumPost(threadId, ws.username, data.content);
+            await db.createForumPost(threadId, ws.username, sanitizedContent);
             ws.send(msgpack.encode({ type: 'forumThreadCreated', threadId }));
         } catch (error) {
             console.error('Failed to create forum thread', error);
@@ -2433,12 +2911,26 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
-        if (!data.threadId || !data.content) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Thread ID and content required' }));
+        if (!data.threadId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Thread ID required' }));
             return;
         }
+        
+        // Validate and sanitize content
+        const contentValidation = validateForumContent(data.content);
+        if (!contentValidation.valid) {
+            ws.send(msgpack.encode({ type: 'error', message: contentValidation.error }));
+            return;
+        }
+        
+        // Sanitize content to prevent XSS
+        const sanitizedContent = purify.sanitize(contentValidation.value, {
+            ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre'], // Allow basic formatting
+            ALLOWED_ATTR: []
+        });
+        
         try {
-            const postId = await db.createForumPost(data.threadId, ws.username, data.content);
+            const postId = await db.createForumPost(data.threadId, ws.username, sanitizedContent);
             ws.send(msgpack.encode({ type: 'forumPostCreated', postId }));
         } catch (error) {
             console.error('Failed to create forum post', error);
@@ -2523,11 +3015,26 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Username and password required' }));
             return;
         }
+        
+        // Validate username and password
+        const usernameValidation = validateUsername(data.username);
+        if (!usernameValidation.valid) {
+            ws.send(msgpack.encode({ type: 'error', message: usernameValidation.error }));
+            return;
+        }
+        
+        const passwordValidation = validatePassword(data.password);
+        if (!passwordValidation.valid) {
+            ws.send(msgpack.encode({ type: 'error', message: passwordValidation.error }));
+            return;
+        }
+        
         try {
-            const verified = await db.verifyUser(data.username, data.password);
+            // verifyUser now uses password hashing internally
+            const verified = await db.verifyUser(usernameValidation.value, passwordValidation.value);
             if (verified) {
                 ws.send(msgpack.encode({ type: 'userVerified', success: true }));
-                console.log(`✅ User "${data.username}" verified successfully`);
+                console.log(`✅ User "${usernameValidation.value}" verified successfully`);
             } else {
                 ws.send(msgpack.encode({ type: 'userVerified', success: false, message: 'Invalid username or password' }));
             }
@@ -2590,6 +3097,11 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => {
     console.log(`❌ Client disconnected: ID=${ws.id}, Total clients: ${clients.size - 1}`);
     clients.delete(ws.id);
+    
+    // Clean up client verification and rate limiting
+    verifiedClients.delete(ws.id);
+    pendingChallenges.delete(ws.id);
+    cleanupMessageRateLimit(ws.id);
     
     // Handle party disconnection
     const party = findPartyByMemberId(ws.id);
@@ -2691,9 +3203,54 @@ rl.on('line', async (input) => {
     } catch (error) {
       console.error(`❌ Error setting rank:`, error.message);
     }
+  } else if (command === 'blockip' && parts.length === 2) {
+    const ip = parts[1];
+    blockedIPs.add(ip);
+    console.log(`✅ Blocked IP: ${ip}`);
+    
+    // Disconnect all connections from this IP
+    let disconnectedCount = 0;
+    for (const client of clients.values()) {
+      if (client.clientIP === ip && client.readyState === client.OPEN) {
+        client.close(1008, 'IP blocked by administrator');
+        disconnectedCount++;
+      }
+    }
+    if (disconnectedCount > 0) {
+      console.log(`✅ Disconnected ${disconnectedCount} connection(s) from ${ip}`);
+    }
+  } else if (command === 'unblockip' && parts.length === 2) {
+    const ip = parts[1];
+    if (blockedIPs.delete(ip)) {
+      console.log(`✅ Unblocked IP: ${ip}`);
+    } else {
+      console.log(`ℹ️  IP ${ip} was not blocked`);
+    }
+  } else if (command === 'listblocked') {
+    if (blockedIPs.size === 0) {
+      console.log('ℹ️  No IPs are currently blocked');
+    } else {
+      console.log(`\nBlocked IPs (${blockedIPs.size}):`);
+      for (const ip of blockedIPs) {
+        console.log(`  - ${ip}`);
+      }
+      console.log('');
+    }
+  } else if (command === 'migratepass') {
+    console.log('🔄 Starting password migration (plain text -> bcrypt hash)...');
+    try {
+      const result = await db.migrateAllPasswords();
+      console.log(`✅ Migration completed: ${result.migrated} migrated, ${result.skipped} skipped, ${result.errors} errors`);
+    } catch (error) {
+      console.error('❌ Password migration failed:', error);
+    }
   } else if (command === 'help' || command === '?') {
     console.log('\nAvailable server console commands:');
     console.log('  rang <username> <rank>  - Set user rank (player, moderator, admin)');
+    console.log('  blockip <ip>           - Block an IP address');
+    console.log('  unblockip <ip>         - Unblock an IP address');
+    console.log('  listblocked            - List all blocked IPs');
+    console.log('  migratepass            - Migrate all plain text passwords to bcrypt hashes');
     console.log('  help                   - Show this help message');
     console.log('');
   } else {

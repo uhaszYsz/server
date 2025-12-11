@@ -3,6 +3,10 @@ import sqlite3 from 'sqlite3';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import bcrypt from 'bcrypt';
+
+// Password hashing configuration
+const BCRYPT_ROUNDS = 10;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -179,34 +183,51 @@ export function initDatabase() {
 }
 
 
+// Hash a password
+export async function hashPassword(password) {
+    return await bcrypt.hash(password, BCRYPT_ROUNDS);
+}
+
+// Verify a password against a hash
+export async function verifyPassword(password, hash) {
+    return await bcrypt.compare(password, hash);
+}
+
 // Create a new user
 export function createUser(user) {
-    return new Promise((resolve, reject) => {
-        const stmt = db.prepare(`
-            INSERT INTO users (username, password, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Hash the password before storing
+            const hashedPassword = await hashPassword(user.password);
+            
+            const stmt = db.prepare(`
+                INSERT INTO users (username, password, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
 
-        stmt.run(
-            user.username,
-            user.password,
-            JSON.stringify(user.stats || {}),
-            JSON.stringify(user.inventory || []),
-            JSON.stringify(user.equipment || {}),
-            user.weaponData ? JSON.stringify(user.weaponData) : null,
-            user.passiveAbility || null,
-            user.rank || 'player',
-            user.verified !== undefined ? user.verified : 0,
-            function(err) {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve();
+            stmt.run(
+                user.username,
+                hashedPassword, // Store hashed password, not plain text
+                JSON.stringify(user.stats || {}),
+                JSON.stringify(user.inventory || []),
+                JSON.stringify(user.equipment || {}),
+                user.weaponData ? JSON.stringify(user.weaponData) : null,
+                user.passiveAbility || null,
+                user.rank || 'player',
+                user.verified !== undefined ? user.verified : 0,
+                function(err) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
                 }
-            }
-        );
+            );
 
-        stmt.finalize();
+            stmt.finalize();
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -271,99 +292,223 @@ export function getUserByUsername(username) {
 
 // Find user by username and password
 export function findUser(username, password) {
-    return new Promise((resolve, reject) => {
-        db.get('SELECT * FROM users WHERE username = ? AND password = ?', [username, password], (err, row) => {
-            if (err) {
-                reject(err);
-                return;
-            }
+    return new Promise(async (resolve, reject) => {
+        try {
+            // First get user by username only
+            db.get('SELECT * FROM users WHERE username = ?', [username], async (err, row) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
 
-            if (!row) {
-                resolve(null);
-                return;
-            }
+                if (!row) {
+                    resolve(null);
+                    return;
+                }
 
-            // Parse JSON fields
-            const user = {
-                username: row.username,
-                password: row.password,
-                stats: JSON.parse(row.stats),
-                inventory: JSON.parse(row.inventory),
-                equipment: JSON.parse(row.equipment),
-                weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                passiveAbility: row.passiveAbility || null,
-                rank: row.rank || 'player',
-                verified: row.verified !== undefined ? row.verified : 0
-            };
+                // Check if password is already hashed (starts with $2a$, $2b$, or $2y$)
+                const isHashed = /^\$2[ayb]\$/.test(row.password);
+                
+                let passwordMatches = false;
+                if (isHashed) {
+                    // Password is hashed, use bcrypt to verify
+                    passwordMatches = await verifyPassword(password, row.password);
+                } else {
+                    // Password is plain text (legacy), compare directly
+                    // Note: Migration must be done manually via console command
+                    passwordMatches = (password === row.password);
+                }
+                
+                if (!passwordMatches) {
+                    resolve(null); // Invalid password
+                    return;
+                }
 
-            resolve(user);
-        });
+                // Parse JSON fields
+                const user = {
+                    username: row.username,
+                    password: row.password, // Return hash (not plain text) for internal use
+                    stats: JSON.parse(row.stats),
+                    inventory: JSON.parse(row.inventory),
+                    equipment: JSON.parse(row.equipment),
+                    weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
+                    passiveAbility: row.passiveAbility || null,
+                    rank: row.rank || 'player',
+                    verified: row.verified !== undefined ? row.verified : 0
+                };
+
+                resolve(user);
+            });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
 // Verify user (set verified to 1)
 export function verifyUser(username, password) {
-    return new Promise((resolve, reject) => {
-        // First check if username and password match
-        db.get('SELECT * FROM users WHERE username = ? AND password = ?', [username, password], (err, row) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            
-            if (!row) {
-                resolve(false); // Invalid credentials
-                return;
-            }
-            
-            // Update verified to 1
-            db.run('UPDATE users SET verified = 1 WHERE username = ?', [username], function(updateErr) {
-                if (updateErr) {
-                    reject(updateErr);
-                } else {
-                    resolve(true); // Successfully verified
+    return new Promise(async (resolve, reject) => {
+        try {
+            // First get user by username
+            db.get('SELECT * FROM users WHERE username = ?', [username], async (err, row) => {
+                if (err) {
+                    reject(err);
+                    return;
                 }
+                
+                if (!row) {
+                    resolve(false); // User not found
+                    return;
+                }
+                
+                // Check if password is already hashed
+                const isHashed = /^\$2[ayb]\$/.test(row.password);
+                
+                let passwordMatches = false;
+                if (isHashed) {
+                    // Password is hashed, use bcrypt to verify
+                    passwordMatches = await verifyPassword(password, row.password);
+                } else {
+                    // Password is plain text (legacy), compare directly
+                    // Note: Migration must be done manually via console command
+                    passwordMatches = (password === row.password);
+                }
+                
+                if (!passwordMatches) {
+                    resolve(false); // Invalid password
+                    return;
+                }
+                
+                // Update verified to 1
+                db.run('UPDATE users SET verified = 1 WHERE username = ?', [username], function(updateErr) {
+                    if (updateErr) {
+                        reject(updateErr);
+                    } else {
+                        resolve(true); // Successfully verified
+                    }
+                });
             });
-        });
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// Migrate all plain text passwords to hashed passwords
+export function migrateAllPasswords() {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Get all users
+            db.all('SELECT username, password FROM users', async (err, rows) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                
+                let migrated = 0;
+                let skipped = 0;
+                let errors = 0;
+                
+                for (const row of rows) {
+                    // Check if password is already hashed
+                    const isHashed = /^\$2[ayb]\$/.test(row.password);
+                    
+                    if (isHashed) {
+                        skipped++;
+                        continue;
+                    }
+                    
+                    // Hash the plain text password
+                    try {
+                        const hashedPassword = await hashPassword(row.password);
+                        await new Promise((resolveUpdate, rejectUpdate) => {
+                            db.run('UPDATE users SET password = ? WHERE username = ?', [hashedPassword, row.username], function(updateErr) {
+                                if (updateErr) {
+                                    rejectUpdate(updateErr);
+                                } else {
+                                    resolveUpdate();
+                                }
+                            });
+                        });
+                        migrated++;
+                        console.log(`✅ Migrated password for user: ${row.username}`);
+                    } catch (error) {
+                        errors++;
+                        console.error(`❌ Failed to migrate password for user ${row.username}:`, error);
+                    }
+                }
+                
+                console.log(`\n📊 Password migration complete:`);
+                console.log(`   ✅ Migrated: ${migrated} users`);
+                console.log(`   ⏭️  Skipped (already hashed): ${skipped} users`);
+                console.log(`   ❌ Errors: ${errors} users\n`);
+                
+                resolve({ migrated, skipped, errors });
+            });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
 // Update user
 export function updateUser(username, userData) {
-    return new Promise((resolve, reject) => {
-        const stmt = db.prepare(`
-            UPDATE users 
-            SET password = ?,
-                stats = ?,
-                inventory = ?,
-                equipment = ?,
-                weaponData = ?,
-                passiveAbility = ?,
-                rank = ?,
-                verified = ?
-            WHERE username = ?
-        `);
-
-        stmt.run(
-            userData.password,
-            JSON.stringify(userData.stats || {}),
-            JSON.stringify(userData.inventory || []),
-            JSON.stringify(userData.equipment || {}),
-            userData.weaponData ? JSON.stringify(userData.weaponData) : null,
-            userData.passiveAbility || null,
-            userData.rank || 'player',
-            userData.verified !== undefined ? userData.verified : 0,
-            username,
-            function(err) {
-                if (err) {
-                    reject(err);
+    return new Promise(async (resolve, reject) => {
+        try {
+            // If password is being updated, hash it first
+            let passwordToStore = userData.password;
+            if (userData.password) {
+                // Check if password is already hashed (starts with $2a$, $2b$, or $2y$)
+                const isAlreadyHashed = /^\$2[ayb]\$/.test(userData.password);
+                if (!isAlreadyHashed) {
+                    // Password is plain text, hash it
+                    passwordToStore = await hashPassword(userData.password);
                 } else {
-                    resolve();
+                    // Password is already hashed, use as-is
+                    passwordToStore = userData.password;
                 }
+            } else {
+                // No password update, get existing password from database
+                const existingUser = await getUserByUsername(username);
+                passwordToStore = existingUser ? existingUser.password : null;
             }
-        );
+            
+            const stmt = db.prepare(`
+                UPDATE users 
+                SET password = ?,
+                    stats = ?,
+                    inventory = ?,
+                    equipment = ?,
+                    weaponData = ?,
+                    passiveAbility = ?,
+                    rank = ?,
+                    verified = ?
+                WHERE username = ?
+            `);
 
-        stmt.finalize();
+            stmt.run(
+                passwordToStore,
+                JSON.stringify(userData.stats || {}),
+                JSON.stringify(userData.inventory || []),
+                JSON.stringify(userData.equipment || {}),
+                userData.weaponData ? JSON.stringify(userData.weaponData) : null,
+                userData.passiveAbility || null,
+                userData.rank || 'player',
+                userData.verified !== undefined ? userData.verified : 0,
+                username,
+                function(err) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                }
+            );
+
+            stmt.finalize();
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 

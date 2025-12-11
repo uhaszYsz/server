@@ -5,6 +5,9 @@
   "dependencies": {
     "msgpackr": "^1.10.1",
     "sqlite3": "^5.1.7",
-    "ws": "^8.16.0"
+    "ws": "^8.16.0",
+    "bcrypt": "^5.1.1",
+    "dompurify": "^3.0.6",
+    "jsdom": "^23.0.1"
   }
 }
