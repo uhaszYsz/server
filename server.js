@@ -718,29 +718,20 @@ const httpServer = http.createServer(async (req, res) => {
         
         // Serve sprite files from sprites directory
         if (pathname.startsWith('/sprites/')) {
-            console.log(`[HTTP] Sprite request detected: ${pathname}`);
             const filename = pathname.substring('/sprites/'.length);
-            // Security: prevent directory traversal
-            if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+            
+            // Security: prevent directory traversal - only allow simple filenames
+            if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\') || filename.trim() === '') {
                 res.writeHead(403, { 'Content-Type': 'text/plain' });
                 res.end('Forbidden');
                 return;
             }
             
+            // Try server sprites directory first
             const spritePath = path.join(spritesDirectory, filename);
-            const resolvedSpritePath = path.resolve(spritePath);
-            const resolvedSpritesDir = path.resolve(spritesDirectory);
-            
-            if (!resolvedSpritePath.startsWith(resolvedSpritesDir)) {
-                res.writeHead(403, { 'Content-Type': 'text/plain' });
-                res.end('Forbidden');
-                return;
-            }
             
             try {
-                console.log(`[serveSprite] Attempting to read: ${spritePath}`);
                 const spriteFile = await fs.readFile(spritePath);
-                console.log(`[serveSprite] File found, size: ${spriteFile.length} bytes`);
                 res.writeHead(200, {
                     'Content-Type': 'image/png',
                     'Cache-Control': 'public, max-age=3600'
@@ -749,35 +740,28 @@ const httpServer = http.createServer(async (req, res) => {
                 return;
             } catch (error) {
                 if (error.code === 'ENOENT') {
-                    console.log(`[serveSprite] File not found in ${spritePath}, checking assets folder...`);
                     // Fallback: check assets folder (sprites/userSprites/)
                     try {
                         const assetsSpritePath = path.join(wwwDirectory, 'sprites', 'userSprites', filename);
-                        console.log(`[serveSprite] Checking assets: ${assetsSpritePath}`);
-                        const resolvedAssetsPath = path.resolve(assetsSpritePath);
-                        const resolvedAssetsDir = path.resolve(path.join(wwwDirectory, 'sprites', 'userSprites'));
-                        
-                        if (resolvedAssetsPath.startsWith(resolvedAssetsDir)) {
-                            const assetsSpriteFile = await fs.readFile(assetsSpritePath);
-                            console.log(`[serveSprite] Found in assets folder, size: ${assetsSpriteFile.length} bytes`);
-                            res.writeHead(200, {
-                                'Content-Type': 'image/png',
-                                'Cache-Control': 'public, max-age=3600'
-                            });
-                            res.end(assetsSpriteFile);
-                            return;
-                        }
+                        const spriteFile = await fs.readFile(assetsSpritePath);
+                        res.writeHead(200, {
+                            'Content-Type': 'image/png',
+                            'Cache-Control': 'public, max-age=3600'
+                        });
+                        res.end(spriteFile);
+                        return;
                     } catch (assetsError) {
-                        console.log(`[serveSprite] Assets file also not found: ${assetsError.message}`);
-                        // Assets file also not found, continue to 404
+                        // Both failed - return 404
+                        res.writeHead(404, { 'Content-Type': 'text/plain' });
+                        res.end('Sprite not found');
+                        return;
                     }
-                    
-                    console.log(`[serveSprite] 404 - Sprite not found: ${filename}`);
-                    res.writeHead(404, { 'Content-Type': 'text/plain' });
-                    res.end('Sprite not found');
-                    return;
                 }
-                throw error;
+                // Other error
+                console.error(`[serveSprite] Error reading sprite ${filename}:`, error);
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Server error');
+                return;
             }
         }
         
