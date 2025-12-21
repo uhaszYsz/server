@@ -714,8 +714,11 @@ const httpServer = http.createServer(async (req, res) => {
         const url = new URL(req.url, `http://${host}`);
         let pathname = url.pathname;
         
+        console.log(`[HTTP] ${req.method} ${pathname}`);
+        
         // Serve sprite files from sprites directory
         if (pathname.startsWith('/sprites/')) {
+            console.log(`[HTTP] Sprite request detected: ${pathname}`);
             const filename = pathname.substring('/sprites/'.length);
             // Security: prevent directory traversal
             if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
