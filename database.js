@@ -168,28 +168,10 @@ export function initDatabase() {
                                     }
                                     console.log('✅ Campaign levels table initialized');
                                     
-                                    // Create sprites table for uploaded sprite images
-                                    db.run(`
-                                        CREATE TABLE IF NOT EXISTS sprites (
-                                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                            filename TEXT NOT NULL UNIQUE,
-                                            uploaded_by TEXT NOT NULL,
-                                            uploaded_at INTEGER NOT NULL,
-                                            file_size INTEGER NOT NULL,
-                                            FOREIGN KEY (uploaded_by) REFERENCES users(username)
-                                        )
-                                    `, (err) => {
-                                        if (err) {
-                                            reject(err);
-                                            return;
-                                        }
-                                        console.log('✅ Sprites table initialized');
-                                        
-                                        // Initialize default categories
-                                        initForumCategories().then(() => {
-                                            resolve();
-                                        }).catch(reject);
-                                    });
+                                    // Initialize default categories
+                                    initForumCategories().then(() => {
+                                        resolve();
+                                    }).catch(reject);
                                 });
                             });
                         });
@@ -1227,98 +1209,6 @@ export function updateCampaignLevel(slug, name, data) {
 export function deleteCampaignLevel(slug) {
     return new Promise((resolve, reject) => {
         db.run('DELETE FROM campaign_levels WHERE slug = ?', [slug], function(err) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(this.changes > 0);
-            }
-        });
-    });
-}
-
-// Sprite management functions
-export function createSpritesTable() {
-    return new Promise((resolve, reject) => {
-        db.run(`
-            CREATE TABLE IF NOT EXISTS sprites (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                filename TEXT NOT NULL UNIQUE,
-                uploaded_by TEXT NOT NULL,
-                uploaded_at INTEGER NOT NULL,
-                file_size INTEGER NOT NULL,
-                FOREIGN KEY (uploaded_by) REFERENCES users(username)
-            )
-        `, (err) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve();
-            }
-        });
-    });
-}
-
-export function createSprite(filename, uploadedBy, fileSize) {
-    return new Promise((resolve, reject) => {
-        const uploadedAt = Date.now();
-        db.run(
-            'INSERT INTO sprites (filename, uploaded_by, uploaded_at, file_size) VALUES (?, ?, ?, ?)',
-            [filename, uploadedBy, uploadedAt, fileSize],
-            function(err) {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve({ id: this.lastID, filename, uploadedBy, uploadedAt, fileSize });
-                }
-            }
-        );
-    });
-}
-
-export function getSprites(page = 1, pageSize = 120) {
-    return new Promise((resolve, reject) => {
-        const offset = (page - 1) * pageSize;
-        db.all(
-            'SELECT id, filename, uploaded_by, uploaded_at, file_size FROM sprites ORDER BY uploaded_at DESC LIMIT ? OFFSET ?',
-            [pageSize, offset],
-            (err, rows) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(rows);
-                }
-            }
-        );
-    });
-}
-
-export function getSpriteCount() {
-    return new Promise((resolve, reject) => {
-        db.get('SELECT COUNT(*) as count FROM sprites', [], (err, row) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(row ? row.count : 0);
-            }
-        });
-    });
-}
-
-export function getSpriteByFilename(filename) {
-    return new Promise((resolve, reject) => {
-        db.get('SELECT * FROM sprites WHERE filename = ?', [filename], (err, row) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(row);
-            }
-        });
-    });
-}
-
-export function deleteSprite(filename) {
-    return new Promise((resolve, reject) => {
-        db.run('DELETE FROM sprites WHERE filename = ?', [filename], function(err) {
             if (err) {
                 reject(err);
             } else {

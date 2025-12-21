@@ -10,7 +10,7 @@ import readline from 'readline';
 import bcrypt from 'bcrypt';
 import DOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
-import http from 'http';
+import * as spritesDb from './spritesDatabase.js';
 
 // Password hashing configuration
 const BCRYPT_ROUNDS = 10; // Number of salt rounds (higher = more secure but slower)
@@ -105,7 +105,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const levelsDirectory = path.join(__dirname, 'levels');
 const weaponsDirectory = path.join(__dirname, 'weapons');
-const spritesDirectory = path.join(__dirname, 'sprites');
 const DEFAULT_CAMPAIGN_LEVEL_FILE = 'lev.json'; // Default slug for campaign level
 
 const MAX_LEVEL_NAME_LENGTH = 64;
@@ -115,8 +114,7 @@ const MAX_SPRITE_SIZE = 1024; // 1 KB max sprite size
 
 await Promise.all([
     fs.mkdir(levelsDirectory, { recursive: true }),
-    fs.mkdir(weaponsDirectory, { recursive: true }),
-    fs.mkdir(spritesDirectory, { recursive: true })
+    fs.mkdir(weaponsDirectory, { recursive: true })
 ]);
 
 // Equipment slots
@@ -499,6 +497,7 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
 
 // Initialize database
 await db.initDatabase();
+await spritesDb.initSpritesDatabase();
 
 let globalTimer = Date.now();
 
@@ -676,191 +675,6 @@ function checkMessageRateLimit(wsId) {
 function cleanupMessageRateLimit(wsId) {
     connectionMessageCounts.delete(wsId);
 }
-
-// ============================================================================
-
-// HTTP server for serving static files
-const wwwDirectory = path.join(__dirname, '..', 'MyApplication', 'app', 'src', 'main', 'assets', 'www');
-
-// MIME type mapping
-const mimeTypes = {
-    '.html': 'text/html',
-    '.js': 'text/javascript',
-    '.css': 'text/css',
-    '.json': 'application/json',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.gif': 'image/gif',
-    '.svg': 'image/svg+xml',
-    '.wav': 'audio/wav',
-    '.mp3': 'audio/mpeg',
-    '.mp4': 'video/mp4',
-    '.woff': 'application/font-woff',
-    '.woff2': 'application/font-woff2',
-    '.ttf': 'application/font-ttf',
-    '.eot': 'application/vnd.ms-fontobject',
-    '.otf': 'application/font-otf',
-    '.wasm': 'application/wasm',
-    '.mem': 'application/octet-stream',
-    '.mod': 'audio/mod',
-    '.xm': 'audio/xm',
-    '.txt': 'text/plain'
-};
-
-const httpServer = http.createServer(async (req, res) => {
-    // Log ALL requests immediately, before any processing - use process.stdout.write to ensure it's not buffered
-    process.stdout.write(`\n[HTTP] ===== NEW REQUEST =====\n`);
-    process.stdout.write(`[HTTP] Method: ${req.method}\n`);
-    process.stdout.write(`[HTTP] URL: ${req.url}\n`);
-    
-    try {
-        const host = req.headers.host || 'localhost:8300';
-        const url = new URL(req.url, `http://${host}`);
-        let pathname = url.pathname;
-        
-        process.stdout.write(`[HTTP] Parsed pathname: ${pathname}\n`);
-        
-        // Test endpoint to verify HTTP server is working
-        if (pathname === '/test-sprite-server') {
-            process.stdout.write(`[HTTP] ✅ TEST ENDPOINT HIT!\n`);
-            res.writeHead(200, { 'Content-Type': 'text/plain' });
-            res.end('HTTP server is working! Sprites directory: ' + spritesDirectory);
-            return;
-        }
-        
-        // Serve sprite files from sprites directory
-        if (pathname.startsWith('/sprites/')) {
-            process.stdout.write(`[HTTP] ✅ SPRITE REQUEST DETECTED!\n`);
-            const filename = pathname.substring('/sprites/'.length);
-            process.stdout.write(`[serveSprite] ===== REQUEST START =====\n`);
-            process.stdout.write(`[serveSprite] Requested filename: "${filename}"\n`);
-            process.stdout.write(`[serveSprite] spritesDirectory: ${spritesDirectory}\n`);
-            process.stdout.write(`[serveSprite] wwwDirectory: ${wwwDirectory}\n`);
-            
-            // Security: prevent directory traversal - only allow simple filenames
-            if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\') || filename.trim() === '') {
-                console.log(`[serveSprite] ❌ Security check failed for filename: "${filename}"`);
-                res.writeHead(403, { 'Content-Type': 'text/plain' });
-                res.end('Forbidden');
-                return;
-            }
-            
-            // Try server sprites directory first
-            const spritePath = path.join(spritesDirectory, filename);
-            process.stdout.write(`[serveSprite] Attempting to read from: ${spritePath}\n`);
-            
-            try {
-                // Check if file exists first
-                await fs.access(spritePath);
-                process.stdout.write(`[serveSprite] ✅ File exists, reading...\n`);
-                const spriteFile = await fs.readFile(spritePath);
-                process.stdout.write(`[serveSprite] ✅ File read successfully, size: ${spriteFile.length} bytes\n`);
-                res.writeHead(200, {
-                    'Content-Type': 'image/png',
-                    'Cache-Control': 'public, max-age=3600'
-                });
-                res.end(spriteFile);
-                console.log(`[serveSprite] ✅ Response sent successfully`);
-                return;
-            } catch (error) {
-                console.log(`[serveSprite] ❌ Error reading from server directory: ${error.code} - ${error.message}`);
-                if (error.code === 'ENOENT') {
-                    // Fallback: check assets folder (sprites/userSprites/)
-                    const assetsSpritePath = path.join(wwwDirectory, 'sprites', 'userSprites', filename);
-                    console.log(`[serveSprite] Trying assets folder: ${assetsSpritePath}`);
-                    try {
-                        await fs.access(assetsSpritePath);
-                        console.log(`[serveSprite] ✅ File exists in assets, reading...`);
-                        const spriteFile = await fs.readFile(assetsSpritePath);
-                        console.log(`[serveSprite] ✅ Assets file read successfully, size: ${spriteFile.length} bytes`);
-                        res.writeHead(200, {
-                            'Content-Type': 'image/png',
-                            'Cache-Control': 'public, max-age=3600'
-                        });
-                        res.end(spriteFile);
-                        console.log(`[serveSprite] ✅ Response sent from assets`);
-                        return;
-                    } catch (assetsError) {
-                        console.log(`[serveSprite] ❌ Assets file also not found: ${assetsError.code} - ${assetsError.message}`);
-                        // List files in sprites directory for debugging
-                        try {
-                            const files = await fs.readdir(spritesDirectory);
-                            console.log(`[serveSprite] Files in spritesDirectory:`, files);
-                        } catch (listError) {
-                            console.log(`[serveSprite] ❌ Cannot list spritesDirectory: ${listError.message}`);
-                        }
-                        // Both failed - return 404
-                        res.writeHead(404, { 'Content-Type': 'text/plain' });
-                        res.end(`Sprite not found: ${filename}`);
-                        console.log(`[serveSprite] ❌ 404 sent`);
-                        return;
-                    }
-                }
-                // Other error
-                console.error(`[serveSprite] ❌ Unexpected error reading sprite ${filename}:`, error);
-                res.writeHead(500, { 'Content-Type': 'text/plain' });
-                res.end(`Server error: ${error.message}`);
-                return;
-            }
-        }
-        
-        // Default to index.html for root
-        if (pathname === '/') {
-            pathname = '/index.html';
-        }
-        
-        // Remove leading slash and resolve path
-        const filePath = path.join(wwwDirectory, pathname);
-        
-        // Security: prevent directory traversal
-        const resolvedPath = path.resolve(filePath);
-        const resolvedDir = path.resolve(wwwDirectory);
-        if (!resolvedPath.startsWith(resolvedDir)) {
-            res.writeHead(403, { 'Content-Type': 'text/plain' });
-            res.end('Forbidden');
-            return;
-        }
-        
-        // Get file extension for MIME type
-        const ext = path.extname(filePath).toLowerCase();
-        const contentType = mimeTypes[ext] || 'application/octet-stream';
-        
-        // Read and serve file
-        console.log(`[HTTP] Serving file: ${filePath}`);
-        const fileContent = await fs.readFile(filePath);
-        console.log(`[HTTP] ✅ File served successfully, size: ${fileContent.length} bytes`);
-        res.writeHead(200, { 
-            'Content-Type': contentType,
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-        });
-        res.end(fileContent);
-    } catch (error) {
-        console.error(`[HTTP] ❌ Error serving file:`, error);
-        if (error.code === 'ENOENT') {
-            console.log(`[HTTP] ❌ File not found: ${filePath}`);
-            res.writeHead(404, { 'Content-Type': 'text/plain' });
-            res.end('File not found');
-        } else {
-            console.error('[HTTP] ❌ Internal server error:', error);
-            res.writeHead(500, { 'Content-Type': 'text/plain' });
-            res.end('Internal server error');
-        }
-    }
-});
-
-httpServer.on('error', (error) => {
-    console.error('❌ HTTP Server Error:', error);
-});
-
-httpServer.listen(8300, '0.0.0.0', () => {
-    console.log('✅ HTTP server running on http://0.0.0.0:8300 (accessible from all IPs)');
-    console.log(`   Serving files from: ${wwwDirectory}`);
-    console.log(`   Sprites directory: ${spritesDirectory}`);
-    console.log(`   HTTP server is ready to receive requests`);
-});
 
 // ============================================================================
 
@@ -2537,21 +2351,13 @@ wss.on('connection', (ws, req) => {
             }
 
             // Check if sprite already exists
-            const existingSprite = await db.getSpriteByFilename(filename);
+            const existingSprite = await spritesDb.getSpriteByFilename(filename);
             if (existingSprite) {
                 throw new Error('Sprite with this filename already exists');
             }
 
-            // Save file to disk
-            const filePath = path.join(spritesDirectory, filename);
-            console.log(`[uploadSprite] Saving file to: ${filePath}`);
-            console.log(`[uploadSprite] spritesDirectory: ${spritesDirectory}`);
-            await fs.writeFile(filePath, buffer);
-            console.log(`[uploadSprite] File written successfully: ${filename}`);
-
-            // Save to database
-            await db.createSprite(filename, ws.username, fileSize);
-            console.log(`[uploadSprite] Database entry created for: ${filename}`);
+            // Save to sprites database with base64 data
+            await spritesDb.createSprite(filename, ws.username, fileSize, fileData);
 
             ws.send(msgpack.encode({
                 type: 'uploadSpriteSuccess',
@@ -2559,7 +2365,6 @@ wss.on('connection', (ws, req) => {
                 fileSize
             }));
         } catch (error) {
-            console.error('Failed to upload sprite', error);
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to upload sprite' }));
         }
       } else if (data.type === 'listSprites') {
@@ -2572,8 +2377,8 @@ wss.on('connection', (ws, req) => {
             const page = data.page || 1;
             const pageSize = 120; // 8x15 grid = 120 sprites per page
             
-            const sprites = await db.getSprites(page, pageSize);
-            const totalCount = await db.getSpriteCount();
+            const sprites = await spritesDb.getSprites(page, pageSize);
+            const totalCount = await spritesDb.getSpriteCount();
             const totalPages = Math.ceil(totalCount / pageSize);
 
             ws.send(msgpack.encode({
@@ -2582,14 +2387,14 @@ wss.on('connection', (ws, req) => {
                     filename: sprite.filename,
                     uploadedBy: sprite.uploaded_by,
                     uploadedAt: sprite.uploaded_at,
-                    fileSize: sprite.file_size
+                    fileSize: sprite.file_size,
+                    data: sprite.data // base64 string
                 })),
                 page,
                 totalPages,
                 totalCount
             }));
         } catch (error) {
-            console.error('Failed to list sprites', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to list sprites' }));
         }
       } else if (data.type === 'listCampaignLevels') {
