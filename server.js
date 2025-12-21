@@ -10,6 +10,7 @@ import readline from 'readline';
 import bcrypt from 'bcrypt';
 import DOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
+import http from 'http';
 
 // Password hashing configuration
 const BCRYPT_ROUNDS = 10; // Number of salt rounds (higher = more secure but slower)
@@ -104,15 +105,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const levelsDirectory = path.join(__dirname, 'levels');
 const weaponsDirectory = path.join(__dirname, 'weapons');
+const spritesDirectory = path.join(__dirname, 'sprites');
 const DEFAULT_CAMPAIGN_LEVEL_FILE = 'lev.json'; // Default slug for campaign level
 
 const MAX_LEVEL_NAME_LENGTH = 64;
 const MAX_LEVEL_DATA_BYTES = 256 * 1024; // 256 KB
 const LEVEL_SLUG_REGEX = /^[a-z0-9]+[a-z0-9-_]*$/;
+const MAX_SPRITE_SIZE = 1024; // 1 KB max sprite size
 
 await Promise.all([
     fs.mkdir(levelsDirectory, { recursive: true }),
-    fs.mkdir(weaponsDirectory, { recursive: true })
+    fs.mkdir(weaponsDirectory, { recursive: true }),
+    fs.mkdir(spritesDirectory, { recursive: true })
 ]);
 
 // Equipment slots
@@ -672,6 +676,128 @@ function checkMessageRateLimit(wsId) {
 function cleanupMessageRateLimit(wsId) {
     connectionMessageCounts.delete(wsId);
 }
+
+// ============================================================================
+
+// HTTP server for serving static files
+const wwwDirectory = path.join(__dirname, '..', 'MyApplication', 'app', 'src', 'main', 'assets', 'www');
+
+// MIME type mapping
+const mimeTypes = {
+    '.html': 'text/html',
+    '.js': 'text/javascript',
+    '.css': 'text/css',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.wav': 'audio/wav',
+    '.mp3': 'audio/mpeg',
+    '.mp4': 'video/mp4',
+    '.woff': 'application/font-woff',
+    '.woff2': 'application/font-woff2',
+    '.ttf': 'application/font-ttf',
+    '.eot': 'application/vnd.ms-fontobject',
+    '.otf': 'application/font-otf',
+    '.wasm': 'application/wasm',
+    '.mem': 'application/octet-stream',
+    '.mod': 'audio/mod',
+    '.xm': 'audio/xm',
+    '.txt': 'text/plain'
+};
+
+const httpServer = http.createServer(async (req, res) => {
+    try {
+        const host = req.headers.host || 'localhost:8300';
+        const url = new URL(req.url, `http://${host}`);
+        let pathname = url.pathname;
+        
+        // Serve sprite files from sprites directory
+        if (pathname.startsWith('/sprites/')) {
+            const filename = pathname.substring('/sprites/'.length);
+            // Security: prevent directory traversal
+            if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+                res.writeHead(403, { 'Content-Type': 'text/plain' });
+                res.end('Forbidden');
+                return;
+            }
+            
+            const spritePath = path.join(spritesDirectory, filename);
+            const resolvedSpritePath = path.resolve(spritePath);
+            const resolvedSpritesDir = path.resolve(spritesDirectory);
+            
+            if (!resolvedSpritePath.startsWith(resolvedSpritesDir)) {
+                res.writeHead(403, { 'Content-Type': 'text/plain' });
+                res.end('Forbidden');
+                return;
+            }
+            
+            try {
+                const spriteFile = await fs.readFile(spritePath);
+                res.writeHead(200, {
+                    'Content-Type': 'image/png',
+                    'Cache-Control': 'public, max-age=3600'
+                });
+                res.end(spriteFile);
+                return;
+            } catch (error) {
+                if (error.code === 'ENOENT') {
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('Sprite not found');
+                    return;
+                }
+                throw error;
+            }
+        }
+        
+        // Default to index.html for root
+        if (pathname === '/') {
+            pathname = '/index.html';
+        }
+        
+        // Remove leading slash and resolve path
+        const filePath = path.join(wwwDirectory, pathname);
+        
+        // Security: prevent directory traversal
+        const resolvedPath = path.resolve(filePath);
+        const resolvedDir = path.resolve(wwwDirectory);
+        if (!resolvedPath.startsWith(resolvedDir)) {
+            res.writeHead(403, { 'Content-Type': 'text/plain' });
+            res.end('Forbidden');
+            return;
+        }
+        
+        // Get file extension for MIME type
+        const ext = path.extname(filePath).toLowerCase();
+        const contentType = mimeTypes[ext] || 'application/octet-stream';
+        
+        // Read and serve file
+        const fileContent = await fs.readFile(filePath);
+        res.writeHead(200, { 
+            'Content-Type': contentType,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
+        res.end(fileContent);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('File not found');
+        } else {
+            console.error('Error serving file:', error);
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end('Internal server error');
+        }
+    }
+});
+
+httpServer.listen(8300, '0.0.0.0', () => {
+    console.log('✅ HTTP server running on http://0.0.0.0:8300 (accessible from all IPs)');
+    console.log(`   Serving files from: ${wwwDirectory}`);
+});
 
 // ============================================================================
 
@@ -2309,6 +2435,95 @@ wss.on('connection', (ws, req) => {
         } catch (error) {
             console.error('Failed to list levels', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to list levels' }));
+        }
+      } else if (data.type === 'uploadSprite') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+
+        try {
+            const { filename, data: fileData } = data;
+            
+            if (!filename || !fileData) {
+                throw new Error('Filename and file data are required');
+            }
+
+            // Validate filename (must be PNG)
+            if (!filename.toLowerCase().endsWith('.png')) {
+                throw new Error('Only PNG files are allowed');
+            }
+
+            // Validate filename format (alphanumeric, underscore, hyphen, dot)
+            if (!/^[a-zA-Z0-9_.-]+\.png$/i.test(filename)) {
+                throw new Error('Invalid filename format');
+            }
+
+            // Decode base64 data
+            const buffer = Buffer.from(fileData, 'base64');
+            const fileSize = buffer.length;
+
+            // Check file size (1 KB max)
+            if (fileSize > MAX_SPRITE_SIZE) {
+                throw new Error(`File size exceeds ${MAX_SPRITE_SIZE} bytes limit`);
+            }
+
+            // Validate it's actually a PNG file (check PNG signature)
+            if (buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4E || buffer[3] !== 0x47) {
+                throw new Error('Invalid PNG file format');
+            }
+
+            // Check if sprite already exists
+            const existingSprite = await db.getSpriteByFilename(filename);
+            if (existingSprite) {
+                throw new Error('Sprite with this filename already exists');
+            }
+
+            // Save file to disk
+            const filePath = path.join(spritesDirectory, filename);
+            await fs.writeFile(filePath, buffer);
+
+            // Save to database
+            await db.createSprite(filename, ws.username, fileSize);
+
+            ws.send(msgpack.encode({
+                type: 'uploadSpriteSuccess',
+                filename,
+                fileSize
+            }));
+        } catch (error) {
+            console.error('Failed to upload sprite', error);
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to upload sprite' }));
+        }
+      } else if (data.type === 'listSprites') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+
+        try {
+            const page = data.page || 1;
+            const pageSize = 120; // 8x15 grid = 120 sprites per page
+            
+            const sprites = await db.getSprites(page, pageSize);
+            const totalCount = await db.getSpriteCount();
+            const totalPages = Math.ceil(totalCount / pageSize);
+
+            ws.send(msgpack.encode({
+                type: 'spritesList',
+                sprites: sprites.map(sprite => ({
+                    filename: sprite.filename,
+                    uploadedBy: sprite.uploaded_by,
+                    uploadedAt: sprite.uploaded_at,
+                    fileSize: sprite.file_size
+                })),
+                page,
+                totalPages,
+                totalCount
+            }));
+        } catch (error) {
+            console.error('Failed to list sprites', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to list sprites' }));
         }
       } else if (data.type === 'listCampaignLevels') {
         // Admin only - list all campaign levels
