@@ -709,27 +709,34 @@ const mimeTypes = {
 };
 
 const httpServer = http.createServer(async (req, res) => {
-    // Log ALL requests immediately, before any processing
-    console.log(`\n[HTTP] ===== NEW REQUEST =====`);
-    console.log(`[HTTP] Method: ${req.method}`);
-    console.log(`[HTTP] URL: ${req.url}`);
-    console.log(`[HTTP] Headers:`, JSON.stringify(req.headers));
+    // Log ALL requests immediately, before any processing - use process.stdout.write to ensure it's not buffered
+    process.stdout.write(`\n[HTTP] ===== NEW REQUEST =====\n`);
+    process.stdout.write(`[HTTP] Method: ${req.method}\n`);
+    process.stdout.write(`[HTTP] URL: ${req.url}\n`);
     
     try {
         const host = req.headers.host || 'localhost:8300';
         const url = new URL(req.url, `http://${host}`);
         let pathname = url.pathname;
         
-        console.log(`[HTTP] Parsed pathname: ${pathname}`);
+        process.stdout.write(`[HTTP] Parsed pathname: ${pathname}\n`);
+        
+        // Test endpoint to verify HTTP server is working
+        if (pathname === '/test-sprite-server') {
+            process.stdout.write(`[HTTP] ✅ TEST ENDPOINT HIT!\n`);
+            res.writeHead(200, { 'Content-Type': 'text/plain' });
+            res.end('HTTP server is working! Sprites directory: ' + spritesDirectory);
+            return;
+        }
         
         // Serve sprite files from sprites directory
         if (pathname.startsWith('/sprites/')) {
-            console.log(`[HTTP] ✅ SPRITE REQUEST DETECTED!`);
+            process.stdout.write(`[HTTP] ✅ SPRITE REQUEST DETECTED!\n`);
             const filename = pathname.substring('/sprites/'.length);
-            console.log(`[serveSprite] ===== REQUEST START =====`);
-            console.log(`[serveSprite] Requested filename: "${filename}"`);
-            console.log(`[serveSprite] spritesDirectory: ${spritesDirectory}`);
-            console.log(`[serveSprite] wwwDirectory: ${wwwDirectory}`);
+            process.stdout.write(`[serveSprite] ===== REQUEST START =====\n`);
+            process.stdout.write(`[serveSprite] Requested filename: "${filename}"\n`);
+            process.stdout.write(`[serveSprite] spritesDirectory: ${spritesDirectory}\n`);
+            process.stdout.write(`[serveSprite] wwwDirectory: ${wwwDirectory}\n`);
             
             // Security: prevent directory traversal - only allow simple filenames
             if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\') || filename.trim() === '') {
@@ -741,14 +748,14 @@ const httpServer = http.createServer(async (req, res) => {
             
             // Try server sprites directory first
             const spritePath = path.join(spritesDirectory, filename);
-            console.log(`[serveSprite] Attempting to read from: ${spritePath}`);
+            process.stdout.write(`[serveSprite] Attempting to read from: ${spritePath}\n`);
             
             try {
                 // Check if file exists first
                 await fs.access(spritePath);
-                console.log(`[serveSprite] ✅ File exists, reading...`);
+                process.stdout.write(`[serveSprite] ✅ File exists, reading...\n`);
                 const spriteFile = await fs.readFile(spritePath);
-                console.log(`[serveSprite] ✅ File read successfully, size: ${spriteFile.length} bytes`);
+                process.stdout.write(`[serveSprite] ✅ File read successfully, size: ${spriteFile.length} bytes\n`);
                 res.writeHead(200, {
                     'Content-Type': 'image/png',
                     'Cache-Control': 'public, max-age=3600'
