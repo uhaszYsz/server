@@ -719,9 +719,14 @@ const httpServer = http.createServer(async (req, res) => {
         // Serve sprite files from sprites directory
         if (pathname.startsWith('/sprites/')) {
             const filename = pathname.substring('/sprites/'.length);
+            console.log(`[serveSprite] ===== REQUEST START =====`);
+            console.log(`[serveSprite] Requested filename: "${filename}"`);
+            console.log(`[serveSprite] spritesDirectory: ${spritesDirectory}`);
+            console.log(`[serveSprite] wwwDirectory: ${wwwDirectory}`);
             
             // Security: prevent directory traversal - only allow simple filenames
             if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\') || filename.trim() === '') {
+                console.log(`[serveSprite] ❌ Security check failed for filename: "${filename}"`);
                 res.writeHead(403, { 'Content-Type': 'text/plain' });
                 res.end('Forbidden');
                 return;
@@ -729,38 +734,59 @@ const httpServer = http.createServer(async (req, res) => {
             
             // Try server sprites directory first
             const spritePath = path.join(spritesDirectory, filename);
+            console.log(`[serveSprite] Attempting to read from: ${spritePath}`);
             
             try {
+                // Check if file exists first
+                await fs.access(spritePath);
+                console.log(`[serveSprite] ✅ File exists, reading...`);
                 const spriteFile = await fs.readFile(spritePath);
+                console.log(`[serveSprite] ✅ File read successfully, size: ${spriteFile.length} bytes`);
                 res.writeHead(200, {
                     'Content-Type': 'image/png',
                     'Cache-Control': 'public, max-age=3600'
                 });
                 res.end(spriteFile);
+                console.log(`[serveSprite] ✅ Response sent successfully`);
                 return;
             } catch (error) {
+                console.log(`[serveSprite] ❌ Error reading from server directory: ${error.code} - ${error.message}`);
                 if (error.code === 'ENOENT') {
                     // Fallback: check assets folder (sprites/userSprites/)
+                    const assetsSpritePath = path.join(wwwDirectory, 'sprites', 'userSprites', filename);
+                    console.log(`[serveSprite] Trying assets folder: ${assetsSpritePath}`);
                     try {
-                        const assetsSpritePath = path.join(wwwDirectory, 'sprites', 'userSprites', filename);
+                        await fs.access(assetsSpritePath);
+                        console.log(`[serveSprite] ✅ File exists in assets, reading...`);
                         const spriteFile = await fs.readFile(assetsSpritePath);
+                        console.log(`[serveSprite] ✅ Assets file read successfully, size: ${spriteFile.length} bytes`);
                         res.writeHead(200, {
                             'Content-Type': 'image/png',
                             'Cache-Control': 'public, max-age=3600'
                         });
                         res.end(spriteFile);
+                        console.log(`[serveSprite] ✅ Response sent from assets`);
                         return;
                     } catch (assetsError) {
+                        console.log(`[serveSprite] ❌ Assets file also not found: ${assetsError.code} - ${assetsError.message}`);
+                        // List files in sprites directory for debugging
+                        try {
+                            const files = await fs.readdir(spritesDirectory);
+                            console.log(`[serveSprite] Files in spritesDirectory:`, files);
+                        } catch (listError) {
+                            console.log(`[serveSprite] ❌ Cannot list spritesDirectory: ${listError.message}`);
+                        }
                         // Both failed - return 404
                         res.writeHead(404, { 'Content-Type': 'text/plain' });
-                        res.end('Sprite not found');
+                        res.end(`Sprite not found: ${filename}`);
+                        console.log(`[serveSprite] ❌ 404 sent`);
                         return;
                     }
                 }
                 // Other error
-                console.error(`[serveSprite] Error reading sprite ${filename}:`, error);
+                console.error(`[serveSprite] ❌ Unexpected error reading sprite ${filename}:`, error);
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
-                res.end('Server error');
+                res.end(`Server error: ${error.message}`);
                 return;
             }
         }
