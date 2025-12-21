@@ -744,6 +744,25 @@ const httpServer = http.createServer(async (req, res) => {
                 return;
             } catch (error) {
                 if (error.code === 'ENOENT') {
+                    // Fallback: check assets folder (sprites/userSprites/)
+                    try {
+                        const assetsSpritePath = path.join(wwwDirectory, 'sprites', 'userSprites', filename);
+                        const resolvedAssetsPath = path.resolve(assetsSpritePath);
+                        const resolvedAssetsDir = path.resolve(path.join(wwwDirectory, 'sprites', 'userSprites'));
+                        
+                        if (resolvedAssetsPath.startsWith(resolvedAssetsDir)) {
+                            const assetsSpriteFile = await fs.readFile(assetsSpritePath);
+                            res.writeHead(200, {
+                                'Content-Type': 'image/png',
+                                'Cache-Control': 'public, max-age=3600'
+                            });
+                            res.end(assetsSpriteFile);
+                            return;
+                        }
+                    } catch (assetsError) {
+                        // Assets file also not found, continue to 404
+                    }
+                    
                     res.writeHead(404, { 'Content-Type': 'text/plain' });
                     res.end('Sprite not found');
                     return;
