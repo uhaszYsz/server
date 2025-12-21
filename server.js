@@ -709,16 +709,18 @@ const mimeTypes = {
 };
 
 const httpServer = http.createServer(async (req, res) => {
+    // Log ALL requests immediately, before any processing
+    console.log(`\n[HTTP] ===== NEW REQUEST =====`);
+    console.log(`[HTTP] Method: ${req.method}`);
+    console.log(`[HTTP] URL: ${req.url}`);
+    console.log(`[HTTP] Headers:`, JSON.stringify(req.headers));
+    
     try {
         const host = req.headers.host || 'localhost:8300';
         const url = new URL(req.url, `http://${host}`);
         let pathname = url.pathname;
         
-        console.log(`\n[HTTP] ===== NEW REQUEST =====`);
-        console.log(`[HTTP] Method: ${req.method}`);
-        console.log(`[HTTP] Path: ${pathname}`);
-        console.log(`[HTTP] Host: ${host}`);
-        console.log(`[HTTP] Full URL: ${req.url}`);
+        console.log(`[HTTP] Parsed pathname: ${pathname}`);
         
         // Serve sprite files from sprites directory
         if (pathname.startsWith('/sprites/')) {
@@ -842,9 +844,15 @@ const httpServer = http.createServer(async (req, res) => {
     }
 });
 
+httpServer.on('error', (error) => {
+    console.error('❌ HTTP Server Error:', error);
+});
+
 httpServer.listen(8300, '0.0.0.0', () => {
     console.log('✅ HTTP server running on http://0.0.0.0:8300 (accessible from all IPs)');
     console.log(`   Serving files from: ${wwwDirectory}`);
+    console.log(`   Sprites directory: ${spritesDirectory}`);
+    console.log(`   HTTP server is ready to receive requests`);
 });
 
 // ============================================================================
