@@ -60,27 +60,43 @@ export function createSprite(filename, uploadedBy, fileSize, base64Data) {
 }
 
 // Get sprites with pagination
-export function getSprites(page = 1, pageSize = 120) {
+export function getSprites(page = 1, pageSize = 120, uploadedBy = null) {
     return new Promise((resolve, reject) => {
         const offset = (page - 1) * pageSize;
-        spritesDb.all(
-            'SELECT id, filename, uploaded_by, uploaded_at, file_size, data FROM sprites ORDER BY uploaded_at DESC LIMIT ? OFFSET ?',
-            [pageSize, offset],
-            (err, rows) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(rows);
-                }
+        let query, params;
+        
+        if (uploadedBy) {
+            query = 'SELECT id, filename, uploaded_by, uploaded_at, file_size, data FROM sprites WHERE uploaded_by = ? ORDER BY uploaded_at DESC LIMIT ? OFFSET ?';
+            params = [uploadedBy, pageSize, offset];
+        } else {
+            query = 'SELECT id, filename, uploaded_by, uploaded_at, file_size, data FROM sprites ORDER BY uploaded_at DESC LIMIT ? OFFSET ?';
+            params = [pageSize, offset];
+        }
+        
+        spritesDb.all(query, params, (err, rows) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows);
             }
-        );
+        });
     });
 }
 
 // Get sprite count
-export function getSpriteCount() {
+export function getSpriteCount(uploadedBy = null) {
     return new Promise((resolve, reject) => {
-        spritesDb.get('SELECT COUNT(*) as count FROM sprites', [], (err, row) => {
+        let query, params;
+        
+        if (uploadedBy) {
+            query = 'SELECT COUNT(*) as count FROM sprites WHERE uploaded_by = ?';
+            params = [uploadedBy];
+        } else {
+            query = 'SELECT COUNT(*) as count FROM sprites';
+            params = [];
+        }
+        
+        spritesDb.get(query, params, (err, row) => {
             if (err) {
                 reject(err);
             } else {

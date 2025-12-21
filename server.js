@@ -2376,9 +2376,11 @@ wss.on('connection', (ws, req) => {
         try {
             const page = data.page || 1;
             const pageSize = 120; // 8x15 grid = 120 sprites per page
+            const onlyMine = data.onlyMine === true;
+            const uploadedBy = onlyMine ? ws.username : null;
             
-            const sprites = await spritesDb.getSprites(page, pageSize);
-            const totalCount = await spritesDb.getSpriteCount();
+            const sprites = await spritesDb.getSprites(page, pageSize, uploadedBy);
+            const totalCount = await spritesDb.getSpriteCount(uploadedBy);
             const totalPages = Math.ceil(totalCount / pageSize);
 
             ws.send(msgpack.encode({
@@ -2396,6 +2398,45 @@ wss.on('connection', (ws, req) => {
             }));
         } catch (error) {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to list sprites' }));
+        }
+      } else if (data.type === 'getSprite') {
+        try {
+            const { filename } = data;
+            if (!filename) throw new Error('Filename is required');
+            
+            const sprite = await spritesDb.getSpriteByFilename(filename);
+            if (!sprite) throw new Error('Sprite not found');
+            
+            ws.send(msgpack.encode({
+                type: 'getSpriteResponse',
+                filename: sprite.filename,
+                data: sprite.data // base64 string
+            }));
+        } catch (error) {
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to get sprite' }));
+        }
+      } else if (data.type === 'getSprites') {
+        try {
+            const { filenames } = data;
+            if (!filenames || !Array.isArray(filenames)) throw new Error('Filenames array is required');
+            
+            const sprites = [];
+            for (const filename of filenames) {
+                const sprite = await spritesDb.getSpriteByFilename(filename);
+                if (sprite) {
+                    sprites.push({
+                        filename: sprite.filename,
+                        data: sprite.data
+                    });
+                }
+            }
+            
+            ws.send(msgpack.encode({
+                type: 'getSpritesResponse',
+                sprites: sprites
+            }));
+        } catch (error) {
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to get sprites' }));
         }
       } else if (data.type === 'listCampaignLevels') {
         // Admin only - list all campaign levels
