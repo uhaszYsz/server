@@ -735,7 +735,9 @@ const httpServer = http.createServer(async (req, res) => {
             }
             
             try {
+                console.log(`[serveSprite] Attempting to read: ${spritePath}`);
                 const spriteFile = await fs.readFile(spritePath);
+                console.log(`[serveSprite] File found, size: ${spriteFile.length} bytes`);
                 res.writeHead(200, {
                     'Content-Type': 'image/png',
                     'Cache-Control': 'public, max-age=3600'
@@ -744,14 +746,17 @@ const httpServer = http.createServer(async (req, res) => {
                 return;
             } catch (error) {
                 if (error.code === 'ENOENT') {
+                    console.log(`[serveSprite] File not found in ${spritePath}, checking assets folder...`);
                     // Fallback: check assets folder (sprites/userSprites/)
                     try {
                         const assetsSpritePath = path.join(wwwDirectory, 'sprites', 'userSprites', filename);
+                        console.log(`[serveSprite] Checking assets: ${assetsSpritePath}`);
                         const resolvedAssetsPath = path.resolve(assetsSpritePath);
                         const resolvedAssetsDir = path.resolve(path.join(wwwDirectory, 'sprites', 'userSprites'));
                         
                         if (resolvedAssetsPath.startsWith(resolvedAssetsDir)) {
                             const assetsSpriteFile = await fs.readFile(assetsSpritePath);
+                            console.log(`[serveSprite] Found in assets folder, size: ${assetsSpriteFile.length} bytes`);
                             res.writeHead(200, {
                                 'Content-Type': 'image/png',
                                 'Cache-Control': 'public, max-age=3600'
@@ -760,9 +765,11 @@ const httpServer = http.createServer(async (req, res) => {
                             return;
                         }
                     } catch (assetsError) {
+                        console.log(`[serveSprite] Assets file also not found: ${assetsError.message}`);
                         // Assets file also not found, continue to 404
                     }
                     
+                    console.log(`[serveSprite] 404 - Sprite not found: ${filename}`);
                     res.writeHead(404, { 'Content-Type': 'text/plain' });
                     res.end('Sprite not found');
                     return;
@@ -2500,10 +2507,14 @@ wss.on('connection', (ws, req) => {
 
             // Save file to disk
             const filePath = path.join(spritesDirectory, filename);
+            console.log(`[uploadSprite] Saving file to: ${filePath}`);
+            console.log(`[uploadSprite] spritesDirectory: ${spritesDirectory}`);
             await fs.writeFile(filePath, buffer);
+            console.log(`[uploadSprite] File written successfully: ${filename}`);
 
             // Save to database
             await db.createSprite(filename, ws.username, fileSize);
+            console.log(`[uploadSprite] Database entry created for: ${filename}`);
 
             ws.send(msgpack.encode({
                 type: 'uploadSpriteSuccess',
