@@ -714,10 +714,15 @@ const httpServer = http.createServer(async (req, res) => {
         const url = new URL(req.url, `http://${host}`);
         let pathname = url.pathname;
         
-        console.log(`[HTTP] ${req.method} ${pathname}`);
+        console.log(`\n[HTTP] ===== NEW REQUEST =====`);
+        console.log(`[HTTP] Method: ${req.method}`);
+        console.log(`[HTTP] Path: ${pathname}`);
+        console.log(`[HTTP] Host: ${host}`);
+        console.log(`[HTTP] Full URL: ${req.url}`);
         
         // Serve sprite files from sprites directory
         if (pathname.startsWith('/sprites/')) {
+            console.log(`[HTTP] ✅ SPRITE REQUEST DETECTED!`);
             const filename = pathname.substring('/sprites/'.length);
             console.log(`[serveSprite] ===== REQUEST START =====`);
             console.log(`[serveSprite] Requested filename: "${filename}"`);
@@ -813,7 +818,9 @@ const httpServer = http.createServer(async (req, res) => {
         const contentType = mimeTypes[ext] || 'application/octet-stream';
         
         // Read and serve file
+        console.log(`[HTTP] Serving file: ${filePath}`);
         const fileContent = await fs.readFile(filePath);
+        console.log(`[HTTP] ✅ File served successfully, size: ${fileContent.length} bytes`);
         res.writeHead(200, { 
             'Content-Type': contentType,
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -822,11 +829,13 @@ const httpServer = http.createServer(async (req, res) => {
         });
         res.end(fileContent);
     } catch (error) {
+        console.error(`[HTTP] ❌ Error serving file:`, error);
         if (error.code === 'ENOENT') {
+            console.log(`[HTTP] ❌ File not found: ${filePath}`);
             res.writeHead(404, { 'Content-Type': 'text/plain' });
             res.end('File not found');
         } else {
-            console.error('Error serving file:', error);
+            console.error('[HTTP] ❌ Internal server error:', error);
             res.writeHead(500, { 'Content-Type': 'text/plain' });
             res.end('Internal server error');
         }
