@@ -2326,13 +2326,13 @@ wss.on('connection', (ws, req) => {
                 throw new Error('Filename and file data are required');
             }
 
-            // Validate filename (must be PNG)
-            if (!filename.toLowerCase().endsWith('.png')) {
-                throw new Error('Only PNG files are allowed');
+            // Validate filename (must be GIF or PNG)
+            if (!filename.toLowerCase().endsWith('.gif') && !filename.toLowerCase().endsWith('.png')) {
+                throw new Error('Only GIF and PNG files are allowed');
             }
 
             // Validate filename format (alphanumeric, underscore, hyphen, dot)
-            if (!/^[a-zA-Z0-9_.-]+\.png$/i.test(filename)) {
+            if (!/^[a-zA-Z0-9_.-]+\.(gif|png)$/i.test(filename)) {
                 throw new Error('Invalid filename format');
             }
 
@@ -2345,9 +2345,20 @@ wss.on('connection', (ws, req) => {
                 throw new Error(`File size exceeds ${MAX_SPRITE_SIZE} bytes limit`);
             }
 
-            // Validate it's actually a PNG file (check PNG signature)
-            if (buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4E || buffer[3] !== 0x47) {
-                throw new Error('Invalid PNG file format');
+            // Validate file format based on extension
+            const isGIF = filename.toLowerCase().endsWith('.gif');
+            const isPNG = filename.toLowerCase().endsWith('.png');
+            
+            if (isGIF) {
+                // Check GIF signature: "GIF87a" or "GIF89a"
+                if (buffer[0] !== 0x47 || buffer[1] !== 0x49 || buffer[2] !== 0x46 || buffer[3] !== 0x38) {
+                    throw new Error('Invalid GIF file format');
+                }
+            } else if (isPNG) {
+                // Check PNG signature
+                if (buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4E || buffer[3] !== 0x47) {
+                    throw new Error('Invalid PNG file format');
+                }
             }
 
             // Check if sprite already exists
