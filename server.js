@@ -501,83 +501,7 @@ await spritesDb.initSpritesDatabase();
 
 let globalTimer = Date.now();
 
-// ============================================================================
-// Client Authentication - Verify legitimate game client
-// ============================================================================
-// Challenge-response system: Server sends a random challenge, client must respond with correct hash
-// This is more secure than a static secret, but still not perfect (determined attackers can reverse engineer)
-
-const CLIENT_SECRET_REQUIRED = true; // Set to false to disable client verification (for testing)
-const CLIENT_SECRET_KEY = 'game_client_secret_2024_secure_token_v1'; // Shared secret key (change to random string)
-
-// Track pending challenges and verified clients
-const pendingChallenges = new Map(); // ws.id -> {challenge, timestamp}
-const verifiedClients = new Set(); // Set of ws.id that have verified
-const CHALLENGE_TIMEOUT_MS = 10000; // 10 seconds to respond to challenge
-
-// Generate a random challenge
-function generateChallenge() {
-    return crypto.randomBytes(16).toString('hex');
-}
-
-// Compute expected response: HMAC-SHA256(challenge + timestamp, secret)
-function computeExpectedResponse(challenge, timestamp) {
-    const hmac = crypto.createHmac('sha256', CLIENT_SECRET_KEY);
-    hmac.update(challenge + timestamp);
-    return hmac.digest('hex');
-}
-
-// Verify client response to challenge
-function verifyClientChallenge(ws, challenge, timestamp, response) {
-    if (!CLIENT_SECRET_REQUIRED) {
-        verifiedClients.add(ws.id);
-        return true; // Client verification disabled
-    }
-    
-    // Check if challenge exists and is not expired
-    const pending = pendingChallenges.get(ws.id);
-    if (!pending || pending.challenge !== challenge) {
-        return false; // Invalid challenge
-    }
-    
-    const now = Date.now();
-    if (now - pending.timestamp > CHALLENGE_TIMEOUT_MS) {
-        pendingChallenges.delete(ws.id);
-        return false; // Challenge expired
-    }
-    
-    // Verify response matches expected hash
-    const expectedResponse = computeExpectedResponse(challenge, timestamp);
-    if (response === expectedResponse) {
-        verifiedClients.add(ws.id);
-        pendingChallenges.delete(ws.id);
-        return true;
-    }
-    
-    return false;
-}
-
-// Send challenge to client
-function sendChallenge(ws) {
-    const challenge = generateChallenge();
-    const timestamp = Date.now();
-    pendingChallenges.set(ws.id, { challenge, timestamp });
-    
-    ws.send(msgpack.encode({
-        type: 'clientChallenge',
-        challenge: challenge,
-        timestamp: timestamp
-    }));
-}
-
-// Check if client is verified
-function isClientVerified(ws) {
-    if (!CLIENT_SECRET_REQUIRED) {
-        return true; // Client verification disabled
-    }
-    
-    return verifiedClients.has(ws.id);
-}
+// (Client verification feature removed)
 
 // ============================================================================
 // DDoS Protection - Application Level
@@ -1033,17 +957,9 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => {
     clearTimeout(timeoutId);
     cleanupMessageRateLimit(ws.id);
-    verifiedClients.delete(ws.id);
-    pendingChallenges.delete(ws.id);
   });
   
-  // Send challenge immediately on connection
-  if (CLIENT_SECRET_REQUIRED) {
-    sendChallenge(ws);
-  } else {
-    // If verification disabled, mark as verified immediately
-    verifiedClients.add(ws.id);
-  }
+  // (Verification removed)  
   
   ensurePartyForClient(ws);
 
@@ -1070,32 +986,7 @@ wss.on('connection', (ws, req) => {
     try {
       const data = msgpack.decode(message);
       
-      // Handle client challenge response
-      if (data.type === 'clientChallengeResponse') {
-        const { challenge, timestamp, response } = data;
-        if (verifyClientChallenge(ws, challenge, timestamp, response)) {
-          console.log(`✅ Client verified: ID=${ws.id}, IP=${ws.clientIP}`);
-          ws.send(msgpack.encode({ type: 'clientVerified' }));
-          return; // Don't process further
-        } else {
-          console.warn(`⚠️  Invalid client challenge response: ID=${ws.id}, IP=${ws.clientIP}`);
-          ws.close(1008, 'Invalid client - not a legitimate game client');
-          return;
-        }
-      }
-      
-      // For all other messages (except googleOAuth), verify client is legitimate
-      // Exception: Allow getPlayerData if user is already logged in (they may have logged in before client verification)
-      if (data.type !== 'googleOAuth' && 
-          !(data.type === 'getPlayerData' && ws.username) && !isClientVerified(ws)) {
-        // If not verified and not already sent challenge, send one
-        if (!pendingChallenges.has(ws.id)) {
-          sendChallenge(ws);
-        }
-        console.warn(`⚠️  Unverified client attempted to send message: ID=${ws.id}, IP=${ws.clientIP}, Type=${data.type}`);
-        // Don't close connection, just ignore the message (client should respond to challenge)
-        return;
-      }
+      // (Verification removed)
       
       if (data.type === 'getPlayerData') {
         // Send current player data to client
