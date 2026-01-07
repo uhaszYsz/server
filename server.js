@@ -3137,9 +3137,7 @@ wss.on('connection', (ws, req) => {
     console.log(`❌ Client disconnected: ID=${ws.id}, Total clients: ${clients.size - 1}`);
     clients.delete(ws.id);
     
-    // Clean up client verification and rate limiting
-    verifiedClients.delete(ws.id);
-    pendingChallenges.delete(ws.id);
+    // Clean up rate limiting
     cleanupMessageRateLimit(ws.id);
     
     // Handle party disconnection
