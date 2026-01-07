@@ -1084,9 +1084,9 @@ wss.on('connection', (ws, req) => {
         }
       }
       
-      // For all other messages (except login/register/googleOAuth), verify client is legitimate
+      // For all other messages (except googleOAuth), verify client is legitimate
       // Exception: Allow getPlayerData if user is already logged in (they may have logged in before client verification)
-      if (data.type !== 'login' && data.type !== 'quickRegister' && data.type !== 'googleOAuth' && 
+      if (data.type !== 'googleOAuth' && 
           !(data.type === 'getPlayerData' && ws.username) && !isClientVerified(ws)) {
         // If not verified and not already sent challenge, send one
         if (!pendingChallenges.has(ws.id)) {
@@ -1097,63 +1097,7 @@ wss.on('connection', (ws, req) => {
         return;
       }
       
-      if (data.type === 'quickRegister') {
-        const username = `user-${Date.now()}`;
-        const password = crypto.randomBytes(8).toString('hex');
-        const inventoryData = initializeInventoryAndEquipment();
-        const newUser = {
-            username,
-            password,
-            stats: getDefaultStats(),
-            inventory: inventoryData.inventory,
-            equipment: inventoryData.equipment,
-            weaponData: inventoryData.weaponData,
-            passiveAbility: inventoryData.passiveAbility
-        };
-        await db.createUser(newUser);
-        ws.username = username; // Store username
-        ws.rank = 'player'; // Default rank for new users
-        ws.isAdmin = false; // New users are not admin
-        ws.send(msgpack.encode({ type: 'registerSuccess', username, password }));
-        // Auto-join first campaign lobby
-        await joinFirstCampaignLobby(ws);
-      } else if (data.type === 'login') {
-        // Validate username and password
-        if (!data.username || !data.password) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Username and password required' }));
-            return;
-        }
-        
-        const usernameValidation = validateUsername(data.username);
-        if (!usernameValidation.valid) {
-            ws.send(msgpack.encode({ type: 'error', message: usernameValidation.error }));
-            return;
-        }
-        
-        const passwordValidation = validatePassword(data.password);
-        if (!passwordValidation.valid) {
-            ws.send(msgpack.encode({ type: 'error', message: passwordValidation.error }));
-            return;
-        }
-        
-        const user = await db.findUser(usernameValidation.value, passwordValidation.value);
-        if (user) {
-            ws.username = user.username; // Store username on successful login
-            ws.rank = user.rank || 'player'; // Set rank from user data
-            ws.isAdmin = (ws.rank === 'admin'); // Set admin flag based on rank
-            ws.send(msgpack.encode({ 
-                type: 'loginSuccess', 
-                username: ws.username,
-                rank: ws.rank
-            }));
-            const party = ensurePartyForClient(ws);
-            broadcastPartyUpdate(party);
-            // Auto-join first campaign lobby
-            await joinFirstCampaignLobby(ws);
-        } else {
-            ws.send(msgpack.encode({ type: 'loginFail' }));
-        }
-      } else if (data.type === 'getPlayerData') {
+      if (data.type === 'getPlayerData') {
         // Send current player data to client
         if (!ws.username) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
@@ -3245,38 +3189,6 @@ wss.on('connection', (ws, req) => {
         } catch (error) {
             console.error('Failed to delete forum post', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete forum post' }));
-        }
-      } else if (data.type === 'verifyUser') {
-        if (!data.username || !data.password) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Username and password required' }));
-            return;
-        }
-        
-        // Validate username and password
-        const usernameValidation = validateUsername(data.username);
-        if (!usernameValidation.valid) {
-            ws.send(msgpack.encode({ type: 'error', message: usernameValidation.error }));
-            return;
-        }
-        
-        const passwordValidation = validatePassword(data.password);
-        if (!passwordValidation.valid) {
-            ws.send(msgpack.encode({ type: 'error', message: passwordValidation.error }));
-            return;
-        }
-        
-        try {
-            // verifyUser now uses password hashing internally
-            const verified = await db.verifyUser(usernameValidation.value, passwordValidation.value);
-            if (verified) {
-                ws.send(msgpack.encode({ type: 'userVerified', success: true }));
-                console.log(`✅ User "${usernameValidation.value}" verified successfully`);
-            } else {
-                ws.send(msgpack.encode({ type: 'userVerified', success: false, message: 'Invalid username or password' }));
-            }
-        } catch (error) {
-            console.error('Failed to verify user', error);
-            ws.send(msgpack.encode({ type: 'error', message: 'Failed to verify user' }));
         }
       } else if (data.type === 'likeForumPost') {
         if (!ws.username) {
