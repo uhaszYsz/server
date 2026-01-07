@@ -1044,6 +1044,73 @@ wss.on('connection', (ws, req) => {
         } else {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
         }
+      } else if (data.type === 'verifySessionPassword') {
+        // Verify session password for restoring Google OAuth login
+        if (!data.username || !data.sessionPassword) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ 
+                    type: 'sessionPasswordResult', 
+                    success: false, 
+                    message: 'Username and password required' 
+                }));
+            }
+            return;
+        }
+
+        try {
+            const user = await db.getUserByUsername(data.username);
+            if (!user) {
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(msgpack.encode({ 
+                        type: 'sessionPasswordResult', 
+                        success: false, 
+                        message: 'User not found' 
+                    }));
+                }
+                return;
+            }
+
+            // Verify password against stored hash
+            const passwordValid = await bcrypt.compare(data.sessionPassword, user.password);
+            
+            if (passwordValid) {
+                // Password is valid - log user in
+                ws.username = user.username;
+                ws.rank = user.rank || 'player';
+                ws.isAdmin = (ws.rank === 'admin');
+
+                console.log(`✅ Session password verified: Username=${user.username}`);
+
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(msgpack.encode({
+                        type: 'sessionPasswordResult',
+                        success: true,
+                        username: user.username,
+                        rank: user.rank,
+                        email: user.email
+                    }));
+                }
+            } else {
+                // Password is invalid
+                console.log(`❌ Invalid session password for user: ${data.username}`);
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(msgpack.encode({ 
+                        type: 'sessionPasswordResult', 
+                        success: false, 
+                        message: 'Invalid password' 
+                    }));
+                }
+            }
+        } catch (error) {
+            console.error('❌ Session password verification error:', error);
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ 
+                    type: 'sessionPasswordResult', 
+                    success: false, 
+                    message: 'Verification error' 
+                }));
+            }
+        }
       } else if (data.type === 'equipItem') {
         // Handle equipping an item
         if (!ws.username) {
@@ -2826,6 +2893,16 @@ wss.on('connection', (ws, req) => {
                 }
             }
 
+            // Generate a secure random password for session management
+            const sessionPassword = crypto.randomBytes(32).toString('hex');
+            const hashedSessionPassword = await bcrypt.hash(sessionPassword, BCRYPT_ROUNDS);
+            
+            // Update user's password in database with the new session password hash
+            user.password = hashedSessionPassword;
+            await db.updateUser(user.username, user);
+            
+            console.log(`✅ Generated session password for user: ${user.username}`);
+
             // Log user in
             ws.username = user.username;
             ws.rank = user.rank || 'player';
@@ -2833,14 +2910,15 @@ wss.on('connection', (ws, req) => {
 
             console.log(`✅ Google OAuth login successful: Username=${user.username}, Email=${email}`);
 
-            // Send success response
+            // Send success response with session password
             if (ws.readyState === ws.OPEN) {
                 ws.send(msgpack.encode({
                     type: 'loginSuccess',
                     username: user.username,
                     rank: user.rank,
                     email: user.email,
-                    isGoogleAuth: true
+                    isGoogleAuth: true,
+                    sessionPassword: sessionPassword // Send plain password to client for localStorage
                 }));
             }
 
