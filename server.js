@@ -1084,8 +1084,10 @@ wss.on('connection', (ws, req) => {
         }
       }
       
-      // For all other messages (except login/register), verify client is legitimate
-      if (data.type !== 'login' && data.type !== 'quickRegister' && !isClientVerified(ws)) {
+      // For all other messages (except login/register/googleOAuth), verify client is legitimate
+      // Exception: Allow getPlayerData if user is already logged in (they may have logged in before client verification)
+      if (data.type !== 'login' && data.type !== 'quickRegister' && data.type !== 'googleOAuth' && 
+          !(data.type === 'getPlayerData' && ws.username) && !isClientVerified(ws)) {
         // If not verified and not already sent challenge, send one
         if (!pendingChallenges.has(ws.id)) {
           sendChallenge(ws);
