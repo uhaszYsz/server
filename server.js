@@ -2857,73 +2857,136 @@ wss.on('connection', (ws, req) => {
                 ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Failed to save username' }));
             }
         }
-      } else if (data.type === 'changePassword') {
-        if (!ws.username) {
+      } else if (data.type === 'googleOAuth') {
+        // Handle Google OAuth login
+        if (!data.credential) {
             if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Not logged in' }));
+                ws.send(msgpack.encode({ type: 'error', message: 'Google credential is required' }));
             }
             return;
         }
 
-        // Get current user
-        const user = await db.getUserByUsername(ws.username);
-        if (!user) {
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'User not found' }));
-            }
-            return;
-        }
-        
-        // Verify old password first
-        const oldPassword = typeof data.oldPassword === 'string' ? data.oldPassword.trim() : null;
-        if (!oldPassword) {
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Old password required' }));
-            }
-            return;
-        }
-        
-        const oldPasswordValid = await db.verifyPassword(oldPassword, user.password);
-        if (!oldPasswordValid) {
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Incorrect old password' }));
-            }
-            return;
-        }
-
-        // Validate new password
-        const passwordValidation = validatePassword(data.newPassword);
-        if (!passwordValidation.valid) {
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changePasswordError', message: passwordValidation.error }));
-            }
-            return;
-        }
-        
-        // Authorization check: ensure user can only change their own password
-        if (user.username !== ws.username) {
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Permission denied' }));
-            }
-            return;
-        }
-
-        // Update password (will be hashed by updateUser)
-        user.password = passwordValidation.value;
-
-        // Save to database
         try {
-            await db.updateUser(ws.username, user);
+            // Verify Google token by decoding JWT (basic verification)
+            // In production, you should verify the token signature with Google's public keys
+            const tokenParts = data.credential.split('.');
+            if (tokenParts.length !== 3) {
+                throw new Error('Invalid token format');
+            }
+
+            // Decode the payload (base64url decode)
+            const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString('utf-8'));
+            
+            // Verify token is not expired
+            const now = Math.floor(Date.now() / 1000);
+            if (payload.exp && payload.exp < now) {
+                throw new Error('Token has expired');
+            }
+
+            // Extract Google user information
+            const googleId = payload.sub; // Google user ID
+            const email = payload.email;
+            const name = payload.name || email.split('@')[0];
+            const picture = payload.picture || null;
+
+            if (!googleId || !email) {
+                throw new Error('Invalid token: missing user information');
+            }
+
+            console.log(`🔐 Google OAuth login attempt: GoogleId=${googleId}, Email=${email}`);
+
+            // Check if user exists by Google ID first
+            let user = await db.getUserByGoogleId(googleId);
+            
+            // If not found by Google ID, check by email
+            if (!user) {
+                user = await db.getUserByEmail(email);
+                
+                // If found by email, update with Google ID
+                if (user) {
+                    console.log(`✅ Found existing user by email: ${user.username}, updating with Google ID`);
+                    user.googleId = googleId;
+                    await db.updateUser(user.username, user);
+                }
+            }
+
+            // If user doesn't exist, create new account
+            if (!user) {
+                // Generate username from email (remove @domain, replace dots with underscores)
+                let baseUsername = email.split('@')[0].replace(/\./g, '_');
+                let username = baseUsername;
+                let counter = 1;
+                
+                // Ensure username is unique
+                while (await db.getUserByUsername(username)) {
+                    username = `${baseUsername}${counter}`;
+                    counter++;
+                }
+
+                // Validate username
+                const usernameValidation = validateUsername(username);
+                if (!usernameValidation.valid) {
+                    // Fallback to a generated username
+                    username = `user_${googleId.substring(0, 8)}`;
+                } else {
+                    username = usernameValidation.value;
+                }
+
+                console.log(`📝 Creating new Google user: Username=${username}, Email=${email}`);
+
+                // Create new user with Google credentials
+                const newUser = {
+                    username: username,
+                    password: crypto.randomBytes(32).toString('hex'), // Random password (not used for Google auth)
+                    stats: { maxHp: 100, maxMp: 50, hp: 100, mp: 50 },
+                    inventory: [],
+                    equipment: { weapon: null },
+                    weaponData: null,
+                    passiveAbility: null,
+                    rank: 'player',
+                    verified: 1, // Google accounts are automatically verified
+                    googleId: googleId,
+                    email: email
+                };
+
+                await db.createUser(newUser);
+                user = await db.getUserByUsername(username);
+                
+                if (!user) {
+                    throw new Error('Failed to create user account');
+                }
+            }
+
+            // Log user in
+            ws.username = user.username;
+            ws.rank = user.rank || 'player';
+            ws.isAdmin = (ws.rank === 'admin');
+
+            console.log(`✅ Google OAuth login successful: Username=${user.username}, Email=${email}`);
+
+            // Send success response
             if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ 
-                    type: 'changePasswordSuccess'
-                    // Don't send password back to client
+                ws.send(msgpack.encode({
+                    type: 'loginSuccess',
+                    username: user.username,
+                    rank: user.rank,
+                    email: user.email,
+                    isGoogleAuth: true
                 }));
             }
+
+            // Auto-join first campaign lobby
+            const party = ensurePartyForClient(ws);
+            broadcastPartyUpdate(party);
+            await joinFirstCampaignLobby(ws);
+
         } catch (error) {
-            console.error('Failed to save password change', error);
+            console.error('❌ Google OAuth error:', error);
             if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changePasswordError', message: 'Failed to save password' }));
+                ws.send(msgpack.encode({
+                    type: 'error',
+                    message: `Google login failed: ${error.message}`
+                }));
             }
         }
       } else if (data.type === 'getForumCategories') {

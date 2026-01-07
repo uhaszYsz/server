@@ -64,6 +64,26 @@ export function initDatabase() {
                     }
                 });
                 
+                // Add googleId column if it doesn't exist (migration for existing databases)
+                db.run('ALTER TABLE users ADD COLUMN googleId TEXT', (err) => {
+                    // Ignore error if column already exists
+                    if (err && !err.message.includes('duplicate column')) {
+                        console.warn('Warning: Could not add googleId column:', err.message);
+                    } else if (!err) {
+                        console.log('✅ GoogleId column added to users table');
+                    }
+                });
+                
+                // Add email column if it doesn't exist (migration for existing databases)
+                db.run('ALTER TABLE users ADD COLUMN email TEXT', (err) => {
+                    // Ignore error if column already exists
+                    if (err && !err.message.includes('duplicate column')) {
+                        console.warn('Warning: Could not add email column:', err.message);
+                    } else if (!err) {
+                        console.log('✅ Email column added to users table');
+                    }
+                });
+                
                 // Create forum tables
                 db.run(`
                     CREATE TABLE IF NOT EXISTS forum_categories (
@@ -201,8 +221,8 @@ export function createUser(user) {
             const hashedPassword = await hashPassword(user.password);
             
             const stmt = db.prepare(`
-                INSERT INTO users (username, password, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO users (username, password, stats, inventory, equipment, weaponData, passiveAbility, rank, verified, googleId, email)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             stmt.run(
@@ -215,6 +235,8 @@ export function createUser(user) {
                 user.passiveAbility || null,
                 user.rank || 'player',
                 user.verified !== undefined ? user.verified : 0,
+                user.googleId || null,
+                user.email || null,
                 function(err) {
                     if (err) {
                         reject(err);
@@ -250,7 +272,9 @@ export function getAllUsers() {
                 weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
                 passiveAbility: row.passiveAbility || null,
                 rank: row.rank || 'player',
-                verified: row.verified !== undefined ? row.verified : 0
+                verified: row.verified !== undefined ? row.verified : 0,
+                googleId: row.googleId || null,
+                email: row.email || null
             }));
 
             resolve(users);
@@ -282,7 +306,77 @@ export function getUserByUsername(username) {
                 weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
                 passiveAbility: row.passiveAbility || null,
                 rank: row.rank || 'player',
-                verified: row.verified !== undefined ? row.verified : 0
+                verified: row.verified !== undefined ? row.verified : 0,
+                googleId: row.googleId || null,
+                email: row.email || null
+            };
+
+            resolve(user);
+        });
+    });
+}
+
+// Get user by Google ID
+export function getUserByGoogleId(googleId) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT * FROM users WHERE googleId = ?', [googleId], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            if (!row) {
+                resolve(null);
+                return;
+            }
+
+            // Parse JSON fields
+            const user = {
+                username: row.username,
+                password: row.password,
+                stats: JSON.parse(row.stats),
+                inventory: JSON.parse(row.inventory),
+                equipment: JSON.parse(row.equipment),
+                weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
+                passiveAbility: row.passiveAbility || null,
+                rank: row.rank || 'player',
+                verified: row.verified !== undefined ? row.verified : 0,
+                googleId: row.googleId || null,
+                email: row.email || null
+            };
+
+            resolve(user);
+        });
+    });
+}
+
+// Get user by email
+export function getUserByEmail(email) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT * FROM users WHERE email = ?', [email], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            if (!row) {
+                resolve(null);
+                return;
+            }
+
+            // Parse JSON fields
+            const user = {
+                username: row.username,
+                password: row.password,
+                stats: JSON.parse(row.stats),
+                inventory: JSON.parse(row.inventory),
+                equipment: JSON.parse(row.equipment),
+                weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
+                passiveAbility: row.passiveAbility || null,
+                rank: row.rank || 'player',
+                verified: row.verified !== undefined ? row.verified : 0,
+                googleId: row.googleId || null,
+                email: row.email || null
             };
 
             resolve(user);
@@ -334,7 +428,9 @@ export function findUser(username, password) {
                     weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
                     passiveAbility: row.passiveAbility || null,
                     rank: row.rank || 'player',
-                    verified: row.verified !== undefined ? row.verified : 0
+                    verified: row.verified !== undefined ? row.verified : 0,
+                    googleId: row.googleId || null,
+                    email: row.email || null
                 };
 
                 resolve(user);
@@ -473,6 +569,11 @@ export function updateUser(username, userData) {
                 passwordToStore = existingUser ? existingUser.password : null;
             }
             
+            // Get existing user to preserve googleId and email if not being updated
+            const existingUser = await getUserByUsername(username);
+            const googleIdToStore = userData.googleId !== undefined ? userData.googleId : (existingUser ? existingUser.googleId : null);
+            const emailToStore = userData.email !== undefined ? userData.email : (existingUser ? existingUser.email : null);
+            
             const stmt = db.prepare(`
                 UPDATE users 
                 SET password = ?,
@@ -482,7 +583,9 @@ export function updateUser(username, userData) {
                     weaponData = ?,
                     passiveAbility = ?,
                     rank = ?,
-                    verified = ?
+                    verified = ?,
+                    googleId = ?,
+                    email = ?
                 WHERE username = ?
             `);
 
@@ -495,6 +598,8 @@ export function updateUser(username, userData) {
                 userData.passiveAbility || null,
                 userData.rank || 'player',
                 userData.verified !== undefined ? userData.verified : 0,
+                googleIdToStore,
+                emailToStore,
                 username,
                 function(err) {
                     if (err) {
