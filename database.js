@@ -650,6 +650,19 @@ export function updateUsername(oldUsername, newUsername) {
     });
 }
 
+// Delete user
+export function deleteUser(username) {
+    return new Promise((resolve, reject) => {
+        db.run('DELETE FROM users WHERE username = ?', [username], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
 // Check if username exists
 export function usernameExists(username) {
     return new Promise((resolve, reject) => {

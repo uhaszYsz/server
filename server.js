@@ -1196,6 +1196,7 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({
                 type: 'playerData',
                 playerData: {
+                    username: user.username,
                     stats: user.stats,
                     inventory: user.inventory,
                     equipment: user.equipment,
@@ -2895,6 +2896,18 @@ wss.on('connection', (ws, req) => {
 
             console.log(`🔐 Google OAuth login attempt: GoogleId=${googleId}, Email=${email}`);
 
+            // Check if user has an active guest account from this session
+            let guestAccount = null;
+            if (ws.username) {
+                guestAccount = await db.getUserByUsername(ws.username);
+                // Check if it's a guest account (username starts with 'user-' and is numeric timestamp)
+                if (guestAccount && /^user-\d+$/.test(guestAccount.username)) {
+                    console.log(`📦 Found guest account: ${guestAccount.username}`);
+                } else {
+                    guestAccount = null; // Not a guest account
+                }
+            }
+
             // Check if user exists by Google ID first
             let user = await db.getUserByGoogleId(googleId);
             
@@ -2902,16 +2915,35 @@ wss.on('connection', (ws, req) => {
             if (!user) {
                 user = await db.getUserByEmail(email);
                 
-                // If found by email, update with Google ID
+                // If found by email, update with Google ID (only add Google ID, don't modify other data)
                 if (user) {
                     console.log(`✅ Found existing user by email: ${user.username}, updating with Google ID`);
+                    // Only update Google ID, preserve all existing data
                     user.googleId = googleId;
                     await db.updateUser(user.username, user);
                 }
             }
 
-            // If user doesn't exist, create new account
-            if (!user) {
+            // If user doesn't exist by Google ID or email, check if we have a guest account to convert
+            if (!user && guestAccount) {
+                // First time Google login - convert guest account to Google account
+                console.log(`🔄 Converting guest account ${guestAccount.username} to Google account`);
+                
+                // Update guest account with Google credentials (keep all existing data)
+                guestAccount.googleId = googleId;
+                guestAccount.email = email;
+                guestAccount.verified = 1; // Google accounts are automatically verified
+                
+                await db.updateUser(guestAccount.username, guestAccount);
+                user = await db.getUserByUsername(guestAccount.username);
+                
+                if (!user) {
+                    throw new Error('Failed to update guest account with Google credentials');
+                }
+                
+                console.log(`✅ Guest account converted to Google account: ${user.username}`);
+            } else if (!user && !guestAccount) {
+                // No guest account and no existing Google account - create new account (shouldn't happen in normal flow)
                 // Generate username from email (remove @domain, replace dots with underscores)
                 let baseUsername = email.split('@')[0].replace(/\./g, '_');
                 let username = baseUsername;
@@ -2932,9 +2964,9 @@ wss.on('connection', (ws, req) => {
                     username = usernameValidation.value;
                 }
 
-                console.log(`📝 Creating new Google user: Username=${username}, Email=${email}`);
+                console.log(`📝 Creating new Google user (no guest account found): Username=${username}, Email=${email}`);
 
-                // Create new user with Google credentials
+                // Create new user with Google credentials and default data
                 const newUser = {
                     username: username,
                     password: crypto.randomBytes(32).toString('hex'), // Random password (not used for Google auth)
