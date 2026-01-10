@@ -11,9 +11,15 @@ import bcrypt from 'bcrypt';
 import DOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
 import * as spritesDb from './spritesDatabase.js';
+import { OAuth2Client } from 'google-auth-library';
 
 // Password hashing configuration
 const BCRYPT_ROUNDS = 10; // Number of salt rounds (higher = more secure but slower)
+
+// Google OAuth2 client for verifying Google ID tokens
+// Use the Web client ID (not Android client ID) for server-side verification
+const GOOGLE_CLIENT_ID = '87088971876-eg8mjr24l8mpg85l4r097n5ppg32guk1.apps.googleusercontent.com';
+const googleAuthClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Initialize DOMPurify for XSS protection
 const window = new JSDOM('').window;
@@ -1043,73 +1049,6 @@ wss.on('connection', (ws, req) => {
             }));
         } else {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
-        }
-      } else if (data.type === 'verifySessionPassword') {
-        // Verify session password for restoring Google OAuth login
-        if (!data.username || !data.sessionPassword) {
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ 
-                    type: 'sessionPasswordResult', 
-                    success: false, 
-                    message: 'Username and password required' 
-                }));
-            }
-            return;
-        }
-
-        try {
-            const user = await db.getUserByUsername(data.username);
-            if (!user) {
-                if (ws.readyState === ws.OPEN) {
-                    ws.send(msgpack.encode({ 
-                        type: 'sessionPasswordResult', 
-                        success: false, 
-                        message: 'User not found' 
-                    }));
-                }
-                return;
-            }
-
-            // Verify password against stored hash
-            const passwordValid = await bcrypt.compare(data.sessionPassword, user.password);
-            
-            if (passwordValid) {
-                // Password is valid - log user in
-                ws.username = user.username;
-                ws.rank = user.rank || 'player';
-                ws.isAdmin = (ws.rank === 'admin');
-
-                console.log(`✅ Session password verified: Username=${user.username}`);
-
-                if (ws.readyState === ws.OPEN) {
-                    ws.send(msgpack.encode({
-                        type: 'sessionPasswordResult',
-                        success: true,
-                        username: user.username,
-                        rank: user.rank,
-                        email: user.email
-                    }));
-                }
-            } else {
-                // Password is invalid
-                console.log(`❌ Invalid session password for user: ${data.username}`);
-                if (ws.readyState === ws.OPEN) {
-                    ws.send(msgpack.encode({ 
-                        type: 'sessionPasswordResult', 
-                        success: false, 
-                        message: 'Invalid password' 
-                    }));
-                }
-            }
-        } catch (error) {
-            console.error('❌ Session password verification error:', error);
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ 
-                    type: 'sessionPasswordResult', 
-                    success: false, 
-                    message: 'Verification error' 
-                }));
-            }
         }
       } else if (data.type === 'equipItem') {
         // Handle equipping an item
@@ -2703,6 +2642,104 @@ wss.on('connection', (ws, req) => {
         }
 
         console.log(`✅ Raid completed in room ${ws.room} by party led by ${ws.username}`);
+      } else if (data.type === 'googleLogin') {
+        // Handle Google Sign-In authentication
+        try {
+            const idToken = data.idToken;
+            if (!idToken || typeof idToken !== 'string') {
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(msgpack.encode({ type: 'googleLoginError', message: 'ID token required' }));
+                }
+                return;
+            }
+
+            // Verify the Google ID token
+            const ticket = await googleAuthClient.verifyIdToken({
+                idToken: idToken,
+                audience: GOOGLE_CLIENT_ID
+            });
+
+            const payload = ticket.getPayload();
+            if (!payload) {
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(msgpack.encode({ type: 'googleLoginError', message: 'Invalid token payload' }));
+                }
+                return;
+            }
+
+            // Extract user info from verified token
+            const googleEmail = payload.email;
+            const googleName = payload.name || payload.given_name || googleEmail.split('@')[0];
+            const googleId = payload.sub; // Google user ID
+
+            if (!googleEmail) {
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(msgpack.encode({ type: 'googleLoginError', message: 'Email not found in token' }));
+                }
+                return;
+            }
+
+            // Generate username from email (format: emailprefix_google)
+            const usernameBase = googleEmail.split('@')[0];
+            let username = usernameBase + '_google';
+            let usernameExists = await db.usernameExists(username);
+            let counter = 1;
+            
+            // If username exists, try variations
+            while (usernameExists) {
+                username = usernameBase + '_google' + counter;
+                usernameExists = await db.usernameExists(username);
+                counter++;
+            }
+
+            // Check if a user with this Google email already exists
+            // For now, we'll create a new account for each Google login
+            // In the future, you could link Google accounts to existing accounts
+            let user = await db.getUserByUsername(username);
+            
+            if (!user) {
+                // Create new user account for Google login
+                // Generate a random password (won't be used, but required by schema)
+                const randomPassword = crypto.randomBytes(32).toString('hex');
+                const hashedPassword = await bcrypt.hash(randomPassword, BCRYPT_ROUNDS);
+                
+                await db.createUser(username, hashedPassword);
+                user = await db.getUserByUsername(username);
+                
+                if (!user) {
+                    if (ws.readyState === ws.OPEN) {
+                        ws.send(msgpack.encode({ type: 'googleLoginError', message: 'Failed to create user account' }));
+                    }
+                    return;
+                }
+            }
+
+            // Set the user as logged in
+            ws.username = username;
+            ws.rank = user.rank || 'player';
+
+            // Send success response
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({
+                    type: 'loginSuccess',
+                    username: username,
+                    rank: ws.rank,
+                    email: googleEmail,
+                    displayName: googleName
+                }));
+            }
+
+            console.log(`✅ Google Sign-In successful: ${username} (${googleEmail})`);
+
+        } catch (error) {
+            console.error('Google login error:', error);
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ 
+                    type: 'googleLoginError', 
+                    message: error.message || 'Google authentication failed' 
+                }));
+            }
+        }
       } else if (data.type === 'changeUsername') {
         if (!ws.username) {
             if (ws.readyState === ws.OPEN) {
@@ -2760,180 +2797,6 @@ wss.on('connection', (ws, req) => {
             console.error('Failed to save username change', error);
             if (ws.readyState === ws.OPEN) {
                 ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Failed to save username' }));
-            }
-        }
-      } else if (data.type === 'googleOAuth') {
-        // Handle Google OAuth login
-        if (!data.credential) {
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'error', message: 'Google credential is required' }));
-            }
-            return;
-        }
-
-        try {
-            // Verify Google token by decoding JWT (basic verification)
-            // In production, you should verify the token signature with Google's public keys
-            const tokenParts = data.credential.split('.');
-            if (tokenParts.length !== 3) {
-                throw new Error('Invalid token format');
-            }
-
-            // Decode the payload (base64url decode)
-            const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString('utf-8'));
-            
-            // Verify token is not expired
-            const now = Math.floor(Date.now() / 1000);
-            if (payload.exp && payload.exp < now) {
-                throw new Error('Token has expired');
-            }
-
-            // Extract Google user information
-            const googleId = payload.sub; // Google user ID
-            const email = payload.email;
-            const name = payload.name || email.split('@')[0];
-            const picture = payload.picture || null;
-
-            if (!googleId || !email) {
-                throw new Error('Invalid token: missing user information');
-            }
-
-            console.log(`🔐 Google OAuth login attempt: GoogleId=${googleId}, Email=${email}`);
-
-            // Check if user has an active guest account from this session
-            let guestAccount = null;
-            if (ws.username) {
-                guestAccount = await db.getUserByUsername(ws.username);
-                // Check if it's a guest account (username starts with 'user-' and is numeric timestamp)
-                if (guestAccount && /^user-\d+$/.test(guestAccount.username)) {
-                    console.log(`📦 Found guest account: ${guestAccount.username}`);
-                } else {
-                    guestAccount = null; // Not a guest account
-                }
-            }
-
-            // Check if user exists by Google ID first
-            let user = await db.getUserByGoogleId(googleId);
-            
-            // If not found by Google ID, check by email
-            if (!user) {
-                user = await db.getUserByEmail(email);
-                
-                // If found by email, update with Google ID (only add Google ID, don't modify other data)
-                if (user) {
-                    console.log(`✅ Found existing user by email: ${user.username}, updating with Google ID`);
-                    // Only update Google ID, preserve all existing data
-                    user.googleId = googleId;
-                    await db.updateUser(user.username, user);
-                }
-            }
-
-            // If user doesn't exist by Google ID or email, check if we have a guest account to convert
-            if (!user && guestAccount) {
-                // First time Google login - convert guest account to Google account
-                console.log(`🔄 Converting guest account ${guestAccount.username} to Google account`);
-                
-                // Update guest account with Google credentials (keep all existing data)
-                guestAccount.googleId = googleId;
-                guestAccount.email = email;
-                guestAccount.verified = 1; // Google accounts are automatically verified
-                
-                await db.updateUser(guestAccount.username, guestAccount);
-                user = await db.getUserByUsername(guestAccount.username);
-                
-                if (!user) {
-                    throw new Error('Failed to update guest account with Google credentials');
-                }
-                
-                console.log(`✅ Guest account converted to Google account: ${user.username}`);
-            } else if (!user && !guestAccount) {
-                // No guest account and no existing Google account - create new account (shouldn't happen in normal flow)
-                // Generate username from email (remove @domain, replace dots with underscores)
-                let baseUsername = email.split('@')[0].replace(/\./g, '_');
-                let username = baseUsername;
-                let counter = 1;
-                
-                // Ensure username is unique
-                while (await db.getUserByUsername(username)) {
-                    username = `${baseUsername}${counter}`;
-                    counter++;
-                }
-
-                // Validate username
-                const usernameValidation = validateUsername(username);
-                if (!usernameValidation.valid) {
-                    // Fallback to a generated username
-                    username = `user_${googleId.substring(0, 8)}`;
-                } else {
-                    username = usernameValidation.value;
-                }
-
-                console.log(`📝 Creating new Google user (no guest account found): Username=${username}, Email=${email}`);
-
-                // Create new user with Google credentials and default data
-                const newUser = {
-                    username: username,
-                    password: crypto.randomBytes(32).toString('hex'), // Random password (not used for Google auth)
-                    stats: { maxHp: 100, maxMp: 50, hp: 100, mp: 50 },
-                    inventory: [],
-                    equipment: { weapon: null },
-                    weaponData: null,
-                    passiveAbility: null,
-                    rank: 'player',
-                    verified: 1, // Google accounts are automatically verified
-                    googleId: googleId,
-                    email: email
-                };
-
-                await db.createUser(newUser);
-                user = await db.getUserByUsername(username);
-                
-                if (!user) {
-                    throw new Error('Failed to create user account');
-                }
-            }
-
-            // Generate a secure random password for session management
-            const sessionPassword = crypto.randomBytes(32).toString('hex');
-            const hashedSessionPassword = await bcrypt.hash(sessionPassword, BCRYPT_ROUNDS);
-            
-            // Update user's password in database with the new session password hash
-            user.password = hashedSessionPassword;
-            await db.updateUser(user.username, user);
-            
-            console.log(`✅ Generated session password for user: ${user.username}`);
-
-            // Log user in
-            ws.username = user.username;
-            ws.rank = user.rank || 'player';
-            ws.isAdmin = (ws.rank === 'admin');
-
-            console.log(`✅ Google OAuth login successful: Username=${user.username}, Email=${email}`);
-
-            // Send success response with session password
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({
-                    type: 'loginSuccess',
-                    username: user.username,
-                    rank: user.rank,
-                    email: user.email,
-                    isGoogleAuth: true,
-                    sessionPassword: sessionPassword // Send plain password to client for localStorage
-                }));
-            }
-
-            // Auto-join first campaign lobby
-            const party = ensurePartyForClient(ws);
-            broadcastPartyUpdate(party);
-            await joinFirstCampaignLobby(ws);
-
-        } catch (error) {
-            console.error('❌ Google OAuth error:', error);
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({
-                    type: 'error',
-                    message: `Google login failed: ${error.message}`
-                }));
             }
         }
       } else if (data.type === 'getForumCategories') {

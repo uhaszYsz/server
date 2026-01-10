@@ -8,6 +8,7 @@
     "ws": "^8.16.0",
     "bcrypt": "^5.1.1",
     "dompurify": "^3.0.6",
-    "jsdom": "^23.0.1"
+    "jsdom": "^23.0.1",
+    "google-auth-library": "^9.0.0"
   }
 }
