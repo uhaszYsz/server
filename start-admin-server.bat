@@ -1,3 +1,0 @@
-@echo off
-echo Starting Database Admin Server...
-node admin-server.js

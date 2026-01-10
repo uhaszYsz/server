@@ -13,34 +13,6 @@ const __dirname = path.dirname(__filename);
 const dbPath = path.join(__dirname, 'users.db');
 
 let db = null;
-// Cache for users table schema check
-let usersTableHasGoogleId = null;
-
-// Helper function to check if users table has googleId column (cached)
-function checkUsersTableHasGoogleId() {
-    return new Promise((resolve) => {
-        // Return cached result if available
-        if (usersTableHasGoogleId !== null) {
-            resolve(usersTableHasGoogleId);
-            return;
-        }
-        
-        // Check schema
-        db.all("PRAGMA table_info(users)", (err, columns) => {
-            if (err || !columns) {
-                // Table might not exist
-                usersTableHasGoogleId = false;
-                resolve(false);
-                return;
-            }
-            
-            // Check if googleId column exists
-            const hasGoogleId = columns.some(col => col.name === 'googleId');
-            usersTableHasGoogleId = hasGoogleId;
-            resolve(hasGoogleId);
-        });
-    });
-}
 
 // Initialize database
 export function initDatabase() {
@@ -51,6 +23,13 @@ export function initDatabase() {
                 return;
             }
             console.log('✅ Connected to SQLite database');
+            
+            // Enable foreign keys
+            db.run("PRAGMA foreign_keys = ON", (err) => {
+                if (err) {
+                    console.warn('Warning: Could not enable foreign keys:', err);
+                }
+            });
             
             // Create forum tables
             db.run(`
@@ -103,6 +82,7 @@ export function initDatabase() {
                         console.log('✅ Forum posts table initialized');
                         
                         // Create post_likes table to track which users liked which posts
+                        // No foreign key to users table to avoid constraint issues when users table structure changes
                         db.run(`
                             CREATE TABLE IF NOT EXISTS forum_post_likes (
                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,7 +90,6 @@ export function initDatabase() {
                                 googleId TEXT NOT NULL,
                                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                 FOREIGN KEY (post_id) REFERENCES forum_posts(id),
-                                FOREIGN KEY (googleId) REFERENCES users(googleId),
                                 UNIQUE(post_id, googleId)
                             )
                         `, (err) => {
@@ -122,6 +101,7 @@ export function initDatabase() {
                         });
                         
                         // Create stages table for user-uploaded levels
+                        // Remove foreign key constraint to avoid issues when users table structure changes
                         db.run(`
                             CREATE TABLE IF NOT EXISTS stages (
                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,8 +109,7 @@ export function initDatabase() {
                                 name TEXT NOT NULL,
                                 data TEXT NOT NULL,
                                 uploaded_by TEXT NOT NULL,
-                                uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                FOREIGN KEY (uploaded_by) REFERENCES users(googleId)
+                                uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                             )
                         `, (err) => {
                             if (err) {
@@ -140,6 +119,7 @@ export function initDatabase() {
                             console.log('✅ Stages table initialized');
                             
                             // Create campaign_levels table for campaign levels
+                            // Remove foreign key constraint to avoid issues when users table structure changes
                             db.run(`
                                 CREATE TABLE IF NOT EXISTS campaign_levels (
                                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -147,8 +127,7 @@ export function initDatabase() {
                                     name TEXT NOT NULL,
                                     data TEXT NOT NULL,
                                     uploaded_by TEXT NOT NULL,
-                                    uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                    FOREIGN KEY (uploaded_by) REFERENCES users(googleId)
+                                    uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                                 )
                             `, (err) => {
                                 if (err) {
@@ -697,51 +676,24 @@ export function getForumCategoryByName(name, parentId = null) {
 }
 
 export function getForumThreads(categoryId) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const hasGoogleId = await checkUsersTableHasGoogleId();
-            
-            if (hasGoogleId) {
-                // Use JOIN query with users table
-                db.all(`
-                    SELECT t.*, 
-                           (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id) as post_count,
-                           (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date,
-                           COALESCE(u.name, t.author) as author_name,
-                           COALESCE(u.rank, 'player') as author_rank
-                    FROM forum_threads t
-                    LEFT JOIN users u ON u.googleId = t.author
-                    WHERE t.category_id = ?
-                    ORDER BY t.updated_at DESC
-                `, [categoryId], (err, rows) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    resolve(rows);
-                });
-            } else {
-                // Fallback: users table doesn't have googleId column, use simple query
-                db.all(`
-                    SELECT t.*, 
-                           (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id) as post_count,
-                           (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date,
-                           t.author as author_name,
-                           'player' as author_rank
-                    FROM forum_threads t
-                    WHERE t.category_id = ?
-                    ORDER BY t.updated_at DESC
-                `, [categoryId], (err, rows) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    resolve(rows);
-                });
+    return new Promise((resolve, reject) => {
+        db.all(`
+            SELECT t.*, 
+                   (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id) as post_count,
+                   (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date,
+                   COALESCE(u.name, t.author) as author_name,
+                   COALESCE(u.rank, 'player') as author_rank
+            FROM forum_threads t
+            LEFT JOIN users u ON u.googleId = t.author
+            WHERE t.category_id = ?
+            ORDER BY t.updated_at DESC
+        `, [categoryId], (err, rows) => {
+            if (err) {
+                reject(err);
+                return;
             }
-        } catch (error) {
-            reject(error);
-        }
+            resolve(rows);
+        });
     });
 }
 
@@ -768,45 +720,21 @@ export function getForumCategoryStats(categoryId) {
 }
 
 export function getForumThread(threadId) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const hasGoogleId = await checkUsersTableHasGoogleId();
-            
-            if (hasGoogleId) {
-                // Use JOIN query with users table
-                db.get(`
-                    SELECT t.*, 
-                           COALESCE(u.name, t.author) as author_name,
-                           COALESCE(u.rank, 'player') as author_rank
-                    FROM forum_threads t
-                    LEFT JOIN users u ON u.googleId = t.author
-                    WHERE t.id = ?
-                `, [threadId], (err, row) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    resolve(row);
-                });
-            } else {
-                // Fallback: users table doesn't have googleId column, use simple query
-                db.get(`
-                    SELECT t.*, 
-                           t.author as author_name,
-                           'player' as author_rank
-                    FROM forum_threads t
-                    WHERE t.id = ?
-                `, [threadId], (err, row) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    resolve(row);
-                });
+    return new Promise((resolve, reject) => {
+        db.get(`
+            SELECT t.*, 
+                   COALESCE(u.name, t.author) as author_name,
+                   COALESCE(u.rank, 'player') as author_rank
+            FROM forum_threads t
+            LEFT JOIN users u ON u.googleId = t.author
+            WHERE t.id = ?
+        `, [threadId], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
             }
-        } catch (error) {
-            reject(error);
-        }
+            resolve(row);
+        });
     });
 }
 
@@ -824,47 +752,22 @@ export function createForumThread(categoryId, title, author) {
 }
 
 export function getForumPosts(threadId) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const hasGoogleId = await checkUsersTableHasGoogleId();
-            
-            if (hasGoogleId) {
-                // Use JOIN query with users table
-                db.all(`
-                    SELECT p.*, 
-                           COALESCE(u.name, p.author) as author_name,
-                           COALESCE(u.rank, 'player') as author_rank
-                    FROM forum_posts p
-                    LEFT JOIN users u ON u.googleId = p.author
-                    WHERE p.thread_id = ?
-                    ORDER BY p.created_at ASC
-                `, [threadId], (err, rows) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    resolve(rows);
-                });
-            } else {
-                // Fallback: users table doesn't have googleId column, use simple query
-                db.all(`
-                    SELECT p.*, 
-                           p.author as author_name,
-                           'player' as author_rank
-                    FROM forum_posts p
-                    WHERE p.thread_id = ?
-                    ORDER BY p.created_at ASC
-                `, [threadId], (err, rows) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    resolve(rows);
-                });
+    return new Promise((resolve, reject) => {
+        db.all(`
+            SELECT p.*, 
+                   COALESCE(u.name, p.author) as author_name,
+                   COALESCE(u.rank, 'player') as author_rank
+            FROM forum_posts p
+            LEFT JOIN users u ON u.googleId = p.author
+            WHERE p.thread_id = ?
+            ORDER BY p.created_at ASC
+        `, [threadId], (err, rows) => {
+            if (err) {
+                reject(err);
+                return;
             }
-        } catch (error) {
-            reject(error);
-        }
+            resolve(rows);
+        });
     });
 }
 
