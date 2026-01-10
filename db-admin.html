@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Admin - Table Viewer & Query Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .database-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .db-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .db-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .db-btn.active {
+            background: #764ba2;
+        }
+
+        .tables-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .table-btn {
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .table-btn:hover {
+            border-color: #667eea;
+            background: #e8ebff;
+            transform: translateY(-2px);
+        }
+
+        .table-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .query-section {
+            margin-top: 30px;
+        }
+
+        .query-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+
+        .query-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .query-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        .json-cell {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-width: 300px;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status.error {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+            display: block;
+        }
+
+        .status.success {
+            background: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+            display: block;
+        }
+
+        .status.info {
+            background: #eef;
+            color: #33c;
+            border: 1px solid #ccf;
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            opacity: 0.9;
+        }
+
+        .quick-queries {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quick-query-btn {
+            padding: 10px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            background: white;
+            color: #667eea;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .quick-query-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗄️ Database Administration Panel</h1>
+
+        <div id="status" class="status"></div>
+
+        <div class="card">
+            <h2>Select Database</h2>
+            <div class="database-selector">
+                <button class="db-btn active" onclick="selectDatabase('users')">Users DB (users.db)</button>
+                <button class="db-btn" onclick="selectDatabase('sprites')">Sprites DB (sprites.db)</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Tables</h2>
+            <div id="tables-container" class="loading">Loading tables...</div>
+        </div>
+
+        <div class="card" id="table-data-card" style="display: none;">
+            <h2 id="table-title">Table Data</h2>
+            <div id="table-stats" class="stats"></div>
+            <div class="table-container">
+                <div id="table-content" class="loading">Loading table data...</div>
+            </div>
+        </div>
+
+        <div class="card query-section">
+            <h2>SQL Query Executor</h2>
+            <div class="quick-queries">
+                <button class="quick-query-btn" onclick="setQuery('SELECT * FROM users LIMIT 100')">SELECT all users</button>
+                <button class="quick-query-btn" onclick="setQuery('SELECT * FROM forum_threads ORDER BY created_at DESC LIMIT 50')">Recent threads</button>
+                <button class="quick-query-btn" onclick="setQuery('SELECT * FROM sprites ORDER BY uploaded_at DESC LIMIT 50')">Recent sprites</button>
+                <button class="quick-query-btn" onclick="setQuery('SELECT COUNT(*) as count FROM users')">User count</button>
+                <button class="quick-query-btn" onclick="setQuery('SELECT name FROM sqlite_master WHERE type=\"table\"')">List all tables</button>
+            </div>
+            <textarea id="query-input" class="query-input" placeholder="Enter your SQL query here...&#10;Example: SELECT * FROM users WHERE username LIKE '%test%'"></textarea>
+            <div class="query-buttons">
+                <button class="btn btn-primary" onclick="executeQuery()">Execute Query</button>
+                <button class="btn btn-secondary" onclick="clearQuery()">Clear</button>
+                <button class="btn btn-danger" onclick="confirmDelete()" style="display: none;" id="delete-btn">⚠️ DELETE Query (Dangerous)</button>
+            </div>
+            <div id="query-results" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentDatabase = 'users';
+        let currentTable = null;
+        let tables = [];
+
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${type}`;
+            statusEl.textContent = message;
+            statusEl.style.display = 'block';
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 5000);
+        }
+
+        function selectDatabase(db) {
+            currentDatabase = db;
+            document.querySelectorAll('.db-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            loadTables();
+            document.getElementById('table-data-card').style.display = 'none';
+            currentTable = null;
+        }
+
+        async function loadTables() {
+            const container = document.getElementById('tables-container');
+            container.innerHTML = '<div class="loading">Loading tables...</div>';
+
+            try {
+                const response = await fetch(`/api/db/${currentDatabase}/tables`);
+                if (!response.ok) throw new Error('Failed to load tables');
+                
+                tables = await response.json();
+                
+                if (tables.length === 0) {
+                    container.innerHTML = '<p>No tables found in this database.</p>';
+                    return;
+                }
+
+                container.className = 'tables-list';
+                container.innerHTML = tables.map(table => 
+                    `<button class="table-btn" onclick="loadTableData('${table}')">${table}</button>`
+                ).join('');
+
+            } catch (error) {
+                container.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                showStatus(`Error loading tables: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadTableData(tableName) {
+            currentTable = tableName;
+            document.getElementById('table-data-card').style.display = 'block';
+            document.getElementById('table-title').textContent = `Table: ${tableName}`;
+            
+            const contentEl = document.getElementById('table-content');
+            const statsEl = document.getElementById('table-stats');
+            contentEl.innerHTML = '<div class="loading">Loading table data...</div>';
+
+            // Update active table button
+            document.querySelectorAll('.table-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === tableName) btn.classList.add('active');
+            });
+
+            try {
+                const response = await fetch(`/api/db/${currentDatabase}/table/${tableName}`);
+                if (!response.ok) throw new Error('Failed to load table data');
+                
+                const data = await response.json();
+                
+                // Show stats
+                statsEl.innerHTML = `
+                    <div class="stat-card">
+                        <h3>${data.rows.length}</h3>
+                        <p>Total Rows</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${data.columns.length}</h3>
+                        <p>Columns</p>
+                    </div>
+                `;
+
+                if (data.rows.length === 0) {
+                    contentEl.innerHTML = '<p>No data in this table.</p>';
+                    return;
+                }
+
+                // Create table
+                let html = '<table><thead><tr>';
+                data.columns.forEach(col => {
+                    html += `<th>${escapeHtml(col)}</th>`;
+                });
+                html += '</tr></thead><tbody>';
+
+                data.rows.forEach(row => {
+                    html += '<tr>';
+                    data.columns.forEach(col => {
+                        const value = row[col];
+                        const displayValue = value === null ? '<em>NULL</em>' : 
+                                           value === undefined ? '<em>undefined</em>' :
+                                           typeof value === 'object' ? 
+                                               `<div class="json-cell">${escapeHtml(JSON.stringify(value, null, 2))}</div>` :
+                                               escapeHtml(String(value));
+                        html += `<td>${displayValue}</td>`;
+                    });
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                contentEl.innerHTML = html;
+
+            } catch (error) {
+                contentEl.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                showStatus(`Error loading table: ${error.message}`, 'error');
+            }
+        }
+
+        function setQuery(query) {
+            document.getElementById('query-input').value = query;
+            checkQueryType(query);
+        }
+
+        function clearQuery() {
+            document.getElementById('query-input').value = '';
+            document.getElementById('query-results').innerHTML = '';
+            document.getElementById('delete-btn').style.display = 'none';
+        }
+
+        function checkQueryType(query) {
+            const upperQuery = query.trim().toUpperCase();
+            const isDelete = upperQuery.startsWith('DELETE') || 
+                           upperQuery.startsWith('DROP') || 
+                           upperQuery.startsWith('TRUNCATE') ||
+                           upperQuery.startsWith('ALTER TABLE') && upperQuery.includes('DROP');
+            document.getElementById('delete-btn').style.display = isDelete ? 'block' : 'none';
+        }
+
+        document.getElementById('query-input').addEventListener('input', (e) => {
+            checkQueryType(e.target.value);
+        });
+
+        async function executeQuery() {
+            const query = document.getElementById('query-input').value.trim();
+            if (!query) {
+                showStatus('Please enter a query', 'error');
+                return;
+            }
+
+            const resultsEl = document.getElementById('query-results');
+            resultsEl.innerHTML = '<div class="loading">Executing query...</div>';
+
+            try {
+                const response = await fetch(`/api/db/${currentDatabase}/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Query execution failed');
+                }
+
+                if (data.type === 'SELECT') {
+                    if (data.rows.length === 0) {
+                        resultsEl.innerHTML = '<p>Query returned no results.</p>';
+                        showStatus('Query executed successfully (0 rows returned)', 'success');
+                        return;
+                    }
+
+                    let html = `<h3>Results (${data.rows.length} row${data.rows.length !== 1 ? 's' : ''})</h3>`;
+                    html += '<div class="table-container"><table><thead><tr>';
+                    
+                    if (data.columns && data.columns.length > 0) {
+                        data.columns.forEach(col => {
+                            html += `<th>${escapeHtml(col)}</th>`;
+                        });
+                    } else if (data.rows.length > 0) {
+                        Object.keys(data.rows[0]).forEach(col => {
+                            html += `<th>${escapeHtml(col)}</th>`;
+                        });
+                    }
+                    
+                    html += '</tr></thead><tbody>';
+
+                    data.rows.forEach(row => {
+                        html += '<tr>';
+                        const cols = data.columns || Object.keys(data.rows[0]);
+                        cols.forEach(col => {
+                            const value = row[col];
+                            const displayValue = value === null ? '<em>NULL</em>' : 
+                                               value === undefined ? '<em>undefined</em>' :
+                                               typeof value === 'object' ? 
+                                                   `<div class="json-cell">${escapeHtml(JSON.stringify(value, null, 2))}</div>` :
+                                                   escapeHtml(String(value));
+                            html += `<td>${displayValue}</td>`;
+                        });
+                        html += '</tr>';
+                    });
+
+                    html += '</tbody></table></div>';
+                    resultsEl.innerHTML = html;
+                    showStatus(`Query executed successfully (${data.rows.length} row${data.rows.length !== 1 ? 's' : ''} returned)`, 'success');
+
+                } else {
+                    // INSERT, UPDATE, DELETE, etc.
+                    resultsEl.innerHTML = `
+                        <div class="status success">
+                            Query executed successfully!<br>
+                            Changes: ${data.changes || 0} row(s) affected<br>
+                            ${data.lastID ? `Last insert ID: ${data.lastID}` : ''}
+                        </div>
+                    `;
+                    showStatus(`Query executed successfully (${data.changes || 0} row(s) affected)`, 'success');
+                    
+                    // Reload current table if viewing one
+                    if (currentTable) {
+                        setTimeout(() => loadTableData(currentTable), 500);
+                    } else {
+                        loadTables();
+                    }
+                }
+
+            } catch (error) {
+                resultsEl.innerHTML = `<div class="status error">Error: ${escapeHtml(error.message)}</div>`;
+                showStatus(`Query error: ${error.message}`, 'error');
+            }
+        }
+
+        function confirmDelete() {
+            const query = document.getElementById('query-input').value.trim();
+            if (!confirm(`⚠️ WARNING: You are about to execute a potentially destructive query:\n\n${query}\n\nAre you absolutely sure?`)) {
+                return;
+            }
+            if (!confirm('This action cannot be undone. Proceed?')) {
+                return;
+            }
+            executeQuery();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load tables on page load
+        window.addEventListener('load', () => {
+            loadTables();
+        });
+    </script>
+</body>
+</html>
