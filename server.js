@@ -11,15 +11,9 @@ import bcrypt from 'bcrypt';
 import DOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
 import * as spritesDb from './spritesDatabase.js';
-import { OAuth2Client } from 'google-auth-library';
 
 // Password hashing configuration
 const BCRYPT_ROUNDS = 10; // Number of salt rounds (higher = more secure but slower)
-
-// Google OAuth2 client for verifying Google ID tokens
-// Use the Web client ID (not Android client ID) for server-side verification
-const GOOGLE_CLIENT_ID = '87088971876-eg8mjr24l8mpg85l4r097n5ppg32guk1.apps.googleusercontent.com';
-const googleAuthClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Initialize DOMPurify for XSS protection
 const window = new JSDOM('').window;
@@ -2642,104 +2636,6 @@ wss.on('connection', (ws, req) => {
         }
 
         console.log(`✅ Raid completed in room ${ws.room} by party led by ${ws.username}`);
-      } else if (data.type === 'googleLogin') {
-        // Handle Google Sign-In authentication
-        try {
-            const idToken = data.idToken;
-            if (!idToken || typeof idToken !== 'string') {
-                if (ws.readyState === ws.OPEN) {
-                    ws.send(msgpack.encode({ type: 'googleLoginError', message: 'ID token required' }));
-                }
-                return;
-            }
-
-            // Verify the Google ID token
-            const ticket = await googleAuthClient.verifyIdToken({
-                idToken: idToken,
-                audience: GOOGLE_CLIENT_ID
-            });
-
-            const payload = ticket.getPayload();
-            if (!payload) {
-                if (ws.readyState === ws.OPEN) {
-                    ws.send(msgpack.encode({ type: 'googleLoginError', message: 'Invalid token payload' }));
-                }
-                return;
-            }
-
-            // Extract user info from verified token
-            const googleEmail = payload.email;
-            const googleName = payload.name || payload.given_name || googleEmail.split('@')[0];
-            const googleId = payload.sub; // Google user ID
-
-            if (!googleEmail) {
-                if (ws.readyState === ws.OPEN) {
-                    ws.send(msgpack.encode({ type: 'googleLoginError', message: 'Email not found in token' }));
-                }
-                return;
-            }
-
-            // Generate username from email (format: emailprefix_google)
-            const usernameBase = googleEmail.split('@')[0];
-            let username = usernameBase + '_google';
-            let usernameExists = await db.usernameExists(username);
-            let counter = 1;
-            
-            // If username exists, try variations
-            while (usernameExists) {
-                username = usernameBase + '_google' + counter;
-                usernameExists = await db.usernameExists(username);
-                counter++;
-            }
-
-            // Check if a user with this Google email already exists
-            // For now, we'll create a new account for each Google login
-            // In the future, you could link Google accounts to existing accounts
-            let user = await db.getUserByUsername(username);
-            
-            if (!user) {
-                // Create new user account for Google login
-                // Generate a random password (won't be used, but required by schema)
-                const randomPassword = crypto.randomBytes(32).toString('hex');
-                const hashedPassword = await bcrypt.hash(randomPassword, BCRYPT_ROUNDS);
-                
-                await db.createUser(username, hashedPassword);
-                user = await db.getUserByUsername(username);
-                
-                if (!user) {
-                    if (ws.readyState === ws.OPEN) {
-                        ws.send(msgpack.encode({ type: 'googleLoginError', message: 'Failed to create user account' }));
-                    }
-                    return;
-                }
-            }
-
-            // Set the user as logged in
-            ws.username = username;
-            ws.rank = user.rank || 'player';
-
-            // Send success response
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({
-                    type: 'loginSuccess',
-                    username: username,
-                    rank: ws.rank,
-                    email: googleEmail,
-                    displayName: googleName
-                }));
-            }
-
-            console.log(`✅ Google Sign-In successful: ${username} (${googleEmail})`);
-
-        } catch (error) {
-            console.error('Google login error:', error);
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ 
-                    type: 'googleLoginError', 
-                    message: error.message || 'Google authentication failed' 
-                }));
-            }
-        }
       } else if (data.type === 'changeUsername') {
         if (!ws.username) {
             if (ws.readyState === ws.OPEN) {
