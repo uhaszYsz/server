@@ -13,6 +13,34 @@ const __dirname = path.dirname(__filename);
 const dbPath = path.join(__dirname, 'users.db');
 
 let db = null;
+// Cache for users table schema check
+let usersTableHasGoogleId = null;
+
+// Helper function to check if users table has googleId column (cached)
+function checkUsersTableHasGoogleId() {
+    return new Promise((resolve) => {
+        // Return cached result if available
+        if (usersTableHasGoogleId !== null) {
+            resolve(usersTableHasGoogleId);
+            return;
+        }
+        
+        // Check schema
+        db.all("PRAGMA table_info(users)", (err, columns) => {
+            if (err || !columns) {
+                // Table might not exist
+                usersTableHasGoogleId = false;
+                resolve(false);
+                return;
+            }
+            
+            // Check if googleId column exists
+            const hasGoogleId = columns.some(col => col.name === 'googleId');
+            usersTableHasGoogleId = hasGoogleId;
+            resolve(hasGoogleId);
+        });
+    });
+}
 
 // Initialize database
 export function initDatabase() {
@@ -669,24 +697,51 @@ export function getForumCategoryByName(name, parentId = null) {
 }
 
 export function getForumThreads(categoryId) {
-    return new Promise((resolve, reject) => {
-        db.all(`
-            SELECT t.*, 
-                   (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id) as post_count,
-                   (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date,
-                   COALESCE(u.name, t.author) as author_name,
-                   COALESCE(u.rank, 'player') as author_rank
-            FROM forum_threads t
-            LEFT JOIN users u ON u.googleId = t.author
-            WHERE t.category_id = ?
-            ORDER BY t.updated_at DESC
-        `, [categoryId], (err, rows) => {
-            if (err) {
-                reject(err);
-                return;
+    return new Promise(async (resolve, reject) => {
+        try {
+            const hasGoogleId = await checkUsersTableHasGoogleId();
+            
+            if (hasGoogleId) {
+                // Use JOIN query with users table
+                db.all(`
+                    SELECT t.*, 
+                           (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id) as post_count,
+                           (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date,
+                           COALESCE(u.name, t.author) as author_name,
+                           COALESCE(u.rank, 'player') as author_rank
+                    FROM forum_threads t
+                    LEFT JOIN users u ON u.googleId = t.author
+                    WHERE t.category_id = ?
+                    ORDER BY t.updated_at DESC
+                `, [categoryId], (err, rows) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    resolve(rows);
+                });
+            } else {
+                // Fallback: users table doesn't have googleId column, use simple query
+                db.all(`
+                    SELECT t.*, 
+                           (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id) as post_count,
+                           (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date,
+                           t.author as author_name,
+                           'player' as author_rank
+                    FROM forum_threads t
+                    WHERE t.category_id = ?
+                    ORDER BY t.updated_at DESC
+                `, [categoryId], (err, rows) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    resolve(rows);
+                });
             }
-            resolve(rows);
-        });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -713,21 +768,45 @@ export function getForumCategoryStats(categoryId) {
 }
 
 export function getForumThread(threadId) {
-    return new Promise((resolve, reject) => {
-        db.get(`
-            SELECT t.*, 
-                   COALESCE(u.name, t.author) as author_name,
-                   COALESCE(u.rank, 'player') as author_rank
-            FROM forum_threads t
-            LEFT JOIN users u ON u.googleId = t.author
-            WHERE t.id = ?
-        `, [threadId], (err, row) => {
-            if (err) {
-                reject(err);
-                return;
+    return new Promise(async (resolve, reject) => {
+        try {
+            const hasGoogleId = await checkUsersTableHasGoogleId();
+            
+            if (hasGoogleId) {
+                // Use JOIN query with users table
+                db.get(`
+                    SELECT t.*, 
+                           COALESCE(u.name, t.author) as author_name,
+                           COALESCE(u.rank, 'player') as author_rank
+                    FROM forum_threads t
+                    LEFT JOIN users u ON u.googleId = t.author
+                    WHERE t.id = ?
+                `, [threadId], (err, row) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    resolve(row);
+                });
+            } else {
+                // Fallback: users table doesn't have googleId column, use simple query
+                db.get(`
+                    SELECT t.*, 
+                           t.author as author_name,
+                           'player' as author_rank
+                    FROM forum_threads t
+                    WHERE t.id = ?
+                `, [threadId], (err, row) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    resolve(row);
+                });
             }
-            resolve(row);
-        });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -745,22 +824,47 @@ export function createForumThread(categoryId, title, author) {
 }
 
 export function getForumPosts(threadId) {
-    return new Promise((resolve, reject) => {
-        db.all(`
-            SELECT p.*, 
-                   COALESCE(u.name, p.author) as author_name,
-                   COALESCE(u.rank, 'player') as author_rank
-            FROM forum_posts p
-            LEFT JOIN users u ON u.googleId = p.author
-            WHERE p.thread_id = ?
-            ORDER BY p.created_at ASC
-        `, [threadId], (err, rows) => {
-            if (err) {
-                reject(err);
-                return;
+    return new Promise(async (resolve, reject) => {
+        try {
+            const hasGoogleId = await checkUsersTableHasGoogleId();
+            
+            if (hasGoogleId) {
+                // Use JOIN query with users table
+                db.all(`
+                    SELECT p.*, 
+                           COALESCE(u.name, p.author) as author_name,
+                           COALESCE(u.rank, 'player') as author_rank
+                    FROM forum_posts p
+                    LEFT JOIN users u ON u.googleId = p.author
+                    WHERE p.thread_id = ?
+                    ORDER BY p.created_at ASC
+                `, [threadId], (err, rows) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    resolve(rows);
+                });
+            } else {
+                // Fallback: users table doesn't have googleId column, use simple query
+                db.all(`
+                    SELECT p.*, 
+                           p.author as author_name,
+                           'player' as author_rank
+                    FROM forum_posts p
+                    WHERE p.thread_id = ?
+                    ORDER BY p.created_at ASC
+                `, [threadId], (err, rows) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    resolve(rows);
+                });
             }
-            resolve(rows);
-        });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
