@@ -201,6 +201,32 @@ function initializeInventoryAndEquipment() {
     };
 }
 
+// Generate a random username
+function generateRandomUsername() {
+    const adjectives = ['Cool', 'Swift', 'Brave', 'Epic', 'Dark', 'Bright', 'Wild', 'Silent', 'Fierce', 'Mystic', 'Golden', 'Shadow', 'Storm', 'Fire', 'Ice', 'Thunder', 'Steel', 'Dragon', 'Wolf', 'Eagle'];
+    const nouns = ['Warrior', 'Hunter', 'Guardian', 'Knight', 'Mage', 'Ranger', 'Rogue', 'Paladin', 'Assassin', 'Berserker', 'Sage', 'Bard', 'Druid', 'Shaman', 'Warlock', 'Archer', 'Monk', 'Priest', 'Necromancer', 'Sorcerer'];
+    const numbers = Math.floor(1000 + Math.random() * 9000); // 4-digit number
+    
+    const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    
+    return `${adjective}${noun}${numbers}`;
+}
+
+// Generate a unique random username (check if exists and regenerate if needed)
+async function generateUniqueRandomUsername(maxAttempts = 10) {
+    for (let i = 0; i < maxAttempts; i++) {
+        const randomName = generateRandomUsername();
+        const exists = await db.nameExists(randomName);
+        if (!exists) {
+            return randomName;
+        }
+    }
+    // If all attempts failed, add timestamp to make it unique
+    const baseName = generateRandomUsername();
+    return `${baseName}${Date.now().toString().slice(-6)}`;
+}
+
 // Helper function to get display name for passive ability rings
 function getPassiveAbilityDisplayName(abilityId) {
     const names = {
@@ -2796,22 +2822,25 @@ wss.on('connection', (ws, req) => {
             const isValid = await db.verifyUserByEmailAndGoogleId(data.email, data.id);
             
             if (!isValid) {
-                // User doesn't exist, create new user
+                // User doesn't exist, create new user with random username
                 try {
                     const defaultStats = getDefaultStats();
                     const { inventory, equipment, weaponData, passiveAbility } = initializeInventoryAndEquipment();
                     
+                    // Generate a unique random username
+                    const randomName = await generateUniqueRandomUsername();
+                    
                     await db.createUser({
                         email: data.email,
                         googleId: data.id,
-                        name: data.displayName || data.email.split('@')[0] + '_google',
+                        name: randomName,
                         stats: defaultStats,
                         inventory: inventory,
                         equipment: equipment,
                         weaponData: weaponData,
                         passiveAbility: passiveAbility
                     });
-                    console.log(`✅ Created new Google user: ${data.email} (${data.id})`);
+                    console.log(`✅ Created new Google user: ${data.email} (${data.id}) with random name: ${randomName}`);
                 } catch (createErr) {
                     console.error('Failed to create Google user:', createErr);
                     console.error('Create error details:', createErr.message, createErr.stack);

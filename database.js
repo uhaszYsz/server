@@ -24,125 +24,96 @@ export function initDatabase() {
             }
             console.log('✅ Connected to SQLite database');
             
-            // Create users table - googleId as PRIMARY KEY, name for display
+            // Create forum tables
             db.run(`
-                CREATE TABLE IF NOT EXISTS users (
-                    googleId TEXT PRIMARY KEY,
-                    name TEXT NOT NULL UNIQUE,
-                    email TEXT NOT NULL UNIQUE,
-                    stats TEXT NOT NULL,
-                    inventory TEXT NOT NULL,
-                    equipment TEXT NOT NULL,
-                    weaponData TEXT,
-                    passiveAbility TEXT,
-                    rank TEXT DEFAULT 'player',
-                    verified INTEGER DEFAULT 0
+                CREATE TABLE IF NOT EXISTS forum_categories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    parent_id INTEGER,
+                    description TEXT,
+                    display_order INTEGER DEFAULT 0,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
             `, (err) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                console.log('✅ Users table initialized (googleId as PRIMARY KEY, name for display)');
-                
-                // Add name column if it doesn't exist (migration for existing databases)
-                db.run('ALTER TABLE users ADD COLUMN name TEXT', (err) => {
-                    if (err && !err.message.includes('duplicate column')) {
-                        console.warn('Warning: Could not add name column:', err.message);
-                    } else if (!err) {
-                        console.log('✅ Name column added to users table');
-                        // Create unique index on name
-                        db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_name ON users(name)', (err) => {
-                            if (err) {
-                                console.warn('Warning: Could not create name index:', err.message);
-                            } else {
-                                console.log('✅ Name unique index created');
-                            }
-                        });
-                    }
-                });
-                
-                // Create unique index on email (already enforced by UNIQUE constraint, but index helps with lookups)
-                db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)', (err) => {
                     if (err) {
-                        console.warn('Warning: Could not create email index:', err.message);
-                    } else {
-                        console.log('✅ Email unique index created');
+                        reject(err);
+                        return;
                     }
-                });
+                console.log('✅ Forum categories table initialized');
                 
-                // Create forum tables
                 db.run(`
-                    CREATE TABLE IF NOT EXISTS forum_categories (
+                    CREATE TABLE IF NOT EXISTS forum_threads (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT NOT NULL,
-                        parent_id INTEGER,
-                        description TEXT,
-                        display_order INTEGER DEFAULT 0,
-                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        category_id INTEGER NOT NULL,
+                        title TEXT NOT NULL,
+                        author TEXT NOT NULL,
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (category_id) REFERENCES forum_categories(id)
                     )
                 `, (err) => {
                     if (err) {
                         reject(err);
                         return;
                     }
-                    console.log('✅ Forum categories table initialized');
+                    console.log('✅ Forum threads table initialized');
                     
                     db.run(`
-                        CREATE TABLE IF NOT EXISTS forum_threads (
+                        CREATE TABLE IF NOT EXISTS forum_posts (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            category_id INTEGER NOT NULL,
-                            title TEXT NOT NULL,
+                            thread_id INTEGER NOT NULL,
                             author TEXT NOT NULL,
+                            content TEXT NOT NULL,
                             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                            FOREIGN KEY (category_id) REFERENCES forum_categories(id)
+                            FOREIGN KEY (thread_id) REFERENCES forum_threads(id)
                         )
                     `, (err) => {
                         if (err) {
                             reject(err);
                             return;
                         }
-                        console.log('✅ Forum threads table initialized');
+                        console.log('✅ Forum posts table initialized');
                         
+                        // Create post_likes table to track which users liked which posts
                         db.run(`
-                            CREATE TABLE IF NOT EXISTS forum_posts (
+                            CREATE TABLE IF NOT EXISTS forum_post_likes (
                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                thread_id INTEGER NOT NULL,
-                                author TEXT NOT NULL,
-                                content TEXT NOT NULL,
+                                post_id INTEGER NOT NULL,
+                                googleId TEXT NOT NULL,
                                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                FOREIGN KEY (thread_id) REFERENCES forum_threads(id)
+                                FOREIGN KEY (post_id) REFERENCES forum_posts(id),
+                                FOREIGN KEY (googleId) REFERENCES users(googleId),
+                                UNIQUE(post_id, googleId)
+                            )
+                        `, (err) => {
+                            if (err) {
+                                console.error('Error creating forum_post_likes table:', err);
+                            } else {
+                                console.log('✅ Forum post likes table initialized');
+                            }
+                        });
+                        
+                        // Create stages table for user-uploaded levels
+                        db.run(`
+                            CREATE TABLE IF NOT EXISTS stages (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                slug TEXT UNIQUE NOT NULL,
+                                name TEXT NOT NULL,
+                                data TEXT NOT NULL,
+                                uploaded_by TEXT NOT NULL,
+                                uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                FOREIGN KEY (uploaded_by) REFERENCES users(googleId)
                             )
                         `, (err) => {
                             if (err) {
                                 reject(err);
                                 return;
                             }
-                            console.log('✅ Forum posts table initialized');
+                            console.log('✅ Stages table initialized');
                             
-                            // Create post_likes table to track which users liked which posts
+                            // Create campaign_levels table for campaign levels
                             db.run(`
-                                CREATE TABLE IF NOT EXISTS forum_post_likes (
-                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                    post_id INTEGER NOT NULL,
-                                    googleId TEXT NOT NULL,
-                                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                    FOREIGN KEY (post_id) REFERENCES forum_posts(id),
-                                    FOREIGN KEY (googleId) REFERENCES users(googleId),
-                                    UNIQUE(post_id, googleId)
-                                )
-                            `, (err) => {
-                                if (err) {
-                                    console.error('Error creating forum_post_likes table:', err);
-                                } else {
-                                    console.log('✅ Forum post likes table initialized');
-                                }
-                            });
-                            
-                            // Create stages table for user-uploaded levels
-                            db.run(`
-                                CREATE TABLE IF NOT EXISTS stages (
+                                CREATE TABLE IF NOT EXISTS campaign_levels (
                                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                                     slug TEXT UNIQUE NOT NULL,
                                     name TEXT NOT NULL,
@@ -156,31 +127,12 @@ export function initDatabase() {
                                     reject(err);
                                     return;
                                 }
-                                console.log('✅ Stages table initialized');
+                                console.log('✅ Campaign levels table initialized');
                                 
-                                // Create campaign_levels table for campaign levels
-                                db.run(`
-                                    CREATE TABLE IF NOT EXISTS campaign_levels (
-                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                        slug TEXT UNIQUE NOT NULL,
-                                        name TEXT NOT NULL,
-                                        data TEXT NOT NULL,
-                                        uploaded_by TEXT NOT NULL,
-                                        uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                        FOREIGN KEY (uploaded_by) REFERENCES users(googleId)
-                                    )
-                                `, (err) => {
-                                    if (err) {
-                                        reject(err);
-                                        return;
-                                    }
-                                    console.log('✅ Campaign levels table initialized');
-                                    
-                                    // Initialize default categories
-                                    initForumCategories().then(() => {
-                                        resolve();
-                                    }).catch(reject);
-                                });
+                                // Initialize default categories
+                                initForumCategories().then(() => {
+                                    resolve();
+                                }).catch(reject);
                             });
                         });
                     });
