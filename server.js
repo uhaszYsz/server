@@ -2784,18 +2784,24 @@ wss.on('connection', (ws, req) => {
             if (!isValid) {
                 // User doesn't exist, create new user
                 try {
+                    const defaultStats = getDefaultStats();
+                    const { inventory, equipment, weaponData, passiveAbility } = initializeInventoryAndEquipment();
+                    
                     await db.createUser({
                         email: data.email,
                         googleId: data.id,
                         username: data.displayName || data.email.split('@')[0] + '_google',
-                        stats: {},
-                        inventory: [],
-                        equipment: {}
+                        stats: defaultStats,
+                        inventory: inventory,
+                        equipment: equipment,
+                        weaponData: weaponData,
+                        passiveAbility: passiveAbility
                     });
                     console.log(`✅ Created new Google user: ${data.email} (${data.id})`);
                 } catch (createErr) {
                     console.error('Failed to create Google user:', createErr);
-                    ws.send(msgpack.encode({ type: 'error', message: 'Failed to create account' }));
+                    console.error('Create error details:', createErr.message, createErr.stack);
+                    ws.send(msgpack.encode({ type: 'error', message: 'Failed to create account: ' + createErr.message }));
                     return;
                 }
             }

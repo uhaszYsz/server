@@ -235,13 +235,18 @@ export function createUser(user) {
             // Generate username from email if not provided (for display purposes)
             const username = user.username || user.email.split('@')[0] + '_google';
             
+            // For Google users, use hashed email as placeholder password
+            // Since password column is NOT NULL, we need to provide a value
+            const placeholderPassword = hashedEmail;
+            
             const stmt = db.prepare(`
-                INSERT INTO users (username, email, googleId, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO users (username, password, email, googleId, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             stmt.run(
                 username,
+                placeholderPassword, // Required field - using hashed email as placeholder
                 hashedEmail, // Store hashed email
                 user.googleId, // Store Google user ID
                 JSON.stringify(user.stats || {}),
