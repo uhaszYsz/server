@@ -64,6 +64,32 @@ export function initDatabase() {
                     }
                 });
                 
+                // Add email column (hashed) if it doesn't exist
+                db.run('ALTER TABLE users ADD COLUMN email TEXT', (err) => {
+                    if (err && !err.message.includes('duplicate column')) {
+                        console.warn('Warning: Could not add email column:', err.message);
+                    } else if (!err) {
+                        console.log('✅ Email column added to users table');
+                        // Create unique index on email
+                        db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)', (err) => {
+                            if (err) {
+                                console.warn('Warning: Could not create email index:', err.message);
+                            } else {
+                                console.log('✅ Email unique index created');
+                            }
+                        });
+                    }
+                });
+                
+                // Add googleId column if it doesn't exist
+                db.run('ALTER TABLE users ADD COLUMN googleId TEXT', (err) => {
+                    if (err && !err.message.includes('duplicate column')) {
+                        console.warn('Warning: Could not add googleId column:', err.message);
+                    } else if (!err) {
+                        console.log('✅ GoogleId column added to users table');
+                    }
+                });
+                
                 // Create forum tables
                 db.run(`
                     CREATE TABLE IF NOT EXISTS forum_categories (
@@ -193,21 +219,31 @@ export async function verifyPassword(password, hash) {
     return await bcrypt.compare(password, hash);
 }
 
-// Create a new user
+// Create a new user (now requires email and googleId instead of password)
 export function createUser(user) {
     return new Promise(async (resolve, reject) => {
         try {
-            // Hash the password before storing
-            const hashedPassword = await hashPassword(user.password);
+            // Validate required fields
+            if (!user.email || !user.googleId) {
+                reject(new Error('Email and googleId are required'));
+                return;
+            }
+            
+            // Hash the email before storing
+            const hashedEmail = await hashPassword(user.email.toLowerCase().trim());
+            
+            // Generate username from email if not provided (for display purposes)
+            const username = user.username || user.email.split('@')[0] + '_google';
             
             const stmt = db.prepare(`
-                INSERT INTO users (username, password, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO users (username, email, googleId, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             stmt.run(
-                user.username,
-                hashedPassword, // Store hashed password, not plain text
+                username,
+                hashedEmail, // Store hashed email
+                user.googleId, // Store Google user ID
                 JSON.stringify(user.stats || {}),
                 JSON.stringify(user.inventory || []),
                 JSON.stringify(user.equipment || {}),
@@ -275,7 +311,9 @@ export function getUserByUsername(username) {
             // Parse JSON fields
             const user = {
                 username: row.username,
-                password: row.password,
+                email: row.email || null, // Hashed email
+                googleId: row.googleId || null,
+                password: row.password || null, // Legacy password field (may not exist for new users)
                 stats: JSON.parse(row.stats),
                 inventory: JSON.parse(row.inventory),
                 equipment: JSON.parse(row.equipment),
@@ -287,6 +325,87 @@ export function getUserByUsername(username) {
 
             resolve(user);
         });
+    });
+}
+
+// Get user by googleId (primary lookup)
+export function getUserByGoogleId(googleId) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT * FROM users WHERE googleId = ?', [googleId], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            if (!row) {
+                resolve(null);
+                return;
+            }
+
+            // Parse JSON fields
+            const user = {
+                username: row.username,
+                email: row.email || null, // Hashed email
+                googleId: row.googleId,
+                password: row.password || null, // Legacy password field (may not exist for new users)
+                stats: JSON.parse(row.stats),
+                inventory: JSON.parse(row.inventory),
+                equipment: JSON.parse(row.equipment),
+                weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
+                passiveAbility: row.passiveAbility || null,
+                rank: row.rank || 'player',
+                verified: row.verified !== undefined ? row.verified : 0
+            };
+
+            resolve(user);
+        });
+    });
+}
+
+// Verify user by email and googleId (matches client memory data)
+// Gets user by googleId first, then verifies email hash matches
+export function verifyUserByEmailAndGoogleId(email, googleId) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // First get user by googleId
+            const user = await getUserByGoogleId(googleId);
+            
+            if (!user) {
+                resolve(false);
+                return;
+            }
+            
+            // Verify email hash matches (bcrypt comparison)
+            if (!user.email) {
+                // User exists but no email stored (legacy user)
+                resolve(false);
+                return;
+            }
+            
+            const emailMatches = await verifyPassword(email.toLowerCase().trim(), user.email);
+            resolve(emailMatches);
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// Get user by email and googleId (returns user if verification passes)
+export function getUserByEmailAndGoogleId(email, googleId) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const isValid = await verifyUserByEmailAndGoogleId(email, googleId);
+            if (!isValid) {
+                resolve(null);
+                return;
+            }
+            
+            // Verification passed, return the user
+            const user = await getUserByGoogleId(googleId);
+            resolve(user);
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 

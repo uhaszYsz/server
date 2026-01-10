@@ -2770,9 +2770,97 @@ wss.on('connection', (ws, req) => {
             console.error('Failed to get forum thread', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to get forum thread' }));
         }
+      } else if (data.type === 'googleLogin') {
+        // Handle Google login - verify email and googleId
+        if (!data.email || !data.id) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Email and Google ID required' }));
+            return;
+        }
+        
+        try {
+            // Verify user exists by email and googleId
+            const isValid = await db.verifyUserByEmailAndGoogleId(data.email, data.id);
+            
+            if (!isValid) {
+                // User doesn't exist, create new user
+                try {
+                    await db.createUser({
+                        email: data.email,
+                        googleId: data.id,
+                        username: data.displayName || data.email.split('@')[0] + '_google',
+                        stats: {},
+                        inventory: [],
+                        equipment: {}
+                    });
+                    console.log(`✅ Created new Google user: ${data.email} (${data.id})`);
+                } catch (createErr) {
+                    console.error('Failed to create Google user:', createErr);
+                    ws.send(msgpack.encode({ type: 'error', message: 'Failed to create account' }));
+                    return;
+                }
+            }
+            
+            // Get user data
+            const user = await db.getUserByGoogleId(data.id);
+            if (!user) {
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+                return;
+            }
+            
+            // Set authentication data on WebSocket
+            ws.username = user.username;
+            ws.email = data.email;
+            ws.googleId = data.id;
+            ws.rank = user.rank || 'player';
+            ws.isAdmin = (ws.rank === 'admin');
+            
+            // Send login success
+            ws.send(msgpack.encode({
+                type: 'loginSuccess',
+                username: user.username,
+                rank: user.rank || 'player'
+            }));
+            
+            console.log(`✅ Google login successful: ${data.email} (${data.id})`);
+        } catch (error) {
+            console.error('Google login error:', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Login failed' }));
+        }
+      } else if (data.type === 'checkVerification') {
+        // Check if email and googleId match server data
+        if (!data.email || !data.id) {
+            ws.send(msgpack.encode({ type: 'verificationResult', verified: false, message: 'Email and Google ID required' }));
+            return;
+        }
+        
+        try {
+            const isValid = await db.verifyUserByEmailAndGoogleId(data.email, data.id);
+            ws.send(msgpack.encode({
+                type: 'verificationResult',
+                verified: isValid,
+                message: isValid ? 'Verified' : 'Not verified'
+            }));
+        } catch (error) {
+            console.error('Verification check error:', error);
+            ws.send(msgpack.encode({ type: 'verificationResult', verified: false, message: 'Verification failed' }));
+        }
       } else if (data.type === 'createForumThread') {
-        if (!ws.username) {
+        // Verify user is authenticated using email and googleId
+        if (!ws.email || !ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        // Verify user data matches server
+        try {
+            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            if (!isValid) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+                return;
+            }
+        } catch (verifyErr) {
+            console.error('Verification error:', verifyErr);
+            ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
         if (!data.categoryId) {
@@ -2815,8 +2903,22 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to create forum thread' }));
         }
       } else if (data.type === 'createForumPost') {
-        if (!ws.username) {
+        // Verify user is authenticated using email and googleId
+        if (!ws.email || !ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        // Verify user data matches server
+        try {
+            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            if (!isValid) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+                return;
+            }
+        } catch (verifyErr) {
+            console.error('Verification error:', verifyErr);
+            ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
         if (!data.threadId) {
@@ -2845,8 +2947,22 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to create forum post' }));
         }
       } else if (data.type === 'deleteForumThread') {
-        if (!ws.username) {
+        // Verify user is authenticated using email and googleId
+        if (!ws.email || !ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        // Verify user data matches server
+        try {
+            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            if (!isValid) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+                return;
+            }
+        } catch (verifyErr) {
+            console.error('Verification error:', verifyErr);
+            ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
         if (!data.threadId) {
@@ -2882,8 +2998,22 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete forum thread' }));
         }
       } else if (data.type === 'deleteForumPost') {
-        if (!ws.username) {
+        // Verify user is authenticated using email and googleId
+        if (!ws.email || !ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        // Verify user data matches server
+        try {
+            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            if (!isValid) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+                return;
+            }
+        } catch (verifyErr) {
+            console.error('Verification error:', verifyErr);
+            ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
         if (!data.postId) {
@@ -2919,8 +3049,22 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete forum post' }));
         }
       } else if (data.type === 'likeForumPost') {
-        if (!ws.username) {
+        // Verify user is authenticated using email and googleId
+        if (!ws.email || !ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        // Verify user data matches server
+        try {
+            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            if (!isValid) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+                return;
+            }
+        } catch (verifyErr) {
+            console.error('Verification error:', verifyErr);
+            ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
         if (!data.postId) {
