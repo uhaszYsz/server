@@ -24,10 +24,11 @@ export function initDatabase() {
             }
             console.log('✅ Connected to SQLite database');
             
-            // Create users table - googleId as PRIMARY KEY, no username/password
+            // Create users table - googleId as PRIMARY KEY, name for display
             db.run(`
                 CREATE TABLE IF NOT EXISTS users (
                     googleId TEXT PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
                     email TEXT NOT NULL UNIQUE,
                     stats TEXT NOT NULL,
                     inventory TEXT NOT NULL,
@@ -42,7 +43,24 @@ export function initDatabase() {
                     reject(err);
                     return;
                 }
-                console.log('✅ Users table initialized (googleId as PRIMARY KEY, no username/password)');
+                console.log('✅ Users table initialized (googleId as PRIMARY KEY, name for display)');
+                
+                // Add name column if it doesn't exist (migration for existing databases)
+                db.run('ALTER TABLE users ADD COLUMN name TEXT', (err) => {
+                    if (err && !err.message.includes('duplicate column')) {
+                        console.warn('Warning: Could not add name column:', err.message);
+                    } else if (!err) {
+                        console.log('✅ Name column added to users table');
+                        // Create unique index on name
+                        db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_name ON users(name)', (err) => {
+                            if (err) {
+                                console.warn('Warning: Could not create name index:', err.message);
+                            } else {
+                                console.log('✅ Name unique index created');
+                            }
+                        });
+                    }
+                });
                 
                 // Create unique index on email (already enforced by UNIQUE constraint, but index helps with lookups)
                 db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)', (err) => {
@@ -183,26 +201,30 @@ export async function verifyPassword(password, hash) {
     return await bcrypt.compare(password, hash);
 }
 
-// Create a new user (requires email and googleId, no username/password)
+// Create a new user (requires email, googleId, and name)
 export function createUser(user) {
     return new Promise(async (resolve, reject) => {
         try {
             // Validate required fields
-            if (!user.email || !user.googleId) {
-                reject(new Error('Email and googleId are required'));
+            if (!user.email || !user.googleId || !user.name) {
+                reject(new Error('Email, googleId, and name are required'));
                 return;
             }
             
             // Hash the email before storing
             const hashedEmail = await hashPassword(user.email.toLowerCase().trim());
             
+            // Generate name from email if not provided
+            const name = user.name || user.email.split('@')[0] + '_google';
+            
             const stmt = db.prepare(`
-                INSERT INTO users (googleId, email, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO users (googleId, name, email, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             stmt.run(
                 user.googleId, // PRIMARY KEY - Google user ID
+                name, // Display name
                 hashedEmail, // Store hashed email
                 JSON.stringify(user.stats || {}),
                 JSON.stringify(user.inventory || []),
@@ -239,6 +261,7 @@ export function getAllUsers() {
             // Parse JSON fields
             const users = rows.map(row => ({
                 googleId: row.googleId,
+                name: row.name || null,
                 email: row.email, // Hashed email
                 stats: JSON.parse(row.stats),
                 inventory: JSON.parse(row.inventory),
@@ -254,12 +277,36 @@ export function getAllUsers() {
     });
 }
 
-// DEPRECATED: Use getUserByGoogleId instead - username no longer exists
-// Kept for backward compatibility, but will always return null
-export function getUserByUsername(username) {
+// Get user by name (for display purposes)
+export function getUserByName(name) {
     return new Promise((resolve, reject) => {
-        console.warn('getUserByUsername is deprecated. Use getUserByGoogleId instead.');
-        resolve(null);
+        db.get('SELECT * FROM users WHERE name = ?', [name], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            if (!row) {
+                resolve(null);
+                return;
+            }
+
+            // Parse JSON fields
+            const user = {
+                googleId: row.googleId,
+                name: row.name || null,
+                email: row.email || null, // Hashed email
+                stats: JSON.parse(row.stats),
+                inventory: JSON.parse(row.inventory),
+                equipment: JSON.parse(row.equipment),
+                weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
+                passiveAbility: row.passiveAbility || null,
+                rank: row.rank || 'player',
+                verified: row.verified !== undefined ? row.verified : 0
+            };
+
+            resolve(user);
+        });
     });
 }
 
@@ -280,6 +327,7 @@ export function getUserByGoogleId(googleId) {
             // Parse JSON fields
             const user = {
                 googleId: row.googleId,
+                name: row.name || null,
                 email: row.email || null, // Hashed email
                 stats: JSON.parse(row.stats),
                 inventory: JSON.parse(row.inventory),
@@ -310,7 +358,6 @@ export function verifyUserByEmailAndGoogleId(email, googleId) {
             
             // Verify email hash matches (bcrypt comparison)
             if (!user.email) {
-                // User exists but no email stored (legacy user)
                 resolve(false);
                 return;
             }
@@ -342,15 +389,6 @@ export function getUserByEmailAndGoogleId(email, googleId) {
     });
 }
 
-// DEPRECATED: findUser by username/password no longer supported
-// Authentication is now done via Google OAuth only
-export function findUser(username, password) {
-    return new Promise((resolve, reject) => {
-        console.warn('findUser is deprecated. Use Google OAuth authentication instead.');
-        resolve(null);
-    });
-}
-
 // Set user verified status by googleId
 export function setUserVerified(googleId, verified = 1) {
     return new Promise((resolve, reject) => {
@@ -364,23 +402,7 @@ export function setUserVerified(googleId, verified = 1) {
     });
 }
 
-// DEPRECATED: verifyUser by username/password no longer supported
-export function verifyUser(username, password) {
-    return new Promise((resolve, reject) => {
-        console.warn('verifyUser is deprecated. Use setUserVerified with googleId instead.');
-        resolve(false);
-    });
-}
-
-// DEPRECATED: migrateAllPasswords no longer supported - password column removed
-export function migrateAllPasswords() {
-    return new Promise((resolve, reject) => {
-        console.warn('migrateAllPasswords is deprecated. Password column no longer exists.');
-        resolve({ migrated: 0, skipped: 0, errors: 0 });
-    });
-}
-
-// Update user by googleId (no username/password)
+// Update user by googleId
 export function updateUser(googleId, userData) {
     return new Promise(async (resolve, reject) => {
         try {
@@ -394,9 +416,17 @@ export function updateUser(googleId, userData) {
                 emailToStore = existingUser ? existingUser.email : null;
             }
             
+            // Get existing name if not updating
+            let nameToStore = userData.name || null;
+            if (!nameToStore) {
+                const existingUser = await getUserByGoogleId(googleId);
+                nameToStore = existingUser ? existingUser.name : null;
+            }
+            
             const stmt = db.prepare(`
                 UPDATE users 
-                SET email = COALESCE(?, email),
+                SET name = COALESCE(?, name),
+                    email = COALESCE(?, email),
                     stats = ?,
                     inventory = ?,
                     equipment = ?,
@@ -408,6 +438,7 @@ export function updateUser(googleId, userData) {
             `);
 
             stmt.run(
+                nameToStore,
                 emailToStore,
                 JSON.stringify(userData.stats || {}),
                 JSON.stringify(userData.inventory || []),
@@ -433,6 +464,52 @@ export function updateUser(googleId, userData) {
     });
 }
 
+// Update user name by googleId
+export function updateName(googleId, newName) {
+    return new Promise((resolve, reject) => {
+        if (!newName || typeof newName !== 'string' || newName.trim().length === 0) {
+            reject(new Error('Name is required and must be a non-empty string'));
+            return;
+        }
+        
+        const trimmedName = newName.trim();
+        if (trimmedName.length > 20) {
+            reject(new Error('Name must be 20 characters or less'));
+            return;
+        }
+        
+        db.run('UPDATE users SET name = ? WHERE googleId = ?', [trimmedName, googleId], function(err) {
+            if (err) {
+                if (err.message.includes('UNIQUE constraint')) {
+                    reject(new Error('Name is already taken'));
+                } else {
+                    reject(err);
+                }
+            } else {
+                resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
+// Check if name exists
+export function nameExists(name) {
+    return new Promise((resolve, reject) => {
+        if (!name || typeof name !== 'string') {
+            resolve(false);
+            return;
+        }
+        
+        db.get('SELECT googleId FROM users WHERE name = ?', [name.trim()], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(!!row);
+        });
+    });
+}
+
 // Set user rank by googleId
 export function setUserRank(googleId, rank) {
     return new Promise((resolve, reject) => {
@@ -450,15 +527,6 @@ export function setUserRank(googleId, rank) {
                 resolve(this.changes > 0);
             }
         });
-    });
-}
-
-// DEPRECATED: updateUsername no longer supported - username column removed
-// GoogleId is immutable and serves as the unique identifier
-export function updateUsername(oldUsername, newUsername) {
-    return new Promise((resolve, reject) => {
-        console.warn('updateUsername is deprecated. Username column no longer exists. Use googleId as identifier.');
-        reject(new Error('Username updates are no longer supported. googleId is immutable.'));
     });
 }
 
@@ -488,148 +556,132 @@ export function googleIdExists(googleId) {
     });
 }
 
-// DEPRECATED: usernameExists no longer supported
-export function usernameExists(username) {
-    return new Promise((resolve, reject) => {
-        console.warn('usernameExists is deprecated. Use googleIdExists instead.');
-        resolve(false);
-    });
-}
-
 // Initialize default forum categories
 function initForumCategories() {
     return new Promise((resolve, reject) => {
-        // Add display_order column if it doesn't exist (SQLite will ignore if column exists)
-        db.run('ALTER TABLE forum_categories ADD COLUMN display_order INTEGER DEFAULT 0', (err) => {
-            // Ignore error if column already exists
-            if (err && !err.message.includes('duplicate column')) {
-                console.warn('Warning: Could not add display_order column:', err.message);
+        // Get or create parent categories
+        db.get('SELECT id FROM forum_categories WHERE name = ? AND parent_id IS NULL', ['Discussions'], (err, discussionsRow) => {
+            if (err) {
+                reject(err);
+                return;
             }
             
-            // Get or create parent categories
-            db.get('SELECT id FROM forum_categories WHERE name = ? AND parent_id IS NULL', ['Discussions'], (err, discussionsRow) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                
-                let discussionsId;
-                if (discussionsRow) {
-                    discussionsId = discussionsRow.id;
-                } else {
-                    // Insert Discussions parent category
-                    db.run('INSERT INTO forum_categories (name, parent_id, description) VALUES (?, ?, ?)', 
-                        ['Discussions', null, 'General discussions'], function(err) {
-                        if (err) {
-                            reject(err);
-                            return;
-                        }
-                        discussionsId = this.lastID;
-                        continueWithSubcategories();
-                    });
-                    return;
-                }
-                
-                continueWithSubcategories();
-                
-                function continueWithSubcategories() {
-                    db.get('SELECT id FROM forum_categories WHERE name = ? AND parent_id IS NULL', ['Shared'], (err, sharedRow) => {
-                        if (err) {
-                            reject(err);
-                            return;
-                        }
-                        
-                        let sharedId;
-                        if (sharedRow) {
-                            sharedId = sharedRow.id;
-                        } else {
-                            db.run('INSERT INTO forum_categories (name, parent_id, description) VALUES (?, ?, ?)', 
-                                ['Shared', null, 'Shared content'], function(err) {
+            let discussionsId;
+            if (discussionsRow) {
+                discussionsId = discussionsRow.id;
+            } else {
+                // Insert Discussions parent category
+                db.run('INSERT INTO forum_categories (name, parent_id, description) VALUES (?, ?, ?)', 
+                    ['Discussions', null, 'General discussions'], function(err) {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    discussionsId = this.lastID;
+                    continueWithSubcategories();
+                });
+                return;
+            }
+            
+            continueWithSubcategories();
+            
+            function continueWithSubcategories() {
+                db.get('SELECT id FROM forum_categories WHERE name = ? AND parent_id IS NULL', ['Shared'], (err, sharedRow) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    
+                    let sharedId;
+                    if (sharedRow) {
+                        sharedId = sharedRow.id;
+                    } else {
+                        db.run('INSERT INTO forum_categories (name, parent_id, description) VALUES (?, ?, ?)', 
+                            ['Shared', null, 'Shared content'], function(err) {
+                            if (err) {
+                                reject(err);
+                                return;
+                            }
+                            sharedId = this.lastID;
+                            processSubcategories();
+                        });
+                        return;
+                    }
+                    
+                    processSubcategories();
+                    
+                    function processSubcategories() {
+                        // Update "Danmaku raiders general" to "General" if it exists
+                        db.run('UPDATE forum_categories SET name = ?, display_order = ? WHERE name = ? AND parent_id = ?',
+                            ['General', 1, 'Danmaku raiders general', discussionsId], (err) => {
+                            if (err) {
+                                console.error('Error updating old category name:', err);
+                            }
+                        });
+                            
+                        // Delete Tutorials category if it exists (user doesn't want it)
+                        db.run('DELETE FROM forum_categories WHERE name = ? AND parent_id = ?',
+                            ['Tutorials', discussionsId], (err) => {
                                 if (err) {
-                                    reject(err);
-                                    return;
+                                    console.error('Error deleting Tutorials category:', err);
                                 }
-                                sharedId = this.lastID;
-                                processSubcategories();
-                            });
-                            return;
-                        }
-                        
-                        processSubcategories();
-                        
-                        function processSubcategories() {
-                            // Update "Danmaku raiders general" to "General" if it exists
-                            db.run('UPDATE forum_categories SET name = ?, display_order = ? WHERE name = ? AND parent_id = ?',
-                                ['General', 1, 'Danmaku raiders general', discussionsId], (err) => {
-                                if (err) {
-                                    console.error('Error updating old category name:', err);
-                                }
-                            });
                                 
-                            // Delete Tutorials category if it exists (user doesn't want it)
-                            db.run('DELETE FROM forum_categories WHERE name = ? AND parent_id = ?',
-                                ['Tutorials', discussionsId], (err) => {
+                                // Define subcategories with order
+                            const subcategories = [
+                                { name: 'General', parent_id: discussionsId, description: 'General game discussions', order: 1 },
+                                { name: 'Help', parent_id: discussionsId, description: 'Get help', order: 2 },
+                                { name: 'Bug reports', parent_id: discussionsId, description: 'Report bugs', order: 3 },
+                                { name: 'Levels', parent_id: sharedId, description: 'Share levels', order: 1 },
+                                { name: 'Objects', parent_id: sharedId, description: 'Share objects', order: 2 },
+                                { name: 'functions', parent_id: sharedId, description: 'Share functions', order: 3 }
+                            ];
+                            
+                            let processed = 0;
+                            const total = subcategories.length;
+                            
+                            if (total === 0) {
+                                resolve();
+                                return;
+                            }
+                            
+                            subcategories.forEach(cat => {
+                                // Check if category exists
+                                db.get('SELECT id FROM forum_categories WHERE name = ? AND parent_id = ?', 
+                                    [cat.name, cat.parent_id], (err, row) => {
                                     if (err) {
-                                        console.error('Error deleting Tutorials category:', err);
+                                        console.error('Error checking category:', err);
+                                        processed++;
+                                        if (processed === total) resolve();
+                                        return;
                                     }
                                     
-                                    // Define subcategories with order
-                                const subcategories = [
-                                    { name: 'General', parent_id: discussionsId, description: 'General game discussions', order: 1 },
-                                    { name: 'Help', parent_id: discussionsId, description: 'Get help', order: 2 },
-                                    { name: 'Bug reports', parent_id: discussionsId, description: 'Report bugs', order: 3 },
-                                    { name: 'Levels', parent_id: sharedId, description: 'Share levels', order: 1 },
-                                    { name: 'Objects', parent_id: sharedId, description: 'Share objects', order: 2 },
-                                    { name: 'functions', parent_id: sharedId, description: 'Share functions', order: 3 }
-                                ];
-                                
-                                let processed = 0;
-                                const total = subcategories.length;
-                                
-                                if (total === 0) {
-                                    resolve();
-                                    return;
-                                }
-                                
-                                subcategories.forEach(cat => {
-                                    // Check if category exists
-                                    db.get('SELECT id FROM forum_categories WHERE name = ? AND parent_id = ?', 
-                                        [cat.name, cat.parent_id], (err, row) => {
-                                        if (err) {
-                                            console.error('Error checking category:', err);
+                                    if (row) {
+                                        // Update existing category
+                                        db.run('UPDATE forum_categories SET description = ?, display_order = ? WHERE id = ?',
+                                            [cat.description, cat.order, row.id], (err) => {
+                                            if (err) {
+                                                console.error('Error updating category:', err);
+                                            }
                                             processed++;
                                             if (processed === total) resolve();
-                                            return;
-                                        }
-                                        
-                                        if (row) {
-                                            // Update existing category
-                                            db.run('UPDATE forum_categories SET description = ?, display_order = ? WHERE id = ?',
-                                                [cat.description, cat.order, row.id], (err) => {
-                                                if (err) {
-                                                    console.error('Error updating category:', err);
-                                                }
-                                                processed++;
-                                                if (processed === total) resolve();
-                                            });
-                                        } else {
-                                            // Insert new category
-                                            db.run('INSERT INTO forum_categories (name, parent_id, description, display_order) VALUES (?, ?, ?, ?)', 
-                                                [cat.name, cat.parent_id, cat.description, cat.order], (err) => {
-                                                if (err) {
-                                                    console.error('Error inserting subcategory:', err);
-                                                }
-                                                processed++;
-                                                if (processed === total) resolve();
-                                            });
-                                        }
-                                    });
+                                        });
+                                    } else {
+                                        // Insert new category
+                                        db.run('INSERT INTO forum_categories (name, parent_id, description, display_order) VALUES (?, ?, ?, ?)', 
+                                            [cat.name, cat.parent_id, cat.description, cat.order], (err) => {
+                                            if (err) {
+                                                console.error('Error inserting subcategory:', err);
+                                            }
+                                            processed++;
+                                            if (processed === total) resolve();
+                                        });
+                                    }
                                 });
                             });
-                        }
-                    });
-                }
-            });
+                        });
+                    }
+                });
+            }
         });
     });
 }
@@ -670,6 +722,7 @@ export function getForumThreads(categoryId) {
             SELECT t.*, 
                    (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id) as post_count,
                    (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date,
+                   COALESCE(u.name, t.author) as author_name,
                    COALESCE(u.rank, 'player') as author_rank
             FROM forum_threads t
             LEFT JOIN users u ON u.googleId = t.author
@@ -710,7 +763,9 @@ export function getForumCategoryStats(categoryId) {
 export function getForumThread(threadId) {
     return new Promise((resolve, reject) => {
         db.get(`
-            SELECT t.*, COALESCE(u.rank, 'player') as author_rank
+            SELECT t.*, 
+                   COALESCE(u.name, t.author) as author_name,
+                   COALESCE(u.rank, 'player') as author_rank
             FROM forum_threads t
             LEFT JOIN users u ON u.googleId = t.author
             WHERE t.id = ?
@@ -740,7 +795,9 @@ export function createForumThread(categoryId, title, author) {
 export function getForumPosts(threadId) {
     return new Promise((resolve, reject) => {
         db.all(`
-            SELECT p.*, COALESCE(u.rank, 'player') as author_rank
+            SELECT p.*, 
+                   COALESCE(u.name, p.author) as author_name,
+                   COALESCE(u.rank, 'player') as author_rank
             FROM forum_posts p
             LEFT JOIN users u ON u.googleId = p.author
             WHERE p.thread_id = ?

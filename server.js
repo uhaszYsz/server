@@ -374,8 +374,8 @@ async function buildRoomWeaponData(clientsCollection) {
     if (!clientsCollection) return data;
 
     for (const client of clientsCollection) {
-        if (!client || !client.username) continue;
-        const user = await db.getUserByUsername(client.username);
+        if (!client || !client.googleId) continue;
+        const user = await db.getUserByGoogleId(client.googleId);
         if (!user) continue;
 
         let userModified = false;
@@ -385,7 +385,7 @@ async function buildRoomWeaponData(clientsCollection) {
             if (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon')) {
                 user.equipment.weapon.weaponFile = 'playa';
                 userModified = true;
-                console.log(`[buildRoomWeaponData] Migrated ${client.username}'s Sword from 'test' to 'playa'`);
+                console.log(`[buildRoomWeaponData] Migrated ${user.name || client.googleId}'s Sword from 'test' to 'playa'`);
             }
         }
         // Always reload weapon data if equipment weaponFile doesn't match weaponData slug
@@ -397,22 +397,22 @@ async function buildRoomWeaponData(clientsCollection) {
                 if (weaponData) {
                     user.weaponData = { ...weaponData, slug };
                     userModified = true;
-                    console.log(`[buildRoomWeaponData] Reloaded weapon data for ${client.username}: slug="${slug}", emitters=${weaponData.emitters?.length || 0}`);
+                    console.log(`[buildRoomWeaponData] Reloaded weapon data for ${user.name || client.googleId}: slug="${slug}", emitters=${weaponData.emitters?.length || 0}`);
                 } else {
-                    console.error(`[buildRoomWeaponData] Failed to load weapon data for ${client.username}: slug="${slug}"`);
+                    console.error(`[buildRoomWeaponData] Failed to load weapon data for ${user.name || client.googleId}: slug="${slug}"`);
                 }
             }
         }
 
         data.push({
-            username: client.username,
+            username: user.name || client.googleId, // Use name for display
             playerId: client.id,
             weaponData: user.weaponData || null
         });
         
         // Save user if it was modified
         if (userModified) {
-            await db.updateUser(client.username, user);
+            await db.updateUser(client.googleId, user);
         }
     }
 
@@ -426,10 +426,10 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
     const joiningClientParty = joiningClientId ? findPartyByMemberId(joiningClientId) : null;
 
     for (const client of clients.values()) {
-        if (!client || !client.username) continue;
+        if (!client || !client.googleId) continue;
         if (roomName && client.room !== roomName) continue;
 
-        const user = await db.getUserByUsername(client.username);
+        const user = await db.getUserByGoogleId(client.googleId);
         if (!user) continue;
 
         // Check if this client is in the same party as the joining client
@@ -488,7 +488,7 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
         
         // Save user if it was modified
         if (userModified) {
-            await db.updateUser(client.username, user);
+            await db.updateUser(client.googleId, user);
         }
     }
 
@@ -990,11 +990,11 @@ wss.on('connection', (ws, req) => {
       
       if (data.type === 'getPlayerData') {
         // Send current player data to client
-        if (!ws.username) {
+        if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
-        const user = await db.getUserByUsername(ws.username);
+        const user = await db.getUserByGoogleId(ws.googleId);
         if (user) {
             let userDataChanged = false;
             // Migrate Sword items from 'test' to 'playa' on login
@@ -1003,7 +1003,7 @@ wss.on('connection', (ws, req) => {
                     (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon'))) {
                     user.equipment.weapon.weaponFile = 'playa';
                     userDataChanged = true;
-                    console.log(`[Login] Migrated ${ws.username}'s equipped Sword from '${user.equipment.weapon.weaponFile === 'starter-sword' ? 'starter-sword' : 'test'}' to 'playa'`);
+                    console.log(`[Login] Migrated ${user.name || ws.googleId}'s equipped Sword from '${user.equipment.weapon.weaponFile === 'starter-sword' ? 'starter-sword' : 'test'}' to 'playa'`);
                 }
                 if (!user.equipment.weapon.displayName) {
                     user.equipment.weapon.displayName = 'Sword';
@@ -1013,7 +1013,7 @@ wss.on('connection', (ws, req) => {
                 if (!user.weaponData || user.weaponData.slug !== slug) {
                     let weaponData = await loadWeaponDataBySlug(slug);
                     if (!weaponData && slug !== 'playa') {
-                        console.log(`[Login] Failed to load weapon "${slug}" for ${ws.username}, trying 'playa'`);
+                        console.log(`[Login] Failed to load weapon "${slug}" for ${user.name || ws.googleId}, trying 'playa'`);
                         weaponData = await loadWeaponDataBySlug('playa');
                         user.equipment.weapon.weaponFile = 'playa';
                         userDataChanged = true;
@@ -1021,19 +1021,20 @@ wss.on('connection', (ws, req) => {
                     if (weaponData) {
                         user.weaponData = { ...weaponData, slug: user.equipment.weapon.weaponFile || 'playa' };
                         userDataChanged = true;
-                        console.log(`[Login] Loaded weapon data for ${ws.username}: slug="${user.equipment.weapon.weaponFile}", emitters=${weaponData.emitters?.length || 0}`);
+                        console.log(`[Login] Loaded weapon data for ${user.name || ws.googleId}: slug="${user.equipment.weapon.weaponFile}", emitters=${weaponData.emitters?.length || 0}`);
                     } else {
-                        console.error(`[Login] Failed to load weapon data for ${ws.username}: slug="${slug}"`);
+                        console.error(`[Login] Failed to load weapon data for ${user.name || ws.googleId}: slug="${slug}"`);
                     }
                 }
             }
             if (userDataChanged) {
-                await db.updateUser(ws.username, user);
+                await db.updateUser(ws.googleId, user);
             }
             ws.send(msgpack.encode({
                 type: 'playerData',
                 playerData: {
-                    username: user.username,
+                    username: user.name || ws.googleId, // Use name for display
+                    name: user.name, // Add name field
                     stats: user.stats,
                     inventory: user.inventory,
                     equipment: user.equipment,
@@ -1046,19 +1047,19 @@ wss.on('connection', (ws, req) => {
         }
       } else if (data.type === 'equipItem') {
         // Handle equipping an item
-        if (!ws.username) {
+        if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
         
-        const user = await db.getUserByUsername(ws.username);
+        const user = await db.getUserByGoogleId(ws.googleId);
         if (!user) {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
             return;
         }
         
         // Authorization check: user can only equip items for themselves
-        if (user.username !== ws.username) {
+        if (user.googleId !== ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
             return;
         }
@@ -1163,7 +1164,7 @@ wss.on('connection', (ws, req) => {
         });
         
         // Save to database
-        await db.updateUser(ws.username, user);
+        await db.updateUser(ws.googleId, user);
         
         // Send success response with updated player data
         ws.send(msgpack.encode({
@@ -1184,14 +1185,14 @@ wss.on('connection', (ws, req) => {
             return;
         }
         
-        const user = await db.getUserByUsername(ws.username);
+        const user = await db.getUserByGoogleId(ws.googleId);
         if (!user) {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
             return;
         }
         
         // Authorization check: user can only reroll items for themselves
-        if (user.username !== ws.username) {
+        if (user.googleId !== ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
             return;
         }
@@ -1238,7 +1239,7 @@ wss.on('connection', (ws, req) => {
         item.stats = [firstStat, ...rerolledStats];
         
         // Save to database
-        await db.updateUser(ws.username, user);
+        await db.updateUser(ws.googleId, user);
         
         // Send success response with updated player data
         ws.send(msgpack.encode({
@@ -1267,21 +1268,21 @@ wss.on('connection', (ws, req) => {
             return;
         }
 
-        const user = await db.getUserByUsername(ws.username);
+        const user = await db.getUserByGoogleId(ws.googleId);
         if (!user) {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
             return;
         }
         
         // Authorization check: user can only set passive ability for themselves
-        if (user.username !== ws.username) {
+        if (user.googleId !== ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
             return;
         }
 
         user.passiveAbility = abilityId;
 
-        await db.updateUser(ws.username, user);
+        await db.updateUser(ws.googleId, user);
 
         const payload = {
             stats: user.stats,
@@ -1763,7 +1764,7 @@ wss.on('connection', (ws, req) => {
             return;
         }
         
-        const user = await db.getUserByUsername(ws.username);
+        const user = await db.getUserByGoogleId(ws.googleId);
         if (!user) {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
             return;
@@ -1797,7 +1798,7 @@ wss.on('connection', (ws, req) => {
         }
         
         // Save to database
-        await db.updateUser(ws.username, user);
+        await db.updateUser(ws.googleId, user);
         
         // Send success response
         ws.send(msgpack.encode({
@@ -1833,7 +1834,7 @@ wss.on('connection', (ws, req) => {
 
         try {
             const sanitizedWeapon = sanitizeWeaponPayload(data.weapon);
-            const uploaderUsername = ws.username;
+            const uploaderGoogleId = ws.googleId;
             const weaponSlug = createLevelSlug(sanitizedWeapon.name);
             const targetPath = path.resolve(weaponsDirectory, `${weaponSlug}.json`);
             const relativePath = path.relative(weaponsDirectory, targetPath);
@@ -1844,7 +1845,7 @@ wss.on('connection', (ws, req) => {
 
             const payloadToStore = {
                 ...sanitizedWeapon,
-                uploadedBy: uploaderUsername,
+                uploadedBy: uploaderGoogleId,
                 uploadedAt: new Date().toISOString()
             };
 
@@ -1965,17 +1966,17 @@ wss.on('connection', (ws, req) => {
         try {
             const levelPayload = data.level ?? { name: data.name, data: data.data };
             const { fileName, sanitizedPayload } = sanitizeLevelPayload(levelPayload);
-            const uploaderUsername = ws.username;
+            const uploaderGoogleId = ws.googleId;
 
-            if (!uploaderUsername) {
-                throw new Error('Unable to determine uploader username');
+            if (!uploaderGoogleId) {
+                throw new Error('Unable to determine uploader googleId');
             }
 
             // Check if level already exists and is owned by this user
             const existingLevel = await db.getStageBySlug(fileName);
-            console.log(`[uploadedLevel] Level "${fileName}": existingLevel=${!!existingLevel}, ownedBy=${existingLevel?.uploadedBy}, uploader=${uploaderUsername}, overwrite=${!!data.overwrite}, description="${data.description || ''}"`);
+            console.log(`[uploadedLevel] Level "${fileName}": existingLevel=${!!existingLevel}, ownedBy=${existingLevel?.uploadedBy}, uploader=${uploaderGoogleId}, overwrite=${!!data.overwrite}, description="${data.description || ''}"`);
             
-            if (existingLevel && existingLevel.uploadedBy === uploaderUsername) {
+            if (existingLevel && existingLevel.uploadedBy === uploaderGoogleId) {
                 // Level exists and is owned by this user - ask for confirmation unless overwrite flag is set
                 if (!data.overwrite) {
                     ws.send(msgpack.encode({
@@ -1993,7 +1994,7 @@ wss.on('connection', (ws, req) => {
                 // Don't create forum thread for overwrites
             } else {
                 // New level or owned by different user - create new
-                await db.createStage(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderUsername);
+                await db.createStage(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderGoogleId);
                 console.log(`[uploadedLevel] Level "${fileName}" created - attempting to create forum thread...`);
                 
                 // Automatically create a forum thread for new uploaded level
@@ -2028,8 +2029,8 @@ wss.on('connection', (ws, req) => {
                         console.log(`[uploadedLevel] Found "Levels" category (ID: ${levelsCategory.id})`);
                         // Create thread with level name as title
                         const threadTitle = sanitizedPayload.name || fileName;
-                        console.log(`[uploadedLevel] Creating forum thread: title="${threadTitle}", author="${uploaderUsername}", categoryId=${levelsCategory.id}`);
-                        const threadId = await db.createForumThread(levelsCategory.id, threadTitle, uploaderUsername);
+                        console.log(`[uploadedLevel] Creating forum thread: title="${threadTitle}", author="${uploaderGoogleId}", categoryId=${levelsCategory.id}`);
+                        const threadId = await db.createForumThread(levelsCategory.id, threadTitle, uploaderGoogleId);
                         console.log(`[uploadedLevel] Forum thread created with ID: ${threadId}`);
                         
                         // Create first post with description (if provided) followed by [level]slug[/level] BBCode
@@ -2041,7 +2042,7 @@ wss.on('connection', (ws, req) => {
                             postContent = `[level]${fileName}[/level]`;
                             console.log(`[uploadedLevel] Post content has no description`);
                         }
-                        await db.createForumPost(threadId, uploaderUsername, postContent);
+                        await db.createForumPost(threadId, uploaderGoogleId, postContent);
                         console.log(`[uploadedLevel] Forum post created for thread ID: ${threadId}`);
                         
                         console.log(`✅ Auto-created forum thread for level: "${threadTitle}" (thread ID: ${threadId}, category ID: ${levelsCategory.id})`);
@@ -2061,7 +2062,7 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({
                 type: 'uploadedLevelSuccess',
                 name: sanitizedPayload.name,
-                uploadedBy: uploaderUsername
+                uploadedBy: ws.name || uploaderGoogleId // Display name in response
             }));
         } catch (error) {
             console.error('Failed to save level', error);
@@ -2076,15 +2077,15 @@ wss.on('connection', (ws, req) => {
         try {
             const levelPayload = data.level ?? { name: data.name, data: data.data };
             const { fileName, sanitizedPayload } = sanitizeLevelPayload(levelPayload);
-            const uploaderUsername = ws.username;
+            const uploaderGoogleId = ws.googleId;
 
-            if (!uploaderUsername) {
-                throw new Error('Unable to determine uploader username');
+            if (!uploaderGoogleId) {
+                throw new Error('Unable to determine uploader googleId');
             }
 
             // Check if level already exists and is owned by this user
             const existingLevel = await db.getCampaignLevelBySlug(fileName);
-            if (existingLevel && existingLevel.uploadedBy === uploaderUsername) {
+            if (existingLevel && existingLevel.uploadedBy === uploaderGoogleId) {
                 // Level exists and is owned by this user - ask for confirmation unless overwrite flag is set
                 if (!data.overwrite) {
                     ws.send(msgpack.encode({
@@ -2101,7 +2102,7 @@ wss.on('connection', (ws, req) => {
                 // Don't create/update lobby room for overwrites (it already exists)
             } else {
                 // New level or owned by different user - create new
-                await db.createCampaignLevel(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderUsername);
+                await db.createCampaignLevel(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderGoogleId);
                 
                 // Update lobby rooms if needed (only for new levels)
                 const roomName = `lobby_${fileName}`;
@@ -2118,7 +2119,7 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({
                 type: 'uploadedLevelSuccess',
                 name: sanitizedPayload.name,
-                uploadedBy: uploaderUsername,
+                uploadedBy: ws.name || uploaderGoogleId, // Display name in response
                 campaign: true
             }));
         } catch (error) {
@@ -2574,16 +2575,16 @@ wss.on('connection', (ws, req) => {
                     lootItem.stats = stats;
                 }
                 
-                lootForPlayers[memberClient.username] = lootItem;
+                lootForPlayers[memberClient.googleId] = lootItem;
                 
                 // Add loot item to player's inventory
-                const user = await db.getUserByUsername(memberClient.username);
+                const user = await db.getUserByGoogleId(memberClient.googleId);
                 if (user) {
                     if (!user.inventory) {
                         user.inventory = [];
                     }
                     user.inventory.push(lootItem);
-                    await db.updateUser(memberClient.username, user);
+                    await db.updateUser(memberClient.googleId, user);
                     inventoryUpdated = true;
                     const itemDesc = itemType === 'ring' ? `${lootItem.displayName} (${itemType})` : 
                                    itemType === 'spellcard' ? `${lootItem.displayName} (${itemType})` : 
@@ -2636,63 +2637,76 @@ wss.on('connection', (ws, req) => {
         }
 
         console.log(`✅ Raid completed in room ${ws.room} by party led by ${ws.username}`);
-      } else if (data.type === 'changeUsername') {
-        if (!ws.username) {
+      } else if (data.type === 'changeUsername' || data.type === 'changeName') {
+        // Handle both changeUsername (legacy) and changeName message types
+        if (!ws.googleId) {
             if (ws.readyState === ws.OPEN) {
                 ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Not logged in' }));
             }
             return;
         }
 
-        // Validate username
-        const usernameValidation = validateUsername(data.newUsername);
-        if (!usernameValidation.valid) {
+        const newName = data.newUsername || data.name || data.username;
+        if (!newName || typeof newName !== 'string') {
             if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changeUsernameError', message: usernameValidation.error }));
+                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Name is required' }));
             }
             return;
         }
 
-        // Check if username already exists
-        const existingUser = await db.usernameExists(usernameValidation.value);
-        if (existingUser) {
+        const trimmedName = newName.trim();
+        if (trimmedName.length === 0 || trimmedName.length > 20) {
             if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Username already taken' }));
+                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Name must be between 1 and 20 characters' }));
             }
             return;
         }
 
-        // Get current user - authorization check: user can only change their own username
-        const user = await db.getUserByUsername(ws.username);
-        if (!user) {
+        // Validate name format (alphanumeric, underscore, hyphen only)
+        if (!/^[a-zA-Z0-9_-]+$/.test(trimmedName)) {
             if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'User not found' }));
-            }
-            return;
-        }
-        
-        // Additional authorization check: ensure ws.username matches the user being modified
-        if (user.username !== ws.username) {
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Permission denied' }));
+                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Name can only contain letters, numbers, underscores, and hyphens' }));
             }
             return;
         }
 
-        // Update username in database
         try {
-            await db.updateUsername(ws.username, usernameValidation.value);
-            ws.username = usernameValidation.value; // Update WebSocket username
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ 
-                    type: 'changeUsernameSuccess', 
-                    newUsername: usernameValidation.value 
-                }));
+            // Check if name already exists
+            const nameExists = await db.nameExists(trimmedName);
+            if (nameExists) {
+                const existingUser = await db.getUserByName(trimmedName);
+                if (existingUser && existingUser.googleId !== ws.googleId) {
+                    if (ws.readyState === ws.OPEN) {
+                        ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Name is already taken' }));
+                    }
+                    return;
+                }
+            }
+
+            // Update name in database
+            const updated = await db.updateName(ws.googleId, trimmedName);
+            if (updated) {
+                // Update WebSocket properties
+                ws.username = trimmedName;
+                ws.name = trimmedName;
+                
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(msgpack.encode({ 
+                        type: 'changeUsernameSuccess', 
+                        newUsername: trimmedName,
+                        name: trimmedName // Also send name for compatibility
+                    }));
+                }
+                console.log(`✅ User ${ws.googleId} changed name to: ${trimmedName}`);
+            } else {
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Failed to update name' }));
+                }
             }
         } catch (error) {
-            console.error('Failed to save username change', error);
+            console.error('Failed to save name change', error);
             if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'changeUsernameError', message: 'Failed to save username' }));
+                ws.send(msgpack.encode({ type: 'changeUsernameError', message: error.message || 'Failed to save name' }));
             }
         }
       } else if (data.type === 'getForumCategories') {
@@ -2790,7 +2804,7 @@ wss.on('connection', (ws, req) => {
                     await db.createUser({
                         email: data.email,
                         googleId: data.id,
-                        username: data.displayName || data.email.split('@')[0] + '_google',
+                        name: data.displayName || data.email.split('@')[0] + '_google',
                         stats: defaultStats,
                         inventory: inventory,
                         equipment: equipment,
@@ -2814,7 +2828,8 @@ wss.on('connection', (ws, req) => {
             }
             
             // Set authentication data on WebSocket
-            ws.username = user.username;
+            ws.username = user.name || user.googleId; // Keep username for backward compatibility
+            ws.name = user.name; // Add name property
             ws.email = data.email;
             ws.googleId = data.id;
             ws.rank = user.rank || 'player';
@@ -2823,7 +2838,8 @@ wss.on('connection', (ws, req) => {
             // Send login success
             ws.send(msgpack.encode({
                 type: 'loginSuccess',
-                username: user.username,
+                username: user.name || user.googleId, // Send name as username for compatibility
+                name: user.name,
                 rank: user.rank || 'player'
             }));
             
@@ -2849,6 +2865,68 @@ wss.on('connection', (ws, req) => {
         } catch (error) {
             console.error('Verification check error:', error);
             ws.send(msgpack.encode({ type: 'verificationResult', verified: false, message: 'Verification failed' }));
+        }
+      } else if (data.type === 'changeName') {
+        // Change user display name
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
+            return;
+        }
+        
+        if (!data.name || typeof data.name !== 'string') {
+            ws.send(msgpack.encode({ type: 'error', message: 'Name is required' }));
+            return;
+        }
+        
+        const trimmedName = data.name.trim();
+        if (trimmedName.length === 0 || trimmedName.length > 20) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Name must be between 1 and 20 characters' }));
+            return;
+        }
+        
+        // Validate name format (alphanumeric, underscore, hyphen only)
+        if (!/^[a-zA-Z0-9_-]+$/.test(trimmedName)) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Name can only contain letters, numbers, underscores, and hyphens' }));
+            return;
+        }
+        
+        try {
+            // Check if name is already taken
+            const nameExists = await db.nameExists(trimmedName);
+            if (nameExists) {
+                const existingUser = await db.getUserByName(trimmedName);
+                if (existingUser && existingUser.googleId !== ws.googleId) {
+                    ws.send(msgpack.encode({ type: 'error', message: 'Name is already taken' }));
+                    return;
+                }
+            }
+            
+            // Update name
+            const updated = await db.updateName(ws.googleId, trimmedName);
+            if (updated) {
+                // Update WebSocket properties
+                ws.username = trimmedName;
+                ws.name = trimmedName;
+                
+                // Update user in database
+                const user = await db.getUserByGoogleId(ws.googleId);
+                if (user) {
+                    await db.updateUser(ws.googleId, user);
+                }
+                
+                ws.send(msgpack.encode({
+                    type: 'nameChanged',
+                    name: trimmedName,
+                    message: 'Name changed successfully'
+                }));
+                
+                console.log(`✅ User ${ws.googleId} changed name to: ${trimmedName}`);
+            } else {
+                ws.send(msgpack.encode({ type: 'error', message: 'Failed to update name' }));
+            }
+        } catch (error) {
+            console.error('Change name error:', error);
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to change name' }));
         }
       } else if (data.type === 'createForumThread') {
         // Verify user is authenticated using email and googleId
@@ -2900,9 +2978,9 @@ wss.on('connection', (ws, req) => {
         });
         
         try {
-            const threadId = await db.createForumThread(data.categoryId, sanitizedTitle, ws.username);
+            const threadId = await db.createForumThread(data.categoryId, sanitizedTitle, ws.googleId);
             // Create the first post with the thread content
-            await db.createForumPost(threadId, ws.username, sanitizedContent);
+            await db.createForumPost(threadId, ws.googleId, sanitizedContent);
             ws.send(msgpack.encode({ type: 'forumThreadCreated', threadId }));
         } catch (error) {
             console.error('Failed to create forum thread', error);
@@ -2946,7 +3024,7 @@ wss.on('connection', (ws, req) => {
         });
         
         try {
-            const postId = await db.createForumPost(data.threadId, ws.username, sanitizedContent);
+            const postId = await db.createForumPost(data.threadId, ws.googleId, sanitizedContent);
             ws.send(msgpack.encode({ type: 'forumPostCreated', postId }));
         } catch (error) {
             console.error('Failed to create forum post', error);
@@ -3186,7 +3264,7 @@ rl.on('line', async (input) => {
   const command = parts[0].toLowerCase();
 
   if (command === 'rang' && parts.length === 3) {
-    const username = parts[1];
+    const name = parts[1];
     const rank = parts[2].toLowerCase();
 
     // Validate rank
@@ -3197,22 +3275,22 @@ rl.on('line', async (input) => {
     }
 
     try {
-      // Check if user exists
-      const user = await db.getUserByUsername(username);
+      // Check if user exists by name
+      const user = await db.getUserByName(name);
       if (!user) {
-        console.log(`❌ User "${username}" not found.`);
+        console.log(`❌ User "${name}" not found.`);
         return;
       }
 
-      // Update user rank
-      const updated = await db.setUserRank(username, rank);
+      // Update user rank by googleId
+      const updated = await db.setUserRank(user.googleId, rank);
       if (updated) {
-        console.log(`✅ Set rank of "${username}" to "${rank}".`);
+        console.log(`✅ Set rank of "${name}" (${user.googleId}) to "${rank}".`);
 
-        // Update rank for all connected clients with this username
+        // Update rank for all connected clients with this googleId
         let updatedCount = 0;
         for (const client of clients.values()) {
-          if (client.username === username) {
+          if (client.googleId === user.googleId) {
             client.rank = rank;
             client.isAdmin = (rank === 'admin');
             updatedCount++;
@@ -3222,7 +3300,7 @@ rl.on('line', async (input) => {
           console.log(`✅ Updated rank for ${updatedCount} connected client(s).`);
         }
       } else {
-        console.log(`❌ Failed to update rank for "${username}".`);
+        console.log(`❌ Failed to update rank for "${name}".`);
       }
     } catch (error) {
       console.error(`❌ Error setting rank:`, error.message);
