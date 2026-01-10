@@ -2997,8 +2997,17 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to change name' }));
         }
       } else if (data.type === 'createForumThread') {
+        console.log('[createForumThread] Received request:', { 
+            categoryId: data.categoryId, 
+            title: data.title ? data.title.substring(0, 50) : 'none',
+            contentLength: data.content ? data.content.length : 0,
+            googleId: ws.googleId ? 'present' : 'missing',
+            name: ws.name || 'none'
+        });
+        
         // Verify user is authenticated (googleId is set during Google login)
         if (!ws.googleId) {
+            console.error('[createForumThread] User not logged in - no googleId');
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
@@ -3007,15 +3016,18 @@ wss.on('connection', (ws, req) => {
         try {
             const user = await db.getUserByGoogleId(ws.googleId);
             if (!user) {
+                console.error('[createForumThread] User not found in database:', ws.googleId);
                 ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
+            console.log('[createForumThread] User verified:', user.name || user.googleId);
         } catch (verifyErr) {
-            console.error('User lookup error:', verifyErr);
+            console.error('[createForumThread] User lookup error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
         if (!data.categoryId) {
+            console.error('[createForumThread] Category ID missing');
             ws.send(msgpack.encode({ type: 'error', message: 'Category ID required' }));
             return;
         }
@@ -3046,13 +3058,20 @@ wss.on('connection', (ws, req) => {
         });
         
         try {
+            console.log('[createForumThread] Creating thread in category:', data.categoryId);
             const threadId = await db.createForumThread(data.categoryId, sanitizedTitle, ws.googleId);
+            console.log('[createForumThread] Thread created with ID:', threadId);
+            
             // Create the first post with the thread content
             await db.createForumPost(threadId, ws.googleId, sanitizedContent);
+            console.log('[createForumThread] First post created for thread:', threadId);
+            
             ws.send(msgpack.encode({ type: 'forumThreadCreated', threadId }));
+            console.log('[createForumThread] Success response sent for thread:', threadId);
         } catch (error) {
-            console.error('Failed to create forum thread', error);
-            ws.send(msgpack.encode({ type: 'error', message: 'Failed to create forum thread' }));
+            console.error('[createForumThread] Failed to create forum thread:', error);
+            console.error('[createForumThread] Error stack:', error.stack);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to create forum thread: ' + error.message }));
         }
       } else if (data.type === 'createForumPost') {
         // Verify user is authenticated (googleId is set during Google login)
