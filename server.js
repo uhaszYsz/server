@@ -3148,13 +3148,30 @@ wss.on('connection', (ws, req) => {
                 return;
             }
             
+            // Ensure we have valid data
+            if (!thread.author) {
+                console.error(`[deleteForumThread] Thread ${data.threadId} has no author field`);
+                ws.send(msgpack.encode({ type: 'error', message: 'Invalid thread data' }));
+                return;
+            }
+            
+            if (!ws.googleId) {
+                console.error(`[deleteForumThread] ws.googleId is not set for user trying to delete thread ${data.threadId}`);
+                ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+                return;
+            }
+            
             // Check permissions: admin can delete any thread, others can only delete their own
             // Note: thread.author stores googleId, not display name
             const isAdmin = ws.rank === 'admin';
-            const isOwner = thread.author === ws.googleId;
+            const threadAuthor = String(thread.author || '').trim();
+            const userGoogleId = String(ws.googleId || '').trim();
+            const isOwner = threadAuthor === userGoogleId && threadAuthor !== '';
+            
+            console.log(`[deleteForumThread] Thread ID: ${data.threadId}, Thread author: "${threadAuthor}", User googleId: "${userGoogleId}", isOwner: ${isOwner}, isAdmin: ${isAdmin}, ws.rank: ${ws.rank}`);
             
             if (!isAdmin && !isOwner) {
-                ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
+                ws.send(msgpack.encode({ type: 'error', message: 'Permission denied: You can only delete your own threads' }));
                 return;
             }
             
@@ -3200,13 +3217,30 @@ wss.on('connection', (ws, req) => {
                 return;
             }
             
+            // Ensure we have valid data
+            if (!post.author) {
+                console.error(`[deleteForumPost] Post ${data.postId} has no author field`);
+                ws.send(msgpack.encode({ type: 'error', message: 'Invalid post data' }));
+                return;
+            }
+            
+            if (!ws.googleId) {
+                console.error(`[deleteForumPost] ws.googleId is not set for user trying to delete post ${data.postId}`);
+                ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+                return;
+            }
+            
             // Check permissions: admin can delete any post, others can only delete their own
             // Note: post.author stores googleId, not display name
             const isAdmin = ws.rank === 'admin';
-            const isOwner = post.author === ws.googleId;
+            const postAuthor = String(post.author || '').trim();
+            const userGoogleId = String(ws.googleId || '').trim();
+            const isOwner = postAuthor === userGoogleId && postAuthor !== '';
+            
+            console.log(`[deleteForumPost] Post ID: ${data.postId}, Post author: "${postAuthor}", User googleId: "${userGoogleId}", isOwner: ${isOwner}, isAdmin: ${isAdmin}, ws.rank: ${ws.rank}`);
             
             if (!isAdmin && !isOwner) {
-                ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
+                ws.send(msgpack.encode({ type: 'error', message: 'Permission denied: You can only delete your own posts' }));
                 return;
             }
             
@@ -3219,7 +3253,8 @@ wss.on('connection', (ws, req) => {
             }
         } catch (error) {
             console.error('Failed to delete forum post', error);
-            ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete forum post' }));
+            console.error('Error stack:', error.stack);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete forum post: ' + error.message }));
         }
       } else if (data.type === 'likeForumPost') {
         // Verify user is authenticated (googleId is set during Google login)

@@ -681,7 +681,7 @@ export function getForumThreads(categoryId) {
             SELECT t.*, 
                    (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id) as post_count,
                    (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date,
-                   COALESCE(u.name, t.author) as author_name,
+                   u.name as author_name,
                    COALESCE(u.rank, 'player') as author_rank
             FROM forum_threads t
             LEFT JOIN users u ON u.googleId = t.author
@@ -723,7 +723,7 @@ export function getForumThread(threadId) {
     return new Promise((resolve, reject) => {
         db.get(`
             SELECT t.*, 
-                   COALESCE(u.name, t.author) as author_name,
+                   u.name as author_name,
                    COALESCE(u.rank, 'player') as author_rank
             FROM forum_threads t
             LEFT JOIN users u ON u.googleId = t.author
@@ -755,7 +755,7 @@ export function getForumPosts(threadId) {
     return new Promise((resolve, reject) => {
         db.all(`
             SELECT p.*, 
-                   COALESCE(u.name, p.author) as author_name,
+                   u.name as author_name,
                    COALESCE(u.rank, 'player') as author_rank
             FROM forum_posts p
             LEFT JOIN users u ON u.googleId = p.author
