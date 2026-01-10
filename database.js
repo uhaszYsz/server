@@ -24,11 +24,11 @@ export function initDatabase() {
             }
             console.log('✅ Connected to SQLite database');
             
-            // Create users table
+            // Create users table - googleId as PRIMARY KEY, no username/password
             db.run(`
                 CREATE TABLE IF NOT EXISTS users (
-                    username TEXT PRIMARY KEY,
-                    password TEXT NOT NULL,
+                    googleId TEXT PRIMARY KEY,
+                    email TEXT NOT NULL UNIQUE,
                     stats TEXT NOT NULL,
                     inventory TEXT NOT NULL,
                     equipment TEXT NOT NULL,
@@ -42,51 +42,14 @@ export function initDatabase() {
                     reject(err);
                     return;
                 }
-                console.log('✅ Users table initialized');
+                console.log('✅ Users table initialized (googleId as PRIMARY KEY, no username/password)');
                 
-                // Add rank column if it doesn't exist (migration for existing databases)
-                db.run('ALTER TABLE users ADD COLUMN rank TEXT DEFAULT \'player\'', (err) => {
-                    // Ignore error if column already exists
-                    if (err && !err.message.includes('duplicate column')) {
-                        console.warn('Warning: Could not add rank column:', err.message);
-                    } else if (!err) {
-                        console.log('✅ Rank column added to users table');
-                    }
-                });
-                
-                // Add verified column if it doesn't exist (migration for existing databases)
-                db.run('ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0', (err) => {
-                    // Ignore error if column already exists
-                    if (err && !err.message.includes('duplicate column')) {
-                        console.warn('Warning: Could not add verified column:', err.message);
-                    } else if (!err) {
-                        console.log('✅ Verified column added to users table');
-                    }
-                });
-                
-                // Add email column (hashed) if it doesn't exist
-                db.run('ALTER TABLE users ADD COLUMN email TEXT', (err) => {
-                    if (err && !err.message.includes('duplicate column')) {
-                        console.warn('Warning: Could not add email column:', err.message);
-                    } else if (!err) {
-                        console.log('✅ Email column added to users table');
-                        // Create unique index on email
-                        db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)', (err) => {
-                            if (err) {
-                                console.warn('Warning: Could not create email index:', err.message);
-                            } else {
-                                console.log('✅ Email unique index created');
-                            }
-                        });
-                    }
-                });
-                
-                // Add googleId column if it doesn't exist
-                db.run('ALTER TABLE users ADD COLUMN googleId TEXT', (err) => {
-                    if (err && !err.message.includes('duplicate column')) {
-                        console.warn('Warning: Could not add googleId column:', err.message);
-                    } else if (!err) {
-                        console.log('✅ GoogleId column added to users table');
+                // Create unique index on email (already enforced by UNIQUE constraint, but index helps with lookups)
+                db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)', (err) => {
+                    if (err) {
+                        console.warn('Warning: Could not create email index:', err.message);
+                    } else {
+                        console.log('✅ Email unique index created');
                     }
                 });
                 
@@ -145,10 +108,11 @@ export function initDatabase() {
                                 CREATE TABLE IF NOT EXISTS forum_post_likes (
                                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                                     post_id INTEGER NOT NULL,
-                                    username TEXT NOT NULL,
+                                    googleId TEXT NOT NULL,
                                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                     FOREIGN KEY (post_id) REFERENCES forum_posts(id),
-                                    UNIQUE(post_id, username)
+                                    FOREIGN KEY (googleId) REFERENCES users(googleId),
+                                    UNIQUE(post_id, googleId)
                                 )
                             `, (err) => {
                                 if (err) {
@@ -167,7 +131,7 @@ export function initDatabase() {
                                     data TEXT NOT NULL,
                                     uploaded_by TEXT NOT NULL,
                                     uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                    FOREIGN KEY (uploaded_by) REFERENCES users(username)
+                                    FOREIGN KEY (uploaded_by) REFERENCES users(googleId)
                                 )
                             `, (err) => {
                                 if (err) {
@@ -185,7 +149,7 @@ export function initDatabase() {
                                         data TEXT NOT NULL,
                                         uploaded_by TEXT NOT NULL,
                                         uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                        FOREIGN KEY (uploaded_by) REFERENCES users(username)
+                                        FOREIGN KEY (uploaded_by) REFERENCES users(googleId)
                                     )
                                 `, (err) => {
                                     if (err) {
@@ -219,7 +183,7 @@ export async function verifyPassword(password, hash) {
     return await bcrypt.compare(password, hash);
 }
 
-// Create a new user (now requires email and googleId instead of password)
+// Create a new user (requires email and googleId, no username/password)
 export function createUser(user) {
     return new Promise(async (resolve, reject) => {
         try {
@@ -232,23 +196,14 @@ export function createUser(user) {
             // Hash the email before storing
             const hashedEmail = await hashPassword(user.email.toLowerCase().trim());
             
-            // Generate username from email if not provided (for display purposes)
-            const username = user.username || user.email.split('@')[0] + '_google';
-            
-            // For Google users, use hashed email as placeholder password
-            // Since password column is NOT NULL, we need to provide a value
-            const placeholderPassword = hashedEmail;
-            
             const stmt = db.prepare(`
-                INSERT INTO users (username, password, email, googleId, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO users (googleId, email, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             stmt.run(
-                username,
-                placeholderPassword, // Required field - using hashed email as placeholder
+                user.googleId, // PRIMARY KEY - Google user ID
                 hashedEmail, // Store hashed email
-                user.googleId, // Store Google user ID
                 JSON.stringify(user.stats || {}),
                 JSON.stringify(user.inventory || []),
                 JSON.stringify(user.equipment || {}),
@@ -283,8 +238,8 @@ export function getAllUsers() {
 
             // Parse JSON fields
             const users = rows.map(row => ({
-                username: row.username,
-                password: row.password,
+                googleId: row.googleId,
+                email: row.email, // Hashed email
                 stats: JSON.parse(row.stats),
                 inventory: JSON.parse(row.inventory),
                 equipment: JSON.parse(row.equipment),
@@ -299,41 +254,16 @@ export function getAllUsers() {
     });
 }
 
-// Get user by username
+// DEPRECATED: Use getUserByGoogleId instead - username no longer exists
+// Kept for backward compatibility, but will always return null
 export function getUserByUsername(username) {
     return new Promise((resolve, reject) => {
-        db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-
-            if (!row) {
-                resolve(null);
-                return;
-            }
-
-            // Parse JSON fields
-            const user = {
-                username: row.username,
-                email: row.email || null, // Hashed email
-                googleId: row.googleId || null,
-                password: row.password || null, // Legacy password field (may not exist for new users)
-                stats: JSON.parse(row.stats),
-                inventory: JSON.parse(row.inventory),
-                equipment: JSON.parse(row.equipment),
-                weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                passiveAbility: row.passiveAbility || null,
-                rank: row.rank || 'player',
-                verified: row.verified !== undefined ? row.verified : 0
-            };
-
-            resolve(user);
-        });
+        console.warn('getUserByUsername is deprecated. Use getUserByGoogleId instead.');
+        resolve(null);
     });
 }
 
-// Get user by googleId (primary lookup)
+// Get user by googleId (primary lookup - googleId is now PRIMARY KEY)
 export function getUserByGoogleId(googleId) {
     return new Promise((resolve, reject) => {
         db.get('SELECT * FROM users WHERE googleId = ?', [googleId], (err, row) => {
@@ -349,10 +279,8 @@ export function getUserByGoogleId(googleId) {
 
             // Parse JSON fields
             const user = {
-                username: row.username,
-                email: row.email || null, // Hashed email
                 googleId: row.googleId,
-                password: row.password || null, // Legacy password field (may not exist for new users)
+                email: row.email || null, // Hashed email
                 stats: JSON.parse(row.stats),
                 inventory: JSON.parse(row.inventory),
                 equipment: JSON.parse(row.equipment),
@@ -414,192 +342,61 @@ export function getUserByEmailAndGoogleId(email, googleId) {
     });
 }
 
-// Find user by username and password
+// DEPRECATED: findUser by username/password no longer supported
+// Authentication is now done via Google OAuth only
 export function findUser(username, password) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            // First get user by username only
-            db.get('SELECT * FROM users WHERE username = ?', [username], async (err, row) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-
-                if (!row) {
-                    resolve(null);
-                    return;
-                }
-
-                // Check if password is already hashed (starts with $2a$, $2b$, or $2y$)
-                const isHashed = /^\$2[ayb]\$/.test(row.password);
-                
-                let passwordMatches = false;
-                if (isHashed) {
-                    // Password is hashed, use bcrypt to verify
-                    passwordMatches = await verifyPassword(password, row.password);
-                } else {
-                    // Password is plain text (legacy), compare directly
-                    // Note: Migration must be done manually via console command
-                    passwordMatches = (password === row.password);
-                }
-                
-                if (!passwordMatches) {
-                    resolve(null); // Invalid password
-                    return;
-                }
-
-                // Parse JSON fields
-                const user = {
-                    username: row.username,
-                    password: row.password, // Return hash (not plain text) for internal use
-                    stats: JSON.parse(row.stats),
-                    inventory: JSON.parse(row.inventory),
-                    equipment: JSON.parse(row.equipment),
-                    weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                    passiveAbility: row.passiveAbility || null,
-                    rank: row.rank || 'player',
-                    verified: row.verified !== undefined ? row.verified : 0
-                };
-
-                resolve(user);
-            });
-        } catch (error) {
-            reject(error);
-        }
+    return new Promise((resolve, reject) => {
+        console.warn('findUser is deprecated. Use Google OAuth authentication instead.');
+        resolve(null);
     });
 }
 
-// Verify user (set verified to 1)
-export function verifyUser(username, password) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            // First get user by username
-            db.get('SELECT * FROM users WHERE username = ?', [username], async (err, row) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                
-                if (!row) {
-                    resolve(false); // User not found
-                    return;
-                }
-                
-                // Check if password is already hashed
-                const isHashed = /^\$2[ayb]\$/.test(row.password);
-                
-                let passwordMatches = false;
-                if (isHashed) {
-                    // Password is hashed, use bcrypt to verify
-                    passwordMatches = await verifyPassword(password, row.password);
-                } else {
-                    // Password is plain text (legacy), compare directly
-                    // Note: Migration must be done manually via console command
-                    passwordMatches = (password === row.password);
-                }
-                
-                if (!passwordMatches) {
-                    resolve(false); // Invalid password
-                    return;
-                }
-                
-                // Update verified to 1
-                db.run('UPDATE users SET verified = 1 WHERE username = ?', [username], function(updateErr) {
-                    if (updateErr) {
-                        reject(updateErr);
-                    } else {
-                        resolve(true); // Successfully verified
-                    }
-                });
-            });
-        } catch (error) {
-            reject(error);
-        }
-    });
-}
-
-// Migrate all plain text passwords to hashed passwords
-export function migrateAllPasswords() {
-    return new Promise(async (resolve, reject) => {
-        try {
-            // Get all users
-            db.all('SELECT username, password FROM users', async (err, rows) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                
-                let migrated = 0;
-                let skipped = 0;
-                let errors = 0;
-                
-                for (const row of rows) {
-                    // Check if password is already hashed
-                    const isHashed = /^\$2[ayb]\$/.test(row.password);
-                    
-                    if (isHashed) {
-                        skipped++;
-                        continue;
-                    }
-                    
-                    // Hash the plain text password
-                    try {
-                        const hashedPassword = await hashPassword(row.password);
-                        await new Promise((resolveUpdate, rejectUpdate) => {
-                            db.run('UPDATE users SET password = ? WHERE username = ?', [hashedPassword, row.username], function(updateErr) {
-                                if (updateErr) {
-                                    rejectUpdate(updateErr);
-                                } else {
-                                    resolveUpdate();
-                                }
-                            });
-                        });
-                        migrated++;
-                        console.log(`✅ Migrated password for user: ${row.username}`);
-                    } catch (error) {
-                        errors++;
-                        console.error(`❌ Failed to migrate password for user ${row.username}:`, error);
-                    }
-                }
-                
-                console.log(`\n📊 Password migration complete:`);
-                console.log(`   ✅ Migrated: ${migrated} users`);
-                console.log(`   ⏭️  Skipped (already hashed): ${skipped} users`);
-                console.log(`   ❌ Errors: ${errors} users\n`);
-                
-                resolve({ migrated, skipped, errors });
-            });
-        } catch (error) {
-            reject(error);
-        }
-    });
-}
-
-// Update user
-export function updateUser(username, userData) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            // If password is being updated, hash it first
-            let passwordToStore = userData.password;
-            if (userData.password) {
-                // Check if password is already hashed (starts with $2a$, $2b$, or $2y$)
-                const isAlreadyHashed = /^\$2[ayb]\$/.test(userData.password);
-                if (!isAlreadyHashed) {
-                    // Password is plain text, hash it
-                    passwordToStore = await hashPassword(userData.password);
-                } else {
-                    // Password is already hashed, use as-is
-                    passwordToStore = userData.password;
-                }
+// Set user verified status by googleId
+export function setUserVerified(googleId, verified = 1) {
+    return new Promise((resolve, reject) => {
+        db.run('UPDATE users SET verified = ? WHERE googleId = ?', [verified, googleId], function(err) {
+            if (err) {
+                reject(err);
             } else {
-                // No password update, get existing password from database
-                const existingUser = await getUserByUsername(username);
-                passwordToStore = existingUser ? existingUser.password : null;
+                resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
+// DEPRECATED: verifyUser by username/password no longer supported
+export function verifyUser(username, password) {
+    return new Promise((resolve, reject) => {
+        console.warn('verifyUser is deprecated. Use setUserVerified with googleId instead.');
+        resolve(false);
+    });
+}
+
+// DEPRECATED: migrateAllPasswords no longer supported - password column removed
+export function migrateAllPasswords() {
+    return new Promise((resolve, reject) => {
+        console.warn('migrateAllPasswords is deprecated. Password column no longer exists.');
+        resolve({ migrated: 0, skipped: 0, errors: 0 });
+    });
+}
+
+// Update user by googleId (no username/password)
+export function updateUser(googleId, userData) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // If email is being updated, hash it first
+            let emailToStore = null;
+            if (userData.email) {
+                emailToStore = await hashPassword(userData.email.toLowerCase().trim());
+            } else {
+                // No email update, get existing email from database
+                const existingUser = await getUserByGoogleId(googleId);
+                emailToStore = existingUser ? existingUser.email : null;
             }
             
             const stmt = db.prepare(`
                 UPDATE users 
-                SET password = ?,
+                SET email = COALESCE(?, email),
                     stats = ?,
                     inventory = ?,
                     equipment = ?,
@@ -607,11 +404,11 @@ export function updateUser(username, userData) {
                     passiveAbility = ?,
                     rank = ?,
                     verified = ?
-                WHERE username = ?
+                WHERE googleId = ?
             `);
 
             stmt.run(
-                passwordToStore,
+                emailToStore,
                 JSON.stringify(userData.stats || {}),
                 JSON.stringify(userData.inventory || []),
                 JSON.stringify(userData.equipment || {}),
@@ -619,7 +416,7 @@ export function updateUser(username, userData) {
                 userData.passiveAbility || null,
                 userData.rank || 'player',
                 userData.verified !== undefined ? userData.verified : 0,
-                username,
+                googleId,
                 function(err) {
                     if (err) {
                         reject(err);
@@ -636,8 +433,8 @@ export function updateUser(username, userData) {
     });
 }
 
-// Set user rank
-export function setUserRank(username, rank) {
+// Set user rank by googleId
+export function setUserRank(googleId, rank) {
     return new Promise((resolve, reject) => {
         // Validate rank
         const validRanks = ['player', 'moderator', 'admin'];
@@ -646,7 +443,7 @@ export function setUserRank(username, rank) {
             return;
         }
         
-        db.run('UPDATE users SET rank = ? WHERE username = ?', [rank.toLowerCase(), username], function(err) {
+        db.run('UPDATE users SET rank = ? WHERE googleId = ?', [rank.toLowerCase(), googleId], function(err) {
             if (err) {
                 reject(err);
             } else {
@@ -656,23 +453,19 @@ export function setUserRank(username, rank) {
     });
 }
 
-// Update username
+// DEPRECATED: updateUsername no longer supported - username column removed
+// GoogleId is immutable and serves as the unique identifier
 export function updateUsername(oldUsername, newUsername) {
     return new Promise((resolve, reject) => {
-        db.run('UPDATE users SET username = ? WHERE username = ?', [newUsername, oldUsername], function(err) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve();
-            }
-        });
+        console.warn('updateUsername is deprecated. Username column no longer exists. Use googleId as identifier.');
+        reject(new Error('Username updates are no longer supported. googleId is immutable.'));
     });
 }
 
-// Delete user
-export function deleteUser(username) {
+// Delete user by googleId
+export function deleteUser(googleId) {
     return new Promise((resolve, reject) => {
-        db.run('DELETE FROM users WHERE username = ?', [username], function(err) {
+        db.run('DELETE FROM users WHERE googleId = ?', [googleId], function(err) {
             if (err) {
                 reject(err);
             } else {
@@ -682,16 +475,24 @@ export function deleteUser(username) {
     });
 }
 
-// Check if username exists
-export function usernameExists(username) {
+// Check if googleId exists
+export function googleIdExists(googleId) {
     return new Promise((resolve, reject) => {
-        db.get('SELECT username FROM users WHERE username = ?', [username], (err, row) => {
+        db.get('SELECT googleId FROM users WHERE googleId = ?', [googleId], (err, row) => {
             if (err) {
                 reject(err);
                 return;
             }
             resolve(!!row);
         });
+    });
+}
+
+// DEPRECATED: usernameExists no longer supported
+export function usernameExists(username) {
+    return new Promise((resolve, reject) => {
+        console.warn('usernameExists is deprecated. Use googleIdExists instead.');
+        resolve(false);
     });
 }
 
@@ -871,7 +672,7 @@ export function getForumThreads(categoryId) {
                    (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date,
                    COALESCE(u.rank, 'player') as author_rank
             FROM forum_threads t
-            LEFT JOIN users u ON u.username = t.author
+            LEFT JOIN users u ON u.googleId = t.author
             WHERE t.category_id = ?
             ORDER BY t.updated_at DESC
         `, [categoryId], (err, rows) => {
@@ -911,7 +712,7 @@ export function getForumThread(threadId) {
         db.get(`
             SELECT t.*, COALESCE(u.rank, 'player') as author_rank
             FROM forum_threads t
-            LEFT JOIN users u ON u.username = t.author
+            LEFT JOIN users u ON u.googleId = t.author
             WHERE t.id = ?
         `, [threadId], (err, row) => {
             if (err) {
@@ -941,7 +742,7 @@ export function getForumPosts(threadId) {
         db.all(`
             SELECT p.*, COALESCE(u.rank, 'player') as author_rank
             FROM forum_posts p
-            LEFT JOIN users u ON u.username = p.author
+            LEFT JOIN users u ON u.googleId = p.author
             WHERE p.thread_id = ?
             ORDER BY p.created_at ASC
         `, [threadId], (err, rows) => {
@@ -1040,9 +841,9 @@ export function getPostLikeCount(postId) {
 }
 
 // Check if user has liked a post
-export function hasUserLikedPost(postId, username) {
+export function hasUserLikedPost(postId, googleId) {
     return new Promise((resolve, reject) => {
-        db.get('SELECT * FROM forum_post_likes WHERE post_id = ? AND username = ?', [postId, username], (err, row) => {
+        db.get('SELECT * FROM forum_post_likes WHERE post_id = ? AND googleId = ?', [postId, googleId], (err, row) => {
             if (err) {
                 reject(err);
             } else {
@@ -1053,9 +854,9 @@ export function hasUserLikedPost(postId, username) {
 }
 
 // Like a post
-export function likePost(postId, username) {
+export function likePost(postId, googleId) {
     return new Promise((resolve, reject) => {
-        db.run('INSERT OR IGNORE INTO forum_post_likes (post_id, username) VALUES (?, ?)', [postId, username], function(err) {
+        db.run('INSERT OR IGNORE INTO forum_post_likes (post_id, googleId) VALUES (?, ?)', [postId, googleId], function(err) {
             if (err) {
                 reject(err);
             } else {
@@ -1066,9 +867,9 @@ export function likePost(postId, username) {
 }
 
 // Unlike a post
-export function unlikePost(postId, username) {
+export function unlikePost(postId, googleId) {
     return new Promise((resolve, reject) => {
-        db.run('DELETE FROM forum_post_likes WHERE post_id = ? AND username = ?', [postId, username], function(err) {
+        db.run('DELETE FROM forum_post_likes WHERE post_id = ? AND googleId = ?', [postId, googleId], function(err) {
             if (err) {
                 reject(err);
             } else {
@@ -1079,7 +880,7 @@ export function unlikePost(postId, username) {
 }
 
 // Get like counts and user likes for multiple posts
-export function getPostLikeInfo(postIds, username) {
+export function getPostLikeInfo(postIds, googleId) {
     return new Promise((resolve, reject) => {
         if (!postIds || postIds.length === 0) {
             resolve({ counts: {}, userLikes: {} });
@@ -1100,9 +901,9 @@ export function getPostLikeInfo(postIds, username) {
                 counts[row.post_id] = row.count;
             });
             
-            // Get user likes if username provided
-            if (username) {
-                db.all(`SELECT post_id FROM forum_post_likes WHERE post_id IN (${placeholders}) AND username = ?`, [...postIds, username], (err, likeRows) => {
+            // Get user likes if googleId provided
+            if (googleId) {
+                db.all(`SELECT post_id FROM forum_post_likes WHERE post_id IN (${placeholders}) AND googleId = ?`, [...postIds, googleId], (err, likeRows) => {
                     if (err) {
                         reject(err);
                         return;
