@@ -2735,6 +2735,45 @@ wss.on('connection', (ws, req) => {
                 ws.send(msgpack.encode({ type: 'changeUsernameError', message: error.message || 'Failed to save name' }));
             }
         }
+      } else if (data.type === 'deleteAccount') {
+        // Handle account deletion
+        if (!ws.googleId) {
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'deleteAccountError', message: 'Not logged in' }));
+            }
+            return;
+        }
+
+        try {
+            // Delete user from database
+            const deleted = await db.deleteUser(ws.googleId);
+            if (deleted) {
+                console.log(`✅ Account deleted: ${ws.googleId} (${ws.name || 'unknown'})`);
+                
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(msgpack.encode({ 
+                        type: 'deleteAccountSuccess',
+                        message: 'Account deleted successfully'
+                    }));
+                }
+                
+                // Close the connection after sending success message
+                setTimeout(() => {
+                    if (ws.readyState === ws.OPEN || ws.readyState === ws.CONNECTING) {
+                        ws.close();
+                    }
+                }, 500);
+            } else {
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(msgpack.encode({ type: 'deleteAccountError', message: 'Failed to delete account' }));
+                }
+            }
+        } catch (error) {
+            console.error('Failed to delete account', error);
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'deleteAccountError', message: error.message || 'Failed to delete account' }));
+            }
+        }
       } else if (data.type === 'getForumCategories') {
         try {
             const categories = await db.getForumCategories();
@@ -2796,7 +2835,7 @@ wss.on('connection', (ws, req) => {
             
             // Get like info for all posts
             const postIds = posts.map(p => p.id);
-            const likeInfo = await db.getPostLikeInfo(postIds, ws.username || null);
+            const likeInfo = await db.getPostLikeInfo(postIds, ws.googleId || null);
             
             // Add like info to posts
             const postsWithLikes = posts.map(post => ({
@@ -2958,21 +2997,21 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to change name' }));
         }
       } else if (data.type === 'createForumThread') {
-        // Verify user is authenticated using email and googleId
-        if (!ws.email || !ws.googleId) {
+        // Verify user is authenticated (googleId is set during Google login)
+        if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
         
-        // Verify user data matches server
+        // Verify user exists in database
         try {
-            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            if (!isValid) {
-                ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
         } catch (verifyErr) {
-            console.error('Verification error:', verifyErr);
+            console.error('User lookup error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
@@ -3016,21 +3055,21 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to create forum thread' }));
         }
       } else if (data.type === 'createForumPost') {
-        // Verify user is authenticated using email and googleId
-        if (!ws.email || !ws.googleId) {
+        // Verify user is authenticated (googleId is set during Google login)
+        if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
         
-        // Verify user data matches server
+        // Verify user exists in database
         try {
-            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            if (!isValid) {
-                ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
         } catch (verifyErr) {
-            console.error('Verification error:', verifyErr);
+            console.error('User lookup error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
@@ -3060,21 +3099,21 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to create forum post' }));
         }
       } else if (data.type === 'deleteForumThread') {
-        // Verify user is authenticated using email and googleId
-        if (!ws.email || !ws.googleId) {
+        // Verify user is authenticated (googleId is set during Google login)
+        if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
         
-        // Verify user data matches server
+        // Verify user exists in database
         try {
-            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            if (!isValid) {
-                ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
         } catch (verifyErr) {
-            console.error('Verification error:', verifyErr);
+            console.error('User lookup error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
@@ -3083,7 +3122,7 @@ wss.on('connection', (ws, req) => {
             return;
         }
         try {
-            // Get thread to check ownership
+            // Get thread to check ownership (author column stores googleId)
             const thread = await db.getForumThread(data.threadId);
             if (!thread) {
                 ws.send(msgpack.encode({ type: 'error', message: 'Thread not found' }));
@@ -3091,8 +3130,9 @@ wss.on('connection', (ws, req) => {
             }
             
             // Check permissions: admin can delete any thread, others can only delete their own
+            // Note: thread.author stores googleId, not display name
             const isAdmin = ws.rank === 'admin';
-            const isOwner = thread.author === ws.username;
+            const isOwner = thread.author === ws.googleId;
             
             if (!isAdmin && !isOwner) {
                 ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
@@ -3102,7 +3142,7 @@ wss.on('connection', (ws, req) => {
             const deleted = await db.deleteForumThread(data.threadId);
             if (deleted) {
                 ws.send(msgpack.encode({ type: 'forumThreadDeleted', threadId: data.threadId }));
-                console.log(`✅ Thread ${data.threadId} deleted by ${ws.username} (${isAdmin ? 'admin' : 'owner'})`);
+                console.log(`✅ Thread ${data.threadId} deleted by ${ws.name || ws.googleId} (${isAdmin ? 'admin' : 'owner'})`);
             } else {
                 ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete thread' }));
             }
@@ -3111,21 +3151,21 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete forum thread' }));
         }
       } else if (data.type === 'deleteForumPost') {
-        // Verify user is authenticated using email and googleId
-        if (!ws.email || !ws.googleId) {
+        // Verify user is authenticated (googleId is set during Google login)
+        if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
         
-        // Verify user data matches server
+        // Verify user exists in database
         try {
-            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            if (!isValid) {
-                ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
         } catch (verifyErr) {
-            console.error('Verification error:', verifyErr);
+            console.error('User lookup error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
@@ -3134,7 +3174,7 @@ wss.on('connection', (ws, req) => {
             return;
         }
         try {
-            // Get post to check ownership
+            // Get post to check ownership (author column stores googleId)
             const post = await db.getForumPostById(data.postId);
             if (!post) {
                 ws.send(msgpack.encode({ type: 'error', message: 'Post not found' }));
@@ -3142,8 +3182,9 @@ wss.on('connection', (ws, req) => {
             }
             
             // Check permissions: admin can delete any post, others can only delete their own
+            // Note: post.author stores googleId, not display name
             const isAdmin = ws.rank === 'admin';
-            const isOwner = post.author === ws.username;
+            const isOwner = post.author === ws.googleId;
             
             if (!isAdmin && !isOwner) {
                 ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
@@ -3153,7 +3194,7 @@ wss.on('connection', (ws, req) => {
             const deleted = await db.deleteForumPost(data.postId);
             if (deleted) {
                 ws.send(msgpack.encode({ type: 'forumPostDeleted', postId: data.postId, threadId: post.thread_id }));
-                console.log(`✅ Post ${data.postId} deleted by ${ws.username} (${isAdmin ? 'admin' : 'owner'})`);
+                console.log(`✅ Post ${data.postId} deleted by ${ws.name || ws.googleId} (${isAdmin ? 'admin' : 'owner'})`);
             } else {
                 ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete post' }));
             }
@@ -3162,21 +3203,21 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete forum post' }));
         }
       } else if (data.type === 'likeForumPost') {
-        // Verify user is authenticated using email and googleId
-        if (!ws.email || !ws.googleId) {
+        // Verify user is authenticated (googleId is set during Google login)
+        if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
         
-        // Verify user data matches server
+        // Verify user exists in database
         try {
-            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            if (!isValid) {
-                ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
         } catch (verifyErr) {
-            console.error('Verification error:', verifyErr);
+            console.error('User lookup error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
@@ -3185,7 +3226,8 @@ wss.on('connection', (ws, req) => {
             return;
         }
         try {
-            const liked = await db.likePost(data.postId, ws.username);
+            // likePost expects googleId as second parameter, not username
+            const liked = await db.likePost(data.postId, ws.googleId);
             const likeCount = await db.getPostLikeCount(data.postId);
             ws.send(msgpack.encode({ 
                 type: 'forumPostLiked', 
@@ -3198,8 +3240,22 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to like post' }));
         }
       } else if (data.type === 'unlikeForumPost') {
-        if (!ws.username) {
+        // Verify user is authenticated (googleId is set during Google login)
+        if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        // Verify user exists in database
+        try {
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+                return;
+            }
+        } catch (verifyErr) {
+            console.error('User lookup error:', verifyErr);
+            ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
         if (!data.postId) {
@@ -3207,7 +3263,8 @@ wss.on('connection', (ws, req) => {
             return;
         }
         try {
-            const unliked = await db.unlikePost(data.postId, ws.username);
+            // unlikePost expects googleId as second parameter, not username
+            const unliked = await db.unlikePost(data.postId, ws.googleId);
             const likeCount = await db.getPostLikeCount(data.postId);
             ws.send(msgpack.encode({ 
                 type: 'forumPostUnliked', 
