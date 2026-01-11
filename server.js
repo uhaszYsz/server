@@ -2348,9 +2348,32 @@ wss.on('connection', (ws, req) => {
             
             const subfolders = await spritesDb.getSubfolders(normalizedParentPath);
             
+            // Look up usernames for Google IDs in folder paths
+            const foldersWithUsernames = await Promise.all(subfolders.map(async (folder) => {
+                const pathParts = folder.folder_path.split('/');
+                const googleId = pathParts[0]; // First part is always the Google ID
+                
+                // Get username for this Google ID
+                let username = googleId; // Default to Google ID if user not found
+                try {
+                    const user = await db.getUserByGoogleId(googleId);
+                    if (user && user.name) {
+                        username = user.name;
+                    }
+                } catch (err) {
+                    // If user lookup fails, use Google ID as fallback
+                    console.warn(`[listSpriteFolders] Failed to get username for Google ID ${googleId}:`, err.message);
+                }
+                
+                return {
+                    ...folder,
+                    username: username
+                };
+            }));
+            
             ws.send(msgpack.encode({
                 type: 'spriteFoldersList',
-                folders: subfolders,
+                folders: foldersWithUsernames,
                 parentPath: normalizedParentPath
             }));
         } catch (error) {
