@@ -306,7 +306,39 @@ export function getUserByName(name) {
     });
 }
 
-// Get user by googleId (primary lookup - googleId is now PRIMARY KEY)
+// Get user by id
+export function getUserById(id) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT * FROM users WHERE id = ?', [id], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            if (!row) {
+                resolve(null);
+                return;
+            }
+
+            // Parse JSON fields
+            const user = {
+                id: row.id,
+                googleId: row.googleId,
+                name: row.name || null,
+                email: row.email || null, // Hashed email
+                stats: JSON.parse(row.stats),
+                inventory: JSON.parse(row.inventory),
+                equipment: JSON.parse(row.equipment),
+                weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
+                rank: row.rank || 'player'
+            };
+
+            resolve(cleanDeprecatedStats(user));
+        });
+    });
+}
+
+// Get user by googleId (primary lookup - googleId is now UNIQUE)
 export function getUserByGoogleId(googleId) {
     return new Promise((resolve, reject) => {
         db.get('SELECT * FROM users WHERE googleId = ?', [googleId], (err, row) => {
@@ -322,6 +354,7 @@ export function getUserByGoogleId(googleId) {
 
             // Parse JSON fields
             const user = {
+                id: row.id,
                 googleId: row.googleId,
                 name: row.name || null,
                 email: row.email || null, // Hashed email

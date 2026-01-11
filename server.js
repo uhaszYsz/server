@@ -2259,24 +2259,30 @@ wss.on('connection', (ws, req) => {
                 throw new Error('Invalid folder path format');
             }
             
-            // Build final folder path: if empty, use Google ID as root; otherwise use Google ID/path
+            // Get user's id for folder path (use id instead of googleId)
             if (!ws.googleId) {
                 throw new Error('Not logged in with Google account');
             }
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user || !user.id) {
+                throw new Error('User not found');
+            }
+            const userId = user.id.toString(); // Convert to string for folder path
             
+            // Build final folder path: if empty, use user id as root; otherwise use id/path
             let finalFolderPath;
             if (!normalizedFolderPath) {
                 // Empty path = user's root folder
-                finalFolderPath = ws.googleId;
-            } else if (normalizedFolderPath.startsWith(ws.googleId + '/')) {
-                // Path already includes Google ID
+                finalFolderPath = userId;
+            } else if (normalizedFolderPath.startsWith(userId + '/')) {
+                // Path already includes user id
                 finalFolderPath = normalizedFolderPath;
-            } else if (normalizedFolderPath === ws.googleId) {
-                // Path is just Google ID
-                finalFolderPath = ws.googleId;
+            } else if (normalizedFolderPath === userId) {
+                // Path is just user id
+                finalFolderPath = userId;
             } else {
-                // Path doesn't include Google ID, prepend it
-                finalFolderPath = `${ws.googleId}/${normalizedFolderPath}`;
+                // Path doesn't include user id, prepend it
+                finalFolderPath = `${userId}/${normalizedFolderPath}`;
             }
             
             // Check if sprite already exists in this folder
@@ -2348,21 +2354,21 @@ wss.on('connection', (ws, req) => {
             
             const subfolders = await spritesDb.getSubfolders(normalizedParentPath);
             
-            // Look up usernames for Google IDs in folder paths
+            // Look up usernames for user IDs in folder paths
             const foldersWithUsernames = await Promise.all(subfolders.map(async (folder) => {
                 const pathParts = folder.folder_path.split('/');
-                const googleId = pathParts[0]; // First part is always the Google ID
+                const userId = pathParts[0]; // First part is always the user ID
                 
-                // Get username for this Google ID
-                let username = googleId; // Default to Google ID if user not found
+                // Get username for this user ID
+                let username = userId; // Default to user ID if user not found
                 try {
-                    const user = await db.getUserByGoogleId(googleId);
+                    const user = await db.getUserById(parseInt(userId, 10));
                     if (user && user.name) {
                         username = user.name;
                     }
                 } catch (err) {
-                    // If user lookup fails, use Google ID as fallback
-                    console.warn(`[listSpriteFolders] Failed to get username for Google ID ${googleId}:`, err.message);
+                    // If user lookup fails, use user ID as fallback
+                    console.warn(`[listSpriteFolders] Failed to get username for user ID ${userId}:`, err.message);
                 }
                 
                 return {
