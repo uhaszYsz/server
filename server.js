@@ -2883,10 +2883,10 @@ wss.on('connection', (ws, req) => {
         }
         
         try {
-            // Verify user exists by email and googleId
-            const isValid = await db.verifyUserByEmailAndGoogleId(data.email, data.id);
+            // Check if user exists by googleId first
+            const existingUser = await db.getUserByGoogleId(data.id);
             
-            if (!isValid) {
+            if (!existingUser) {
                 // User doesn't exist, create new user with random username
                 try {
                     const defaultStats = getDefaultStats();
