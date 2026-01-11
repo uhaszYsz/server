@@ -1046,8 +1046,8 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({
                 type: 'playerData',
                 playerData: {
-                    username: user.name || ws.googleId, // Use name for display
-                    name: user.name, // Add name field
+                    username: user.name,
+                    name: user.name,
                     stats: user.stats,
                     inventory: user.inventory,
                     equipment: user.equipment
@@ -2250,6 +2250,12 @@ wss.on('connection', (ws, req) => {
                 }
             }
             
+            // Get user's id for folder path (work only with IDs)
+            if (!ws.userId) {
+                throw new Error('Not logged in');
+            }
+            const userId = ws.userId.toString(); // Convert to string for folder path
+            
             // Validate and normalize folder path
             let normalizedFolderPath = folderPath || '';
             // Remove leading/trailing slashes and normalize
@@ -2259,29 +2265,19 @@ wss.on('connection', (ws, req) => {
                 throw new Error('Invalid folder path format');
             }
             
-            // Get user's id for folder path (use id instead of googleId)
-            if (!ws.googleId) {
-                throw new Error('Not logged in with Google account');
-            }
-            const user = await db.getUserByGoogleId(ws.googleId);
-            if (!user || !user.id) {
-                throw new Error('User not found');
-            }
-            const userId = user.id.toString(); // Convert to string for folder path
-            
-            // Build final folder path: if empty, use user id as root; otherwise use id/path
+            // Build final folder path: always use user's folder (never root)
+            // If folder path is empty: upload to user's root folder (userId)
+            // If folder path has value: upload to userId/folderPath (create folder inside user folder)
             let finalFolderPath;
             if (!normalizedFolderPath) {
-                // Empty path = user's root folder
-                finalFolderPath = userId;
-            } else if (normalizedFolderPath.startsWith(userId + '/')) {
-                // Path already includes user id
-                finalFolderPath = normalizedFolderPath;
-            } else if (normalizedFolderPath === userId) {
-                // Path is just user id
+                // Empty folder path = user's root folder (not global root)
                 finalFolderPath = userId;
             } else {
-                // Path doesn't include user id, prepend it
+                // Non-empty folder path = create folder inside user's folder
+                // Remove any leading userId/ if present (security: always use current user's ID)
+                if (normalizedFolderPath.startsWith(userId + '/')) {
+                    normalizedFolderPath = normalizedFolderPath.substring(userId.length + 1);
+                }
                 finalFolderPath = `${userId}/${normalizedFolderPath}`;
             }
             
@@ -3028,17 +3024,17 @@ wss.on('connection', (ws, req) => {
             }
             
             // Set authentication data on WebSocket
-            ws.username = user.name || user.googleId; // Keep username for backward compatibility
-            ws.name = user.name; // Add name property
+            ws.username = user.name;
+            ws.name = user.name;
             ws.email = data.email;
-            ws.googleId = data.id;
+            ws.userId = user.id; // Store user ID for folder operations
             ws.rank = user.rank || 'player';
             ws.isAdmin = (ws.rank === 'admin');
             
             // Send login success
             ws.send(msgpack.encode({
                 type: 'loginSuccess',
-                username: user.name || user.googleId, // Send name as username for compatibility
+                username: user.name,
                 name: user.name,
                 rank: user.rank || 'player'
             }));
