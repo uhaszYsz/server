@@ -6,9 +6,6 @@
       "maxHp": 101,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 6,
       "block": 5
     },
@@ -22,19 +19,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -119,8 +113,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762194620047",
@@ -129,9 +122,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -159,19 +149,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -201,8 +188,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762637732085",
@@ -211,9 +197,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -240,19 +223,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -324,8 +304,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": "bullet_cleanse"
+    }
   },
   {
     "username": "user-1762724472449",
@@ -334,25 +313,13 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
     "inventory": [
       {
         "name": "legs",
-        "stats": [
-          {
-            "stat": "magic",
-            "value": 1
-          },
-          {
-            "stat": "defence",
-            "value": 1
-          }
-        ]
+        "stats": []
       },
       {
         "name": "weapon",
@@ -363,19 +330,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -453,8 +417,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762741682802",
@@ -463,9 +426,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -473,10 +433,6 @@
       {
         "name": "weapon",
         "stats": [
-          {
-            "stat": "damage",
-            "value": 1
-          },
           {
             "stat": "maxHp",
             "value": 1
@@ -493,19 +449,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -535,8 +488,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762741891676",
@@ -545,9 +497,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -555,10 +504,6 @@
       {
         "name": "body",
         "stats": [
-          {
-            "stat": "defence",
-            "value": 1
-          },
           {
             "stat": "maxMp",
             "value": 1
@@ -574,19 +519,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -616,8 +558,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762742260744",
@@ -626,9 +567,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -636,10 +574,6 @@
       {
         "name": "weapon",
         "stats": [
-          {
-            "stat": "damage",
-            "value": 1
-          },
           {
             "stat": "MpRegen",
             "value": 1
@@ -656,19 +590,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -698,8 +629,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762751332808",
@@ -708,9 +638,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 6,
-      "magic": 6,
       "critical": 5,
       "block": 5
     },
@@ -724,19 +651,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -764,22 +688,12 @@
       "gloves": null,
       "legs": {
         "name": "legs",
-        "stats": [
-          {
-            "stat": "magic",
-            "value": 1
-          },
-          {
-            "stat": "defence",
-            "value": 1
-          }
-        ]
+        "stats": []
       },
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762834213095",
@@ -788,9 +702,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -817,19 +728,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -859,8 +767,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762834222467",
@@ -869,9 +776,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -899,19 +803,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -941,8 +842,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762844853548",
@@ -951,9 +851,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -961,10 +858,6 @@
       {
         "name": "body",
         "stats": [
-          {
-            "stat": "magic",
-            "value": 1
-          },
           {
             "stat": "MpRegen",
             "value": 1
@@ -980,19 +873,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -1022,8 +912,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762844879543",
@@ -1032,9 +921,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -1042,10 +928,6 @@
       {
         "name": "gloves",
         "stats": [
-          {
-            "stat": "defence",
-            "value": 1
-          },
           {
             "stat": "maxHp",
             "value": 1
@@ -1061,19 +943,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -1103,8 +982,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762844880368",
@@ -1113,25 +991,13 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
     "inventory": [
       {
         "name": "weapon",
-        "stats": [
-          {
-            "stat": "damage",
-            "value": 1
-          },
-          {
-            "stat": "defence",
-            "value": 1
-          }
-        ],
+        "stats": [],
         "weaponFile": "playa"
       },
       {
@@ -1143,19 +1009,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -1185,8 +1048,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762914462520",
@@ -1195,9 +1057,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -1205,10 +1064,6 @@
       {
         "name": "gloves",
         "stats": [
-          {
-            "stat": "defence",
-            "value": 1
-          },
           {
             "stat": "critical",
             "value": 1
@@ -1224,19 +1079,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -1266,8 +1118,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762914525220",
@@ -1276,9 +1127,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -1288,10 +1136,6 @@
         "stats": [
           {
             "stat": "maxMp",
-            "value": 1
-          },
-          {
-            "stat": "damage",
             "value": 1
           }
         ]
@@ -1305,19 +1149,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -1347,8 +1188,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762914541545",
@@ -1357,9 +1197,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -1373,19 +1210,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -1420,8 +1254,7 @@
         "stats": []
       }
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762915167676",
@@ -1430,9 +1263,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -1446,19 +1276,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -1535,8 +1362,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762916881701",
@@ -1545,9 +1371,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -1561,19 +1384,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -1650,8 +1470,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762917272073",
@@ -1660,9 +1479,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -1676,19 +1492,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -1792,8 +1605,7 @@
         }
       ],
       "slug": "test"
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762919121517",
@@ -1802,9 +1614,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -1818,19 +1627,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -1908,8 +1714,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762922982555",
@@ -1918,9 +1723,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -1934,19 +1736,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -1976,8 +1775,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762922985004",
@@ -1986,9 +1784,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -2002,19 +1797,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -2044,8 +1836,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762923395356",
@@ -2054,9 +1845,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -2070,19 +1858,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -2160,8 +1945,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762923452221",
@@ -2170,9 +1954,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -2186,19 +1967,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -2276,8 +2054,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762923737766",
@@ -2286,9 +2063,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -2302,19 +2076,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -2392,8 +2163,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762924433761",
@@ -2402,9 +2172,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -2418,19 +2185,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -2508,8 +2272,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762925669880",
@@ -2518,9 +2281,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -2534,19 +2294,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -2624,8 +2381,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762925792257",
@@ -2634,9 +2390,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -2650,19 +2403,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -2740,8 +2490,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762925812072",
@@ -2750,9 +2499,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -2766,19 +2512,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -2856,8 +2599,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762926475074",
@@ -2866,9 +2608,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -2882,19 +2621,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -2972,8 +2708,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762926491694",
@@ -2982,9 +2717,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -2998,19 +2730,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -3040,8 +2769,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1762926495092",
@@ -3050,9 +2778,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -3066,19 +2791,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -3156,8 +2878,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762927774022",
@@ -3166,9 +2887,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -3182,19 +2900,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -3298,8 +3013,7 @@
         }
       ],
       "slug": "test"
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762927942116",
@@ -3308,9 +3022,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -3324,19 +3035,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -3440,8 +3148,7 @@
         }
       ],
       "slug": "test"
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1762996866176",
@@ -3450,9 +3157,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -3466,19 +3170,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -3508,8 +3209,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1763185384817",
@@ -3518,9 +3218,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -3534,19 +3231,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -3576,8 +3270,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1763321811276",
@@ -3586,9 +3279,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -3602,19 +3292,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -3692,8 +3379,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1763833959659",
@@ -3702,9 +3388,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5
     },
@@ -3718,19 +3401,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -3760,8 +3440,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": "bullet_cleanse"
+    "weaponData": null
   },
   {
     "username": "user-1763834856043",
@@ -3770,9 +3449,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -3787,19 +3463,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -3829,8 +3502,7 @@
       "boots": null,
       "weapon": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1763866791570",
@@ -3839,9 +3511,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -3856,19 +3525,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -3945,8 +3611,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1763866937363",
@@ -3955,9 +3620,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -3972,19 +3634,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -4013,8 +3672,7 @@
       "ring": null,
       "amulet": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1763866946629",
@@ -4023,9 +3681,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -4040,19 +3695,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -4081,8 +3733,7 @@
       "ring": null,
       "amulet": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1763866990853",
@@ -4091,9 +3742,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -4108,19 +3756,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -4149,8 +3794,7 @@
       "ring": null,
       "amulet": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1763910365525",
@@ -4159,9 +3803,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -4176,19 +3817,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -4217,8 +3855,7 @@
       "ring": null,
       "amulet": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1763910519808",
@@ -4227,9 +3864,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -4244,19 +3878,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -4362,8 +3993,7 @@
         }
       ],
       "slug": "playa"
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1763910883231",
@@ -4372,9 +4002,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -4389,19 +4016,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -4479,8 +4103,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1763911091142",
@@ -4489,9 +4112,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -4506,19 +4126,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -4624,8 +4241,7 @@
         }
       ],
       "slug": "playa"
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1763911309022",
@@ -4634,9 +4250,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -4651,19 +4264,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -4769,8 +4379,7 @@
         }
       ],
       "slug": "playa"
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1763911356566",
@@ -4779,9 +4388,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -4796,19 +4402,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -4886,8 +4489,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1763911566461",
@@ -4896,9 +4498,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -4913,19 +4512,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -5031,8 +4627,7 @@
         }
       ],
       "slug": "playa"
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1763912950304",
@@ -5041,9 +4636,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -5058,19 +4650,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -5148,8 +4737,7 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   },
   {
     "username": "user-1763912982504",
@@ -5158,9 +4746,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -5175,19 +4760,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -5216,8 +4798,7 @@
       "ring": null,
       "amulet": null
     },
-    "weaponData": null,
-    "passiveAbility": null
+    "weaponData": null
   },
   {
     "username": "user-1763913000260",
@@ -5226,9 +4807,6 @@
       "maxHp": 100,
       "maxMp": 50,
       "MpRegen": 1,
-      "damage": 10,
-      "defence": 5,
-      "magic": 5,
       "critical": 5,
       "block": 5,
       "knockback": 0
@@ -5243,19 +4821,16 @@
       {
         "name": "ring",
         "displayName": "Healing Ring",
-        "passiveAbility": "healing_aura",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Super Hit Ring",
-        "passiveAbility": "super_hit",
         "stats": []
       },
       {
         "name": "ring",
         "displayName": "Cleanse Ring",
-        "passiveAbility": "bullet_cleanse",
         "stats": []
       },
       {
@@ -5333,7 +4908,6 @@
           "waveId": 0
         }
       ]
-    },
-    "passiveAbility": null
+    }
   }
 ]

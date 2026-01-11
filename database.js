@@ -8,6 +8,44 @@ import bcrypt from 'bcrypt';
 // Password hashing configuration
 const BCRYPT_ROUNDS = 10;
 
+// Deprecated stats that should be removed
+const DEPRECATED_STATS = ['damage', 'defence', 'defense', 'magic'];
+
+// Helper function to clean deprecated stats and passive ability from user data
+function cleanDeprecatedStats(user) {
+    if (!user) return user;
+    
+    // Clean deprecated stats from user.stats
+    if (user.stats && typeof user.stats === 'object') {
+        DEPRECATED_STATS.forEach(stat => {
+            delete user.stats[stat];
+        });
+    }
+    
+    // Clean deprecated stats from inventory items
+    if (user.inventory && Array.isArray(user.inventory)) {
+        user.inventory.forEach(item => {
+            if (item.stats && Array.isArray(item.stats)) {
+                item.stats = item.stats.filter(statEntry => !DEPRECATED_STATS.includes(statEntry.stat));
+            }
+        });
+    }
+    
+    // Clean deprecated stats from equipment items
+    if (user.equipment && typeof user.equipment === 'object') {
+        Object.values(user.equipment).forEach(item => {
+            if (item && item.stats && Array.isArray(item.stats)) {
+                item.stats = item.stats.filter(statEntry => !DEPRECATED_STATS.includes(statEntry.stat));
+            }
+        });
+    }
+    
+    // Remove passiveAbility field (deprecated system)
+    delete user.passiveAbility;
+    
+    return user;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const dbPath = path.join(__dirname, 'users.db');
@@ -189,7 +227,7 @@ export function createUser(user) {
                 JSON.stringify(user.inventory || []),
                 JSON.stringify(user.equipment || {}),
                 user.weaponData ? JSON.stringify(user.weaponData) : null,
-                user.passiveAbility || null,
+                null, // passiveAbility always null (deprecated)
                 user.rank || 'player',
                 user.verified !== undefined ? user.verified : 0,
                 function(err) {
@@ -218,18 +256,20 @@ export function getAllUsers() {
             }
 
             // Parse JSON fields
-            const users = rows.map(row => ({
-                googleId: row.googleId,
-                name: row.name || null,
-                email: row.email, // Hashed email
-                stats: JSON.parse(row.stats),
-                inventory: JSON.parse(row.inventory),
-                equipment: JSON.parse(row.equipment),
-                weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                passiveAbility: row.passiveAbility || null,
-                rank: row.rank || 'player',
-                verified: row.verified !== undefined ? row.verified : 0
-            }));
+            const users = rows.map(row => {
+                const user = {
+                    googleId: row.googleId,
+                    name: row.name || null,
+                    email: row.email, // Hashed email
+                    stats: JSON.parse(row.stats),
+                    inventory: JSON.parse(row.inventory),
+                    equipment: JSON.parse(row.equipment),
+                    weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
+                    rank: row.rank || 'player',
+                    verified: row.verified !== undefined ? row.verified : 0
+                };
+                return cleanDeprecatedStats(user);
+            });
 
             resolve(users);
         });
@@ -259,12 +299,11 @@ export function getUserByName(name) {
                 inventory: JSON.parse(row.inventory),
                 equipment: JSON.parse(row.equipment),
                 weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                passiveAbility: row.passiveAbility || null,
                 rank: row.rank || 'player',
                 verified: row.verified !== undefined ? row.verified : 0
             };
 
-            resolve(user);
+            resolve(cleanDeprecatedStats(user));
         });
     });
 }
@@ -292,12 +331,11 @@ export function getUserByGoogleId(googleId) {
                 inventory: JSON.parse(row.inventory),
                 equipment: JSON.parse(row.equipment),
                 weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                passiveAbility: row.passiveAbility || null,
                 rank: row.rank || 'player',
                 verified: row.verified !== undefined ? row.verified : 0
             };
 
-            resolve(user);
+            resolve(cleanDeprecatedStats(user));
         });
     });
 }
@@ -403,7 +441,7 @@ export function updateUser(googleId, userData) {
                 JSON.stringify(userData.inventory || []),
                 JSON.stringify(userData.equipment || {}),
                 userData.weaponData ? JSON.stringify(userData.weaponData) : null,
-                userData.passiveAbility || null,
+                null, // passiveAbility always null (deprecated)
                 userData.rank || 'player',
                 userData.verified !== undefined ? userData.verified : 0,
                 googleId,

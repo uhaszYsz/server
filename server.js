@@ -118,12 +118,10 @@ await Promise.all([
 ]);
 
 // Equipment slots
-const EQUIPMENT_SLOTS = ['weapon', 'armor', 'hat', 'amulet', 'ring', 'spellcard'];
+const EQUIPMENT_SLOTS = ['weapon', 'armor', 'amulet', 'outfit', 'spellcard'];
 
 // Available stats for items
 const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback', 'recovery', 'reload'];
-
-const PASSIVE_ABILITIES = ['healing_aura', 'super_hit', 'bullet_cleanse'];
 
 // Generate a random item for a given slot
 function generateRandomItem(slotName) {
@@ -191,13 +189,11 @@ function initializeInventoryAndEquipment() {
         equipment: {
             weapon: null,
             armor: null,
-            hat: null,
             amulet: null,
-            ring: null,
+            outfit: null,
             spellcard: null
         },
-        weaponData: null,
-        passiveAbility: null
+        weaponData: null
     };
 }
 
@@ -227,15 +223,6 @@ async function generateUniqueRandomUsername(maxAttempts = 10) {
     return `${baseName}${Date.now().toString().slice(-6)}`;
 }
 
-// Helper function to get display name for passive ability rings
-function getPassiveAbilityDisplayName(abilityId) {
-    const names = {
-        'healing_aura': 'Healing Ring',
-        'super_hit': 'Super Hit Ring',
-        'bullet_cleanse': 'Cleanse Ring'
-    };
-    return names[abilityId] || abilityId;
-}
 
 function normalizeLevelName(rawName) {
     if (typeof rawName !== 'string') {
@@ -1064,12 +1051,106 @@ wss.on('connection', (ws, req) => {
                     stats: user.stats,
                     inventory: user.inventory,
                     equipment: user.equipment,
-                    passiveAbility: user.passiveAbility || null,
                     verified: user.verified !== undefined ? user.verified : 0
                 }
             }));
         } else {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+        }
+      } else if (data.type === 'debugGiveLoot') {
+        // Debug: Generate and give random loot to player
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        const user = await db.getUserByGoogleId(ws.googleId);
+        if (!user) {
+            ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            return;
+        }
+        
+        // Generate random loot: any equipment slot (except weapon)
+        const lootTypes = ['armor', 'amulet', 'outfit', 'spellcard'];
+        const randomIndex = Math.floor(Math.random() * lootTypes.length);
+        const itemType = lootTypes[randomIndex];
+        
+        // Create loot item based on type
+        let lootItem = {
+            name: itemType,
+            stats: [] // Default to empty stats
+        };
+        
+        // Set display name and special properties based on item type
+        if (itemType === 'outfit') {
+            // Outfit has no stats
+            lootItem.displayName = 'Outfit';
+            lootItem.stats = [];
+        } else if (itemType === 'spellcard') {
+            // Random active ability for spellcard (no stats)
+            const randomActiveAbility = ACTIVE_ABILITIES[Math.floor(Math.random() * ACTIVE_ABILITIES.length)];
+            lootItem.displayName = getSpellcardDisplayName(randomActiveAbility);
+            lootItem.activeAbility = randomActiveAbility;
+        } else {
+            // Regular items (armor, amulet) - have stats
+            const displayNames = {
+                armor: 'Armor',
+                amulet: 'Amulet'
+            };
+            lootItem.displayName = displayNames[itemType] || itemType;
+            
+            // Determine number of slots based on item type
+            const slotCounts = {
+                armor: 2,
+                amulet: 1
+            };
+            const slotCount = slotCounts[itemType] || 0;
+            
+            // Generate stats for the item (only if slotCount > 0)
+            if (slotCount > 0) {
+                const availableStats = [...ITEM_STATS];
+                const stats = [];
+                
+                for (let i = 0; i < slotCount; i++) {
+                    const randomIndex = Math.floor(Math.random() * availableStats.length);
+                    const selectedStat = availableStats[randomIndex];
+                    availableStats.splice(randomIndex, 1); // Remove to prevent duplicates
+                    
+                    // First stat gets 2x bonus, others get 1x
+                    const value = i === 0 ? 2 : 1;
+                    stats.push({
+                        stat: selectedStat,
+                        value: value
+                    });
+                }
+                
+                lootItem.stats = stats;
+            } else {
+                // Items with 0 slot count have no stats
+                lootItem.stats = [];
+            }
+        }
+        
+        // Add loot item to player's inventory
+        if (!user.inventory) {
+            user.inventory = [];
+        }
+        user.inventory.push(lootItem);
+        await db.updateUser(ws.googleId, user);
+        
+        // Send loot back to client
+        ws.send(msgpack.encode({
+            type: 'raidLoot',
+            loot: lootItem,
+            stats: null // No stats for debug loot
+        }));
+        
+        const itemDesc = itemType === 'spellcard' ? `${lootItem.displayName} (${itemType})` : itemType;
+        if (lootItem.stats && lootItem.stats.length > 0) {
+            const firstStat = lootItem.stats[0].stat;
+            console.log(`[DebugGiveLoot] Added ${itemDesc} to ${ws.username || ws.googleId}'s inventory with ${lootItem.stats.length} stats (${firstStat} +${lootItem.stats[0].value})`);
+        } else {
+            console.log(`[DebugGiveLoot] Added ${itemDesc} to ${ws.username || ws.googleId}'s inventory`);
         }
       } else if (data.type === 'equipItem') {
         // Handle equipping an item
@@ -1117,10 +1198,6 @@ wss.on('connection', (ws, req) => {
         const oldItem = user.equipment[slotName];
         if (oldItem) {
             user.inventory.push(oldItem);
-            // If unequipping a ring with passive ability, clear passive ability
-            if (slotName === 'ring' && oldItem.passiveAbility) {
-                user.passiveAbility = null;
-            }
         }
         
         // Sanitize weapon file slug if present
@@ -1148,16 +1225,6 @@ wss.on('connection', (ws, req) => {
         // Equip the new item (after all weaponFile updates)
         user.equipment[slotName] = item;
 
-        // If equipping a ring, set passive ability based on ring's passiveAbility property
-        if (slotName === 'ring') {
-            if (item.passiveAbility) {
-                user.passiveAbility = item.passiveAbility;
-            } else {
-                // If equipping a ring without passiveAbility, clear passive ability
-                user.passiveAbility = null;
-            }
-        }
-
         if (slotName === 'weapon') {
             const weaponFile = item.weaponFile || 'playa';
             // Always reload weapon data when equipping a weapon to ensure it matches the weaponFile
@@ -1176,8 +1243,10 @@ wss.on('connection', (ws, req) => {
             user.stats[statKey] = baseStats[statKey];
         });
         
-        // Apply equipment bonuses
-        Object.values(user.equipment).forEach(equippedItem => {
+        // Apply equipment bonuses (only from armor and amulet)
+        const statContributingSlots = ['armor', 'amulet'];
+        statContributingSlots.forEach(slotName => {
+            const equippedItem = user.equipment[slotName];
             if (equippedItem && Array.isArray(equippedItem.stats)) {
                 equippedItem.stats.forEach(statEntry => {
                     const stat = statEntry.stat;
@@ -1198,8 +1267,7 @@ wss.on('connection', (ws, req) => {
             playerData: {
                 stats: user.stats,
                 inventory: user.inventory,
-                equipment: user.equipment,
-                passiveAbility: user.passiveAbility || null
+                equipment: user.equipment
             }
         }));
         
@@ -1273,8 +1341,7 @@ wss.on('connection', (ws, req) => {
             playerData: {
                 stats: user.stats,
                 inventory: user.inventory,
-                equipment: user.equipment,
-                passiveAbility: user.passiveAbility || null
+                equipment: user.equipment
             }
         }));
         
@@ -1282,48 +1349,6 @@ wss.on('connection', (ws, req) => {
       } else if (data.type === 'partyInvite') {
         console.log
         (`User ${ws.username} equipped ${item.name} in ${slotName} slot`);
-      } else if (data.type === 'setPassiveAbility') {
-        if (!ws.username) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
-            return;
-        }
-
-        const abilityId = typeof data.ability === 'string' ? data.ability : null;
-        if (abilityId !== null && !PASSIVE_ABILITIES.includes(abilityId)) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Invalid passive ability selection' }));
-            return;
-        }
-
-        const user = await db.getUserByGoogleId(ws.googleId);
-        if (!user) {
-            ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
-            return;
-        }
-        
-        // Authorization check: user can only set passive ability for themselves
-        if (user.googleId !== ws.googleId) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
-            return;
-        }
-
-        user.passiveAbility = abilityId;
-
-        await db.updateUser(ws.googleId, user);
-
-        const payload = {
-            stats: user.stats,
-            inventory: user.inventory,
-            equipment: user.equipment,
-            passiveAbility: user.passiveAbility || null
-        };
-
-        ws.send(msgpack.encode({
-            type: 'passiveAbilityUpdated',
-            passiveAbility: user.passiveAbility || null,
-            playerData: payload
-        }));
-
-        console.log(`User ${ws.username} set passive ability to ${user.passiveAbility || 'none'}`);
       } else if (data.type === 'join') {
         const { room } = data;
 
@@ -2542,7 +2567,7 @@ wss.on('connection', (ws, req) => {
             const memberClient = clients.get(memberId);
             if (memberClient && memberClient.username && room.clients.has(memberClient)) {
                 // Generate random loot: any equipment slot (except weapon)
-                const lootTypes = ['armor', 'hat', 'amulet', 'ring', 'spellcard'];
+                const lootTypes = ['armor', 'amulet', 'outfit', 'spellcard'];
                 const randomIndex = Math.floor(Math.random() * lootTypes.length);
                 const itemType = lootTypes[randomIndex];
                 console.log(`[LootGeneration] Random index: ${randomIndex}, Selected type: ${itemType}`);
@@ -2554,51 +2579,53 @@ wss.on('connection', (ws, req) => {
                 };
                 
                 // Set display name and special properties based on item type
-                if (itemType === 'ring') {
-                    // Random passive ability for ring (no stats)
-                    const randomPassiveAbility = PASSIVE_ABILITIES[Math.floor(Math.random() * PASSIVE_ABILITIES.length)];
-                    lootItem.displayName = getPassiveAbilityDisplayName(randomPassiveAbility);
-                    lootItem.passiveAbility = randomPassiveAbility;
+                if (itemType === 'outfit') {
+                    // Outfit has no stats
+                    lootItem.displayName = 'Outfit';
+                    lootItem.stats = [];
                 } else if (itemType === 'spellcard') {
                     // Random active ability for spellcard (no stats)
                     const randomActiveAbility = ACTIVE_ABILITIES[Math.floor(Math.random() * ACTIVE_ABILITIES.length)];
                     lootItem.displayName = getSpellcardDisplayName(randomActiveAbility);
                     lootItem.activeAbility = randomActiveAbility;
                 } else {
-                    // Regular items (armor, hat, amulet) - have stats
+                    // Regular items (armor, amulet) - have stats
                     const displayNames = {
                         armor: 'Armor',
-                        hat: 'Hat',
                         amulet: 'Amulet'
                     };
                     lootItem.displayName = displayNames[itemType] || itemType;
                     
                     // Determine number of slots based on item type
                     const slotCounts = {
-                        armor: 3,
-                        hat: 2,
+                        armor: 2,
                         amulet: 1
                     };
-                    const slotCount = slotCounts[itemType];
+                    const slotCount = slotCounts[itemType] || 0;
                     
-                    // Generate stats for the item
-                    const availableStats = [...ITEM_STATS];
-                    const stats = [];
-                    
-                    for (let i = 0; i < slotCount; i++) {
-                        const randomIndex = Math.floor(Math.random() * availableStats.length);
-                        const selectedStat = availableStats[randomIndex];
-                        availableStats.splice(randomIndex, 1); // Remove to prevent duplicates
+                    // Generate stats for the item (only if slotCount > 0)
+                    if (slotCount > 0) {
+                        const availableStats = [...ITEM_STATS];
+                        const stats = [];
                         
-                        // First stat gets 2x bonus, others get 1x
-                        const value = i === 0 ? 2 : 1;
-                        stats.push({
-                            stat: selectedStat,
-                            value: value
-                        });
+                        for (let i = 0; i < slotCount; i++) {
+                            const randomIndex = Math.floor(Math.random() * availableStats.length);
+                            const selectedStat = availableStats[randomIndex];
+                            availableStats.splice(randomIndex, 1); // Remove to prevent duplicates
+                            
+                            // First stat gets 2x bonus, others get 1x
+                            const value = i === 0 ? 2 : 1;
+                            stats.push({
+                                stat: selectedStat,
+                                value: value
+                            });
+                        }
+                        
+                        lootItem.stats = stats;
+                    } else {
+                        // Items with 0 slot count have no stats
+                        lootItem.stats = [];
                     }
-                    
-                    lootItem.stats = stats;
                 }
                 
                 lootForPlayers[memberClient.googleId] = lootItem;
@@ -2612,8 +2639,7 @@ wss.on('connection', (ws, req) => {
                     user.inventory.push(lootItem);
                     await db.updateUser(memberClient.googleId, user);
                     inventoryUpdated = true;
-                    const itemDesc = itemType === 'ring' ? `${lootItem.displayName} (${itemType})` : 
-                                   itemType === 'spellcard' ? `${lootItem.displayName} (${itemType})` : 
+                    const itemDesc = itemType === 'spellcard' ? `${lootItem.displayName} (${itemType})` : 
                                    itemType;
                     if (lootItem.stats && lootItem.stats.length > 0) {
                         const firstStat = lootItem.stats[0].stat;
@@ -2864,7 +2890,7 @@ wss.on('connection', (ws, req) => {
                 // User doesn't exist, create new user with random username
                 try {
                     const defaultStats = getDefaultStats();
-                    const { inventory, equipment, weaponData, passiveAbility } = initializeInventoryAndEquipment();
+                    const { inventory, equipment, weaponData } = initializeInventoryAndEquipment();
                     
                     // Generate a unique random username
                     const randomName = await generateUniqueRandomUsername();
@@ -2876,8 +2902,7 @@ wss.on('connection', (ws, req) => {
                         stats: defaultStats,
                         inventory: inventory,
                         equipment: equipment,
-                        weaponData: weaponData,
-                        passiveAbility: passiveAbility
+                        weaponData: weaponData
                     });
                     console.log(`✅ Created new Google user: ${data.email} (${data.id}) with random name: ${randomName}`);
                 } catch (createErr) {
