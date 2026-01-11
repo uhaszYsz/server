@@ -289,6 +289,28 @@
             background: #667eea;
             color: white;
         }
+
+        .table-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .table-actions button {
+            padding: 10px 20px;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        th:first-child, td:first-child {
+            width: 50px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -341,6 +363,8 @@
         let currentDatabase = 'users';
         let currentTable = null;
         let tables = [];
+        let currentPrimaryKey = null;
+        let selectedRows = new Set();
 
         function showStatus(message, type = 'info') {
             const statusEl = document.getElementById('status');
@@ -425,15 +449,26 @@
                     return;
                 }
 
-                // Create table
+                // Store primary key
+                currentPrimaryKey = data.primaryKey || 'rowid';
+                selectedRows.clear();
+
+                // Show table actions
+                document.getElementById('table-actions').style.display = 'flex';
+                updateSelectedCount();
+
+                // Create table with checkboxes
                 let html = '<table><thead><tr>';
+                html += '<th><input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this.checked)"></th>';
                 data.columns.forEach(col => {
                     html += `<th>${escapeHtml(col)}</th>`;
                 });
                 html += '</tr></thead><tbody>';
 
-                data.rows.forEach(row => {
-                    html += '<tr>';
+                data.rows.forEach((row, index) => {
+                    const rowId = row[currentPrimaryKey] !== undefined ? row[currentPrimaryKey] : index;
+                    html += `<tr data-row-id="${escapeHtml(String(rowId))}">`;
+                    html += `<td><input type="checkbox" class="row-checkbox" data-row-id="${escapeHtml(String(rowId))}" onchange="toggleRowSelection(this)"></td>`;
                     data.columns.forEach(col => {
                         const value = row[col];
                         const displayValue = value === null ? '<em>NULL</em>' : 
@@ -511,6 +546,8 @@
                         return;
                     }
 
+                    // Note: Query results don't support bulk delete (no primary key info)
+                    // They're just for viewing
                     let html = `<h3>Results (${data.rows.length} row${data.rows.length !== 1 ? 's' : ''})</h3>`;
                     html += '<div class="table-container"><table><thead><tr>';
                     
@@ -579,6 +616,98 @@
                 return;
             }
             executeQuery();
+        }
+
+        function toggleSelectAll(checked) {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = checked;
+                const rowId = checkbox.getAttribute('data-row-id');
+                if (checked) {
+                    selectedRows.add(rowId);
+                } else {
+                    selectedRows.delete(rowId);
+                }
+            });
+            updateSelectedCount();
+        }
+
+        function toggleRowSelection(checkbox) {
+            const rowId = checkbox.getAttribute('data-row-id');
+            if (checkbox.checked) {
+                selectedRows.add(rowId);
+            } else {
+                selectedRows.delete(rowId);
+            }
+            updateSelectAllCheckbox();
+            updateSelectedCount();
+        }
+
+        function updateSelectAllCheckbox() {
+            const selectAllCheckbox = document.getElementById('select-all-checkbox');
+            if (selectAllCheckbox) {
+                const checkboxes = document.querySelectorAll('.row-checkbox');
+                const checkedCount = document.querySelectorAll('.row-checkbox:checked').length;
+                selectAllCheckbox.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+                selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+            }
+        }
+
+        function updateSelectedCount() {
+            const countEl = document.getElementById('selected-count');
+            if (countEl) {
+                const count = selectedRows.size;
+                countEl.textContent = `${count} selected`;
+            }
+        }
+
+        async function deleteSelectedRows() {
+            if (selectedRows.size === 0) {
+                showStatus('No rows selected', 'error');
+                return;
+            }
+
+            if (!currentPrimaryKey) {
+                showStatus('Primary key not available', 'error');
+                return;
+            }
+
+            if (!confirm(`⚠️ WARNING: You are about to delete ${selectedRows.size} row(s).\n\nThis action cannot be undone. Proceed?`)) {
+                return;
+            }
+
+            const rowIds = Array.from(selectedRows);
+            const contentEl = document.getElementById('table-content');
+            contentEl.innerHTML = '<div class="loading">Deleting rows...</div>';
+
+            try {
+                const response = await fetch(`/api/db/${currentDatabase}/table/${currentTable}/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        rowIds: rowIds,
+                        primaryKey: currentPrimaryKey
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to delete rows');
+                }
+
+                showStatus(`Successfully deleted ${data.deleted || data.changes || 0} row(s)`, 'success');
+                selectedRows.clear();
+                
+                // Reload table data
+                setTimeout(() => loadTableData(currentTable), 500);
+
+            } catch (error) {
+                contentEl.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                showStatus(`Error deleting rows: ${error.message}`, 'error');
+            }
         }
 
         function escapeHtml(text) {

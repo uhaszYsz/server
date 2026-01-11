@@ -110,7 +110,7 @@ app.get('/api/db/:database/table/:tableName', async (req, res) => {
             return parsed;
         });
 
-        res.json({ columns, rows: parsedRows });
+        res.json({ columns, rows: parsedRows, primaryKey });
     } catch (error) {
         console.error('Error getting table data:', error);
         res.status(500).json({ error: error.message });
@@ -214,6 +214,58 @@ app.post('/api/db/:database/query', async (req, res) => {
         }
     } catch (error) {
         console.error('Error executing query:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Bulk delete rows
+app.post('/api/db/:database/table/:tableName/delete', async (req, res) => {
+    try {
+        const { database, tableName } = req.params;
+        const { rowIds, primaryKey } = req.body;
+
+        if (!rowIds || !Array.isArray(rowIds) || rowIds.length === 0) {
+            return res.status(400).json({ error: 'rowIds array is required and must not be empty' });
+        }
+
+        if (!primaryKey || typeof primaryKey !== 'string') {
+            return res.status(400).json({ error: 'primaryKey is required' });
+        }
+
+        let dbInstance = null;
+
+        if (database === 'users') {
+            dbInstance = await getUsersDbInstance();
+        } else if (database === 'sprites') {
+            dbInstance = await getSpritesDbInstance();
+        } else {
+            return res.status(400).json({ error: 'Invalid database name' });
+        }
+
+        if (!dbInstance) {
+            return res.status(500).json({ error: 'Database connection not available' });
+        }
+
+        // Build DELETE query with WHERE IN clause
+        // Use parameterized query to prevent SQL injection
+        const placeholders = rowIds.map(() => '?').join(',');
+        const query = `DELETE FROM ${escapeIdentifier(tableName)} WHERE ${escapeIdentifier(primaryKey)} IN (${placeholders})`;
+
+        const result = await new Promise((resolve, reject) => {
+            dbInstance.run(query, rowIds, function(err) {
+                if (err) reject(err);
+                else {
+                    resolve({
+                        changes: this.changes,
+                        deleted: this.changes
+                    });
+                }
+            });
+        });
+
+        res.json(result);
+    } catch (error) {
+        console.error('Error deleting rows:', error);
         res.status(500).json({ error: error.message });
     }
 });
