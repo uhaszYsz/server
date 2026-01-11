@@ -878,7 +878,7 @@ export function getPostLikeCount(postId) {
     });
 }
 
-// Check if user has liked a post
+// Check if user has liked a postfdsfsfs
 export function hasUserLikedPost(postId, googleId) {
     return new Promise((resolve, reject) => {
         db.get('SELECT * FROM forum_post_likes WHERE post_id = ? AND googleId = ?', [postId, googleId], (err, row) => {
