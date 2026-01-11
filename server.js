@@ -2278,6 +2278,7 @@ wss.on('connection', (ws, req) => {
             // Check if sprite already exists in this folder
             const existingSprite = await spritesDb.getSpriteByFilename(filename, finalFolderPath);
             if (existingSprite) {
+                console.log(`[uploadSprite] Sprite already exists: filename=${filename}, folderPath=${finalFolderPath}`);
                 throw new Error('Sprite with this filename already exists in this folder');
             }
 

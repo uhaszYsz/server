@@ -37,16 +37,6 @@ export function initSpritesDatabase() {
                     return;
                 }
                 
-                // Add folder_path column if it doesn't exist (migration)
-                spritesDb.run(`
-                    ALTER TABLE sprites ADD COLUMN folder_path TEXT NOT NULL DEFAULT ''
-                `, (alterErr) => {
-                    // Ignore error if column already exists
-                    if (alterErr && !alterErr.message.includes('duplicate column')) {
-                        console.warn('Warning: Could not add folder_path column:', alterErr.message);
-                    }
-                });
-                
                 console.log('✅ Sprites table initialized');
                 resolve();
             });
