@@ -2,5 +2,7 @@ node_modules/
 package-lock.json
 users.db
 users.db-journal
+sprites.db
+sprites.db-journal
 *.log
 
