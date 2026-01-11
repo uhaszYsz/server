@@ -2950,13 +2950,16 @@ wss.on('connection', (ws, req) => {
         }
       } else if (data.type === 'checkVerification') {
         // Check email verification status
+        console.log('[checkVerification] Received checkVerification request from client', ws.id, 'email:', ws.email ? 'present' : 'missing', 'googleId:', ws.googleId ? 'present' : 'missing');
         if (!ws.email || !ws.googleId) {
+            console.log('[checkVerification] Missing email or googleId, returning false');
             ws.send(msgpack.encode({ type: 'verificationResult', verified: false }));
             return;
         }
         
         try {
             const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            console.log('[checkVerification] Verification result:', isValid);
             ws.send(msgpack.encode({ type: 'verificationResult', verified: isValid }));
         } catch (error) {
             console.error('[checkVerification] Error:', error);
