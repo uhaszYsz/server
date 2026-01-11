@@ -229,7 +229,7 @@ export function createUser(user) {
                 user.weaponData ? JSON.stringify(user.weaponData) : null,
                 null, // passiveAbility always null (deprecated)
                 user.rank || 'player',
-                user.verified !== undefined ? user.verified : 0,
+                null, // verified always null (deprecated)
                 function(err) {
                     if (err) {
                         reject(err);
@@ -265,8 +265,7 @@ export function getAllUsers() {
                     inventory: JSON.parse(row.inventory),
                     equipment: JSON.parse(row.equipment),
                     weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                    rank: row.rank || 'player',
-                    verified: row.verified !== undefined ? row.verified : 0
+                    rank: row.rank || 'player'
                 };
                 return cleanDeprecatedStats(user);
             });
@@ -299,8 +298,7 @@ export function getUserByName(name) {
                 inventory: JSON.parse(row.inventory),
                 equipment: JSON.parse(row.equipment),
                 weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                rank: row.rank || 'player',
-                verified: row.verified !== undefined ? row.verified : 0
+                rank: row.rank || 'player'
             };
 
             resolve(cleanDeprecatedStats(user));
@@ -331,8 +329,7 @@ export function getUserByGoogleId(googleId) {
                 inventory: JSON.parse(row.inventory),
                 equipment: JSON.parse(row.equipment),
                 weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                rank: row.rank || 'player',
-                verified: row.verified !== undefined ? row.verified : 0
+                rank: row.rank || 'player'
             };
 
             resolve(cleanDeprecatedStats(user));
@@ -386,19 +383,6 @@ export function getUserByEmailAndGoogleId(email, googleId) {
     });
 }
 
-// Set user verified status by googleId
-export function setUserVerified(googleId, verified = 1) {
-    return new Promise((resolve, reject) => {
-        db.run('UPDATE users SET verified = ? WHERE googleId = ?', [verified, googleId], function(err) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(this.changes > 0);
-            }
-        });
-    });
-}
-
 // Update user by googleId
 export function updateUser(googleId, userData) {
     return new Promise(async (resolve, reject) => {
@@ -443,7 +427,7 @@ export function updateUser(googleId, userData) {
                 userData.weaponData ? JSON.stringify(userData.weaponData) : null,
                 null, // passiveAbility always null (deprecated)
                 userData.rank || 'player',
-                userData.verified !== undefined ? userData.verified : 0,
+                null, // verified always null (deprecated)
                 googleId,
                 function(err) {
                     if (err) {

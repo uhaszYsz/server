@@ -1050,8 +1050,7 @@ wss.on('connection', (ws, req) => {
                     name: user.name, // Add name field
                     stats: user.stats,
                     inventory: user.inventory,
-                    equipment: user.equipment,
-                    verified: user.verified !== undefined ? user.verified : 0
+                    equipment: user.equipment
                 }
             }));
         } else {
@@ -2920,6 +2919,14 @@ wss.on('connection', (ws, req) => {
                 return;
             }
             
+            // Verify email matches the stored email (security check)
+            const isValid = await db.verifyUserByEmailAndGoogleId(data.email, data.id);
+            if (!isValid) {
+                console.warn(`[GoogleLogin] Email verification failed for ${data.email} (${data.id})`);
+                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
+                return;
+            }
+            
             // Set authentication data on WebSocket
             ws.username = user.name || user.googleId; // Keep username for backward compatibility
             ws.name = user.name; // Add name property
@@ -2942,22 +2949,18 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Login failed' }));
         }
       } else if (data.type === 'checkVerification') {
-        // Check if email and googleId match server data
-        if (!data.email || !data.id) {
-            ws.send(msgpack.encode({ type: 'verificationResult', verified: false, message: 'Email and Google ID required' }));
+        // Check email verification status
+        if (!ws.email || !ws.googleId) {
+            ws.send(msgpack.encode({ type: 'verificationResult', verified: false }));
             return;
         }
         
         try {
-            const isValid = await db.verifyUserByEmailAndGoogleId(data.email, data.id);
-            ws.send(msgpack.encode({
-                type: 'verificationResult',
-                verified: isValid,
-                message: isValid ? 'Verified' : 'Not verified'
-            }));
+            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            ws.send(msgpack.encode({ type: 'verificationResult', verified: isValid }));
         } catch (error) {
-            console.error('Verification check error:', error);
-            ws.send(msgpack.encode({ type: 'verificationResult', verified: false, message: 'Verification failed' }));
+            console.error('[checkVerification] Error:', error);
+            ws.send(msgpack.encode({ type: 'verificationResult', verified: false }));
         }
       } else if (data.type === 'changeName') {
         // Change user display name
@@ -3037,17 +3040,22 @@ wss.on('connection', (ws, req) => {
             return;
         }
         
-        // Verify user exists in database
+        // Verify user exists and email matches
         try {
-            const user = await db.getUserByGoogleId(ws.googleId);
-            if (!user) {
-                console.error('[createForumThread] User not found in database:', ws.googleId);
-                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            if (!ws.email || !ws.googleId) {
+                console.error('[createForumThread] Missing email or googleId');
+                ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
                 return;
             }
-            console.log('[createForumThread] User verified:', user.name || user.googleId);
+            
+            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            if (!isValid) {
+                console.error('[createForumThread] Email verification failed for:', ws.googleId);
+                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
+                return;
+            }
         } catch (verifyErr) {
-            console.error('[createForumThread] User lookup error:', verifyErr);
+            console.error('[createForumThread] Verification error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
@@ -3105,15 +3113,22 @@ wss.on('connection', (ws, req) => {
             return;
         }
         
-        // Verify user exists in database
+        // Verify user exists and email matches
         try {
-            const user = await db.getUserByGoogleId(ws.googleId);
-            if (!user) {
-                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            if (!ws.email || !ws.googleId) {
+                console.error('[createForumPost] Missing email or googleId');
+                ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
+                return;
+            }
+            
+            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            if (!isValid) {
+                console.error('[createForumPost] Email verification failed for:', ws.googleId);
+                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
                 return;
             }
         } catch (verifyErr) {
-            console.error('User lookup error:', verifyErr);
+            console.error('[createForumPost] Verification error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
@@ -3149,15 +3164,22 @@ wss.on('connection', (ws, req) => {
             return;
         }
         
-        // Verify user exists in database
+        // Verify user exists and email matches
         try {
-            const user = await db.getUserByGoogleId(ws.googleId);
-            if (!user) {
-                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            if (!ws.email || !ws.googleId) {
+                console.error('[createForumPost] Missing email or googleId');
+                ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
+                return;
+            }
+            
+            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            if (!isValid) {
+                console.error('[createForumPost] Email verification failed for:', ws.googleId);
+                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
                 return;
             }
         } catch (verifyErr) {
-            console.error('User lookup error:', verifyErr);
+            console.error('[createForumPost] Verification error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
@@ -3218,15 +3240,22 @@ wss.on('connection', (ws, req) => {
             return;
         }
         
-        // Verify user exists in database
+        // Verify user exists and email matches
         try {
-            const user = await db.getUserByGoogleId(ws.googleId);
-            if (!user) {
-                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            if (!ws.email || !ws.googleId) {
+                console.error('[createForumPost] Missing email or googleId');
+                ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
+                return;
+            }
+            
+            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            if (!isValid) {
+                console.error('[createForumPost] Email verification failed for:', ws.googleId);
+                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
                 return;
             }
         } catch (verifyErr) {
-            console.error('User lookup error:', verifyErr);
+            console.error('[createForumPost] Verification error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
@@ -3288,15 +3317,22 @@ wss.on('connection', (ws, req) => {
             return;
         }
         
-        // Verify user exists in database
+        // Verify user exists and email matches
         try {
-            const user = await db.getUserByGoogleId(ws.googleId);
-            if (!user) {
-                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            if (!ws.email || !ws.googleId) {
+                console.error('[createForumPost] Missing email or googleId');
+                ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
+                return;
+            }
+            
+            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            if (!isValid) {
+                console.error('[createForumPost] Email verification failed for:', ws.googleId);
+                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
                 return;
             }
         } catch (verifyErr) {
-            console.error('User lookup error:', verifyErr);
+            console.error('[createForumPost] Verification error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
@@ -3325,15 +3361,22 @@ wss.on('connection', (ws, req) => {
             return;
         }
         
-        // Verify user exists in database
+        // Verify user exists and email matches
         try {
-            const user = await db.getUserByGoogleId(ws.googleId);
-            if (!user) {
-                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            if (!ws.email || !ws.googleId) {
+                console.error('[createForumPost] Missing email or googleId');
+                ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
+                return;
+            }
+            
+            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
+            if (!isValid) {
+                console.error('[createForumPost] Email verification failed for:', ws.googleId);
+                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
                 return;
             }
         } catch (verifyErr) {
-            console.error('User lookup error:', verifyErr);
+            console.error('[createForumPost] Verification error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
             return;
         }
