@@ -2259,20 +2259,24 @@ wss.on('connection', (ws, req) => {
                 throw new Error('Invalid folder path format');
             }
             
-            // Build final folder path: if empty, use username as root; otherwise use username/path
+            // Build final folder path: if empty, use Google ID as root; otherwise use Google ID/path
+            if (!ws.googleId) {
+                throw new Error('Not logged in with Google account');
+            }
+            
             let finalFolderPath;
             if (!normalizedFolderPath) {
                 // Empty path = user's root folder
-                finalFolderPath = ws.username;
-            } else if (normalizedFolderPath.startsWith(ws.username + '/')) {
-                // Path already includes username
+                finalFolderPath = ws.googleId;
+            } else if (normalizedFolderPath.startsWith(ws.googleId + '/')) {
+                // Path already includes Google ID
                 finalFolderPath = normalizedFolderPath;
-            } else if (normalizedFolderPath === ws.username) {
-                // Path is just username
-                finalFolderPath = ws.username;
+            } else if (normalizedFolderPath === ws.googleId) {
+                // Path is just Google ID
+                finalFolderPath = ws.googleId;
             } else {
-                // Path doesn't include username, prepend it
-                finalFolderPath = `${ws.username}/${normalizedFolderPath}`;
+                // Path doesn't include Google ID, prepend it
+                finalFolderPath = `${ws.googleId}/${normalizedFolderPath}`;
             }
             
             // Check if sprite already exists in this folder
