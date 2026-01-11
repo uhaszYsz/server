@@ -65,8 +65,10 @@ export function createSprite(filename, uploadedBy, fileSize, base64Data, folderP
             [filename, normalizedFolderPath, uploadedBy, uploadedAt, fileSize, base64Data],
             function(err) {
                 if (err) {
+                    console.error(`[createSprite] Database error:`, err);
                     reject(err);
                 } else {
+                    console.log(`[createSprite] Sprite saved: id=${this.lastID}, filename=${filename}, folderPath=${normalizedFolderPath}`);
                     resolve({ id: this.lastID, filename, folderPath: normalizedFolderPath, uploadedBy, uploadedAt, fileSize });
                 }
             }

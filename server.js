@@ -2283,6 +2283,8 @@ wss.on('connection', (ws, req) => {
 
             // Save to sprites database with base64 data
             await spritesDb.createSprite(filename, ws.username, fileSize, fileData, finalFolderPath);
+            
+            console.log(`[uploadSprite] User ${ws.username} uploaded sprite "${filename}" to folder "${finalFolderPath}"`);
 
             ws.send(msgpack.encode({
                 type: 'uploadSpriteSuccess',
@@ -2291,6 +2293,7 @@ wss.on('connection', (ws, req) => {
                 fileSize
             }));
         } catch (error) {
+            console.error(`[uploadSprite] Error uploading sprite:`, error);
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to upload sprite' }));
         }
       } else if (data.type === 'listSprites') {
