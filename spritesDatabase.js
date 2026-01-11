@@ -72,11 +72,12 @@ export function getSprites(page = 1, pageSize = 120, uploadedBy = null, folderPa
         const offset = (page - 1) * pageSize;
         let query, params;
         
-        // Special case: folderPath === 'ROOT' means get root-level sprites (folder_path has no slash)
+        // Special case: folderPath === 'ROOT' means get root sprites (folder_path is empty string)
         let folderCondition;
         let folderParam = [];
         if (folderPath === 'ROOT') {
-            folderCondition = "folder_path NOT LIKE '%/%'";
+            folderCondition = 'folder_path = ?';
+            folderParam = [''];
         } else if (folderPath !== null) {
             folderCondition = 'folder_path = ?';
             folderParam = [folderPath];
@@ -107,11 +108,12 @@ export function getSpriteCount(uploadedBy = null, folderPath = null) {
     return new Promise((resolve, reject) => {
         let query, params;
         
-        // Special case: folderPath === 'ROOT' means get root-level sprites (folder_path has no slash)
+        // Special case: folderPath === 'ROOT' means get root sprites (folder_path is empty string)
         let folderCondition;
         let folderParam = [];
         if (folderPath === 'ROOT') {
-            folderCondition = "folder_path NOT LIKE '%/%'";
+            folderCondition = 'folder_path = ?';
+            folderParam = [''];
         } else if (folderPath !== null) {
             folderCondition = 'folder_path = ?';
             folderParam = [folderPath];
