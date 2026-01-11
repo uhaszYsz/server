@@ -76,13 +76,21 @@ app.get('/api/db/:database/table/:tableName', async (req, res) => {
             return res.status(500).json({ error: 'Database connection not available' });
         }
 
-        // Get table schema to get column names
-        const columns = await new Promise((resolve, reject) => {
+        // Get table schema to get column names and primary key
+        const schemaInfo = await new Promise((resolve, reject) => {
             dbInstance.all(`PRAGMA table_info(${escapeIdentifier(tableName)})`, (err, rows) => {
                 if (err) reject(err);
-                else resolve(rows.map(row => row.name));
+                else {
+                    const columns = rows.map(row => row.name);
+                    // Find primary key (pk > 0 indicates primary key)
+                    const primaryKeyColumn = rows.find(row => row.pk > 0);
+                    const primaryKey = primaryKeyColumn ? primaryKeyColumn.name : 'rowid';
+                    resolve({ columns, primaryKey });
+                }
             });
         });
+        
+        const { columns, primaryKey } = schemaInfo;
 
         // Get all rows
         const rows = await new Promise((resolve, reject) => {
