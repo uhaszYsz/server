@@ -2922,18 +2922,9 @@ wss.on('connection', (ws, req) => {
             // Verify email matches the stored email (security check)
             const isValid = await db.verifyUserByEmailAndGoogleId(data.email, data.id);
             if (!isValid) {
-                // Email verification failed - update email hash in database
-                // This can happen if user's Google email changed or if there was a previous issue
-                // Since we're getting the email from Google OAuth (trusted source), it's safe to update
-                console.warn(`[GoogleLogin] Email verification failed for ${data.email} (${data.id}) - updating email hash`);
-                try {
-                    await db.updateUser(data.id, { email: data.email });
-                    console.log(`✅ Updated email hash for user ${data.id}`);
-                } catch (updateErr) {
-                    console.error('[GoogleLogin] Failed to update email hash:', updateErr);
-                    ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed and update failed' }));
-                    return;
-                }
+                console.warn(`[GoogleLogin] Email verification failed for ${data.email} (${data.id})`);
+                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
+                return;
             }
             
             // Set authentication data on WebSocket
