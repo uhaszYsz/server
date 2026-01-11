@@ -23,17 +23,30 @@ export function initSpritesDatabase() {
             spritesDb.run(`
                 CREATE TABLE IF NOT EXISTS sprites (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    filename TEXT NOT NULL UNIQUE,
+                    filename TEXT NOT NULL,
+                    folder_path TEXT NOT NULL DEFAULT '',
                     uploaded_by TEXT NOT NULL,
                     uploaded_at INTEGER NOT NULL,
                     file_size INTEGER NOT NULL,
-                    data TEXT NOT NULL
+                    data TEXT NOT NULL,
+                    UNIQUE(filename, folder_path)
                 )
             `, (err) => {
                 if (err) {
                     reject(err);
                     return;
                 }
+                
+                // Add folder_path column if it doesn't exist (migration)
+                spritesDb.run(`
+                    ALTER TABLE sprites ADD COLUMN folder_path TEXT NOT NULL DEFAULT ''
+                `, (alterErr) => {
+                    // Ignore error if column already exists
+                    if (alterErr && !alterErr.message.includes('duplicate column')) {
+                        console.warn('Warning: Could not add folder_path column:', alterErr.message);
+                    }
+                });
+                
                 console.log('✅ Sprites table initialized');
                 resolve();
             });
@@ -42,17 +55,19 @@ export function initSpritesDatabase() {
 }
 
 // Create a sprite entry with base64 data
-export function createSprite(filename, uploadedBy, fileSize, base64Data) {
+export function createSprite(filename, uploadedBy, fileSize, base64Data, folderPath = '') {
     return new Promise((resolve, reject) => {
         const uploadedAt = Date.now();
+        // Ensure folder_path starts with username/ or is empty for root
+        const normalizedFolderPath = folderPath || '';
         spritesDb.run(
-            'INSERT INTO sprites (filename, uploaded_by, uploaded_at, file_size, data) VALUES (?, ?, ?, ?, ?)',
-            [filename, uploadedBy, uploadedAt, fileSize, base64Data],
+            'INSERT INTO sprites (filename, folder_path, uploaded_by, uploaded_at, file_size, data) VALUES (?, ?, ?, ?, ?, ?)',
+            [filename, normalizedFolderPath, uploadedBy, uploadedAt, fileSize, base64Data],
             function(err) {
                 if (err) {
                     reject(err);
                 } else {
-                    resolve({ id: this.lastID, filename, uploadedBy, uploadedAt, fileSize });
+                    resolve({ id: this.lastID, filename, folderPath: normalizedFolderPath, uploadedBy, uploadedAt, fileSize });
                 }
             }
         );
@@ -60,17 +75,20 @@ export function createSprite(filename, uploadedBy, fileSize, base64Data) {
 }
 
 // Get sprites with pagination
-export function getSprites(page = 1, pageSize = 120, uploadedBy = null) {
+export function getSprites(page = 1, pageSize = 120, uploadedBy = null, folderPath = null) {
     return new Promise((resolve, reject) => {
         const offset = (page - 1) * pageSize;
         let query, params;
         
+        const folderCondition = folderPath !== null ? 'folder_path = ?' : '1=1';
+        const folderParam = folderPath !== null ? [folderPath] : [];
+        
         if (uploadedBy) {
-            query = 'SELECT id, filename, uploaded_by, uploaded_at, file_size, data FROM sprites WHERE uploaded_by = ? ORDER BY uploaded_at DESC LIMIT ? OFFSET ?';
-            params = [uploadedBy, pageSize, offset];
+            query = `SELECT id, filename, folder_path, uploaded_by, uploaded_at, file_size, data FROM sprites WHERE uploaded_by = ? AND ${folderCondition} ORDER BY uploaded_at DESC LIMIT ? OFFSET ?`;
+            params = [uploadedBy, ...folderParam, pageSize, offset];
         } else {
-            query = 'SELECT id, filename, uploaded_by, uploaded_at, file_size, data FROM sprites ORDER BY uploaded_at DESC LIMIT ? OFFSET ?';
-            params = [pageSize, offset];
+            query = `SELECT id, filename, folder_path, uploaded_by, uploaded_at, file_size, data FROM sprites WHERE ${folderCondition} ORDER BY uploaded_at DESC LIMIT ? OFFSET ?`;
+            params = [...folderParam, pageSize, offset];
         }
         
         spritesDb.all(query, params, (err, rows) => {
@@ -84,16 +102,19 @@ export function getSprites(page = 1, pageSize = 120, uploadedBy = null) {
 }
 
 // Get sprite count
-export function getSpriteCount(uploadedBy = null) {
+export function getSpriteCount(uploadedBy = null, folderPath = null) {
     return new Promise((resolve, reject) => {
         let query, params;
         
+        const folderCondition = folderPath !== null ? 'folder_path = ?' : '1=1';
+        const folderParam = folderPath !== null ? [folderPath] : [];
+        
         if (uploadedBy) {
-            query = 'SELECT COUNT(*) as count FROM sprites WHERE uploaded_by = ?';
-            params = [uploadedBy];
+            query = `SELECT COUNT(*) as count FROM sprites WHERE uploaded_by = ? AND ${folderCondition}`;
+            params = [uploadedBy, ...folderParam];
         } else {
-            query = 'SELECT COUNT(*) as count FROM sprites';
-            params = [];
+            query = `SELECT COUNT(*) as count FROM sprites WHERE ${folderCondition}`;
+            params = folderParam;
         }
         
         spritesDb.get(query, params, (err, row) => {
@@ -106,16 +127,70 @@ export function getSpriteCount(uploadedBy = null) {
     });
 }
 
-// Get sprite by filename
-export function getSpriteByFilename(filename) {
+// Get sprite by filename and folder path
+export function getSpriteByFilename(filename, folderPath = '') {
     return new Promise((resolve, reject) => {
-        spritesDb.get('SELECT * FROM sprites WHERE filename = ?', [filename], (err, row) => {
+        spritesDb.get('SELECT * FROM sprites WHERE filename = ? AND folder_path = ?', [filename, folderPath], (err, row) => {
             if (err) {
                 reject(err);
             } else {
                 resolve(row);
             }
         });
+    });
+}
+
+// Get all folder paths (distinct folder_path values)
+export function getAllFolderPaths() {
+    return new Promise((resolve, reject) => {
+        spritesDb.all('SELECT DISTINCT folder_path, uploaded_by FROM sprites ORDER BY folder_path', [], (err, rows) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows || []);
+            }
+        });
+    });
+}
+
+// Get subfolders in a given folder path
+export function getSubfolders(parentPath = '') {
+    return new Promise((resolve, reject) => {
+        // Get all folder paths that start with parentPath + '/'
+        const searchPath = parentPath ? `${parentPath}/` : '';
+        spritesDb.all(
+            `SELECT DISTINCT folder_path, uploaded_by 
+             FROM sprites 
+             WHERE folder_path LIKE ? AND folder_path != ?
+             ORDER BY folder_path`,
+            [`${searchPath}%`, parentPath],
+            (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    // Extract immediate subfolders (one level deep)
+                    const subfolders = new Set();
+                    const pathLength = parentPath ? parentPath.split('/').length + 1 : 1;
+                    
+                    (rows || []).forEach(row => {
+                        const parts = row.folder_path.split('/');
+                        if (parts.length >= pathLength) {
+                            const subfolderPath = parts.slice(0, pathLength).join('/');
+                            subfolders.add(subfolderPath);
+                        }
+                    });
+                    
+                    resolve(Array.from(subfolders).map(path => {
+                        // Find uploaded_by for this folder (use first match)
+                        const folderRow = rows.find(r => r.folder_path.startsWith(path));
+                        return {
+                            folder_path: path,
+                            uploaded_by: folderRow ? folderRow.uploaded_by : ''
+                        };
+                    }));
+                }
+            }
+        );
     });
 }
 

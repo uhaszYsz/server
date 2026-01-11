@@ -2209,7 +2209,7 @@ wss.on('connection', (ws, req) => {
         }
 
         try {
-            const { filename, data: fileData } = data;
+            const { filename, data: fileData, folderPath } = data;
             
             if (!filename || !fileData) {
                 throw new Error('Filename and file data are required');
@@ -2224,8 +2224,8 @@ wss.on('connection', (ws, req) => {
             if (!/^[a-zA-Z0-9_.-]+\.(gif|png)$/i.test(filename)) {
                 throw new Error('Invalid filename format');
             }
-
-            // Decode base64 data
+            
+            // Decode base64 data first (needed for validation)
             const buffer = Buffer.from(fileData, 'base64');
             const fileSize = buffer.length;
 
@@ -2249,19 +2249,45 @@ wss.on('connection', (ws, req) => {
                     throw new Error('Invalid PNG file format');
                 }
             }
-
-            // Check if sprite already exists
-            const existingSprite = await spritesDb.getSpriteByFilename(filename);
+            
+            // Validate and normalize folder path
+            let normalizedFolderPath = folderPath || '';
+            // Remove leading/trailing slashes and normalize
+            normalizedFolderPath = normalizedFolderPath.replace(/^\/+|\/+$/g, '');
+            // Validate folder path format (alphanumeric, underscore, hyphen, slash)
+            if (normalizedFolderPath && !/^[a-zA-Z0-9_\/-]+$/.test(normalizedFolderPath)) {
+                throw new Error('Invalid folder path format');
+            }
+            
+            // Build final folder path: if empty, use username as root; otherwise use username/path
+            let finalFolderPath;
+            if (!normalizedFolderPath) {
+                // Empty path = user's root folder
+                finalFolderPath = ws.username;
+            } else if (normalizedFolderPath.startsWith(ws.username + '/')) {
+                // Path already includes username
+                finalFolderPath = normalizedFolderPath;
+            } else if (normalizedFolderPath === ws.username) {
+                // Path is just username
+                finalFolderPath = ws.username;
+            } else {
+                // Path doesn't include username, prepend it
+                finalFolderPath = `${ws.username}/${normalizedFolderPath}`;
+            }
+            
+            // Check if sprite already exists in this folder
+            const existingSprite = await spritesDb.getSpriteByFilename(filename, finalFolderPath);
             if (existingSprite) {
-                throw new Error('Sprite with this filename already exists');
+                throw new Error('Sprite with this filename already exists in this folder');
             }
 
             // Save to sprites database with base64 data
-            await spritesDb.createSprite(filename, ws.username, fileSize, fileData);
+            await spritesDb.createSprite(filename, ws.username, fileSize, fileData, finalFolderPath);
 
             ws.send(msgpack.encode({
                 type: 'uploadSpriteSuccess',
                 filename,
+                folderPath: finalFolderPath,
                 fileSize
             }));
         } catch (error) {
@@ -2277,16 +2303,18 @@ wss.on('connection', (ws, req) => {
             const page = data.page || 1;
             const pageSize = 120; // 8x15 grid = 120 sprites per page
             const onlyMine = data.onlyMine === true;
+            const folderPath = data.folderPath !== undefined ? data.folderPath : null;
             const uploadedBy = onlyMine ? ws.username : null;
             
-            const sprites = await spritesDb.getSprites(page, pageSize, uploadedBy);
-            const totalCount = await spritesDb.getSpriteCount(uploadedBy);
+            const sprites = await spritesDb.getSprites(page, pageSize, uploadedBy, folderPath);
+            const totalCount = await spritesDb.getSpriteCount(uploadedBy, folderPath);
             const totalPages = Math.ceil(totalCount / pageSize);
 
             ws.send(msgpack.encode({
                 type: 'spritesList',
                 sprites: sprites.map(sprite => ({
                     filename: sprite.filename,
+                    folderPath: sprite.folder_path || '',
                     uploadedBy: sprite.uploaded_by,
                     uploadedAt: sprite.uploaded_at,
                     fileSize: sprite.file_size,
@@ -2294,22 +2322,45 @@ wss.on('connection', (ws, req) => {
                 })),
                 page,
                 totalPages,
-                totalCount
+                totalCount,
+                folderPath: folderPath
             }));
         } catch (error) {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to list sprites' }));
         }
+      } else if (data.type === 'listSpriteFolders') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+
+        try {
+            const { parentPath } = data;
+            const normalizedParentPath = parentPath || '';
+            
+            const subfolders = await spritesDb.getSubfolders(normalizedParentPath);
+            
+            ws.send(msgpack.encode({
+                type: 'spriteFoldersList',
+                folders: subfolders,
+                parentPath: normalizedParentPath
+            }));
+        } catch (error) {
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to list folders' }));
+        }
       } else if (data.type === 'getSprite') {
         try {
-            const { filename } = data;
+            const { filename, folderPath } = data;
             if (!filename) throw new Error('Filename is required');
             
-            const sprite = await spritesDb.getSpriteByFilename(filename);
+            // Support both old format (filename only) and new format (folderPath)
+            const sprite = await spritesDb.getSpriteByFilename(filename, folderPath || '');
             if (!sprite) throw new Error('Sprite not found');
             
             ws.send(msgpack.encode({
                 type: 'getSpriteResponse',
                 filename: sprite.filename,
+                folderPath: sprite.folder_path || '',
                 data: sprite.data // base64 string
             }));
         } catch (error) {
@@ -2321,11 +2372,23 @@ wss.on('connection', (ws, req) => {
             if (!filenames || !Array.isArray(filenames)) throw new Error('Filenames array is required');
             
             const sprites = [];
-            for (const filename of filenames) {
-                const sprite = await spritesDb.getSpriteByFilename(filename);
+            for (const filenameOrPath of filenames) {
+                // Parse filename - could be "filename.png" or "folder/path/filename.png"
+                let filename = filenameOrPath;
+                let folderPath = '';
+                
+                // If it contains a slash, treat as folder path
+                if (filenameOrPath.includes('/')) {
+                    const parts = filenameOrPath.split('/');
+                    filename = parts.pop();
+                    folderPath = parts.join('/');
+                }
+                
+                const sprite = await spritesDb.getSpriteByFilename(filename, folderPath);
                 if (sprite) {
                     sprites.push({
                         filename: sprite.filename,
+                        folderPath: sprite.folder_path || '',
                         data: sprite.data
                     });
                 }
