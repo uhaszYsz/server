@@ -335,6 +335,10 @@
         <div class="card" id="table-data-card" style="display: none;">
             <h2 id="table-title">Table Data</h2>
             <div id="table-stats" class="stats"></div>
+            <div id="table-actions" class="table-actions" style="display: none;">
+                <button class="btn btn-danger" onclick="deleteSelectedRows()">Delete Selected</button>
+                <span id="selected-count" style="color: #667eea; font-weight: 500;">0 selected</span>
+            </div>
             <div class="table-container">
                 <div id="table-content" class="loading">Loading table data...</div>
             </div>
@@ -454,7 +458,10 @@
                 selectedRows.clear();
 
                 // Show table actions
-                document.getElementById('table-actions').style.display = 'flex';
+                const tableActionsEl = document.getElementById('table-actions');
+                if (tableActionsEl) {
+                    tableActionsEl.style.display = 'flex';
+                }
                 updateSelectedCount();
 
                 // Create table with checkboxes
