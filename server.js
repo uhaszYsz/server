@@ -2017,6 +2017,8 @@ wss.on('connection', (ws, req) => {
             const levelPayload = data.level ?? { name: data.name, data: data.data };
             const { fileName, sanitizedPayload } = sanitizeLevelPayload(levelPayload);
             const uploaderGoogleId = ws.googleId;
+            let forumThreadId = null;
+            let forumPostId = null;
 
             if (!uploaderGoogleId) {
                 throw new Error('Unable to determine uploader googleId');
@@ -2082,6 +2084,7 @@ wss.on('connection', (ws, req) => {
                         console.log(`[uploadedLevel] Creating forum thread: title="${threadTitle}", author="${uploaderGoogleId}", categoryId=${levelsCategory.id}`);
                         const threadId = await db.createForumThread(levelsCategory.id, threadTitle, uploaderGoogleId);
                         console.log(`[uploadedLevel] Forum thread created with ID: ${threadId}`);
+                        forumThreadId = threadId;
                         
                         // Create first post with description (if provided) followed by [level]slug[/level] BBCode
                         let postContent = '';
@@ -2092,7 +2095,7 @@ wss.on('connection', (ws, req) => {
                             postContent = `[level]${fileName}[/level]`;
                             console.log(`[uploadedLevel] Post content has no description`);
                         }
-                        await db.createForumPost(threadId, uploaderGoogleId, postContent);
+                        forumPostId = await db.createForumPost(threadId, uploaderGoogleId, postContent);
                         console.log(`[uploadedLevel] Forum post created for thread ID: ${threadId}`);
                         
                         console.log(`✅ Auto-created forum thread for level: "${threadTitle}" (thread ID: ${threadId}, category ID: ${levelsCategory.id})`);
@@ -2109,10 +2112,27 @@ wss.on('connection', (ws, req) => {
                 }
             }
 
+            // If we didn't create a thread this time (overwrite) or creation failed,
+            // try to find the existing forum post/thread by [level]slug[/level].
+            if (!forumThreadId || !forumPostId) {
+                try {
+                    const found = await db.findForumPostByLevelSlug(fileName);
+                    if (found) {
+                        forumThreadId = found.threadId;
+                        forumPostId = found.postId;
+                    }
+                } catch (e) {
+                    console.warn('[uploadedLevel] Failed to find forum post by level slug:', e?.message || e);
+                }
+            }
+
             ws.send(msgpack.encode({
                 type: 'uploadedLevelSuccess',
                 name: sanitizedPayload.name,
-                uploadedBy: ws.name || uploaderGoogleId // Display name in response
+                uploadedBy: ws.name || uploaderGoogleId, // Display name in response
+                slug: fileName,
+                forumThreadId: forumThreadId || null,
+                forumPostId: forumPostId || null
             }));
         } catch (error) {
             console.error('Failed to save level', error);
@@ -3027,6 +3047,7 @@ wss.on('connection', (ws, req) => {
             ws.username = user.name;
             ws.name = user.name;
             ws.email = data.email;
+            ws.googleId = data.id;
             ws.userId = user.id; // Store user ID for folder operations
             ws.rank = user.rank || 'player';
             ws.isAdmin = (ws.rank === 'admin');
@@ -3046,7 +3067,23 @@ wss.on('connection', (ws, req) => {
         }
       } else if (data.type === 'checkVerification') {
         // Check email verification status
-        console.log('[checkVerification] Received checkVerification request from client', ws.id, 'email:', ws.email ? 'present' : 'missing', 'googleId:', ws.googleId ? 'present' : 'missing');
+        console.log(
+            '[checkVerification] Received checkVerification request from client',
+            ws.id,
+            'email:',
+            ws.email ? 'present' : 'missing',
+            'googleId:',
+            ws.googleId ? 'present' : 'missing',
+            'msgEmail:',
+            data && data.email ? 'present' : 'missing',
+            'msgId:',
+            data && data.id ? 'present' : 'missing'
+        );
+
+        // Allow the client to provide these again (helps after reconnect / ordering issues)
+        if (!ws.email && data && data.email) ws.email = data.email;
+        if (!ws.googleId && data && data.id) ws.googleId = data.id;
+
         if (!ws.email || !ws.googleId) {
             console.log('[checkVerification] Missing email or googleId, returning false');
             ws.send(msgpack.encode({ type: 'verificationResult', verified: false }));

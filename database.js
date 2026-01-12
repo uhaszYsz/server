@@ -857,6 +857,30 @@ export function createForumPost(threadId, author, content) {
     });
 }
 
+// Find the first forum post/thread that references a level slug via [level]slug[/level]
+export function findForumPostByLevelSlug(levelSlug) {
+    return new Promise((resolve, reject) => {
+        const needle = `[level]${levelSlug}[/level]`;
+        db.get(
+            `
+            SELECT p.id as postId, p.thread_id as threadId
+            FROM forum_posts p
+            WHERE p.content LIKE ?
+            ORDER BY p.created_at ASC
+            LIMIT 1
+            `,
+            [`%${needle}%`],
+            (err, row) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(row || null);
+            }
+        );
+    });
+}
+
 // Delete forum thread
 export function deleteForumThread(threadId) {
     return new Promise((resolve, reject) => {
