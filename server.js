@@ -2918,15 +2918,21 @@ wss.on('connection', (ws, req) => {
       } else if (data.type === 'getForumCategories') {
         try {
             const categories = await db.getForumCategories();
+            let filterGoogleId = null;
+            if (data.filterUsername && typeof data.filterUsername === 'string' && data.filterUsername.trim()) {
+                const user = await db.getUserByName(data.filterUsername.trim());
+                filterGoogleId = user ? user.googleId : '__no_such_user__';
+            }
             // Get stats for each category
             const categoriesWithStats = await Promise.all(categories.map(async (cat) => {
                 if (cat.parent_id) {
                     // Only get stats for subcategories (not parent categories)
-                    const stats = await db.getForumCategoryStats(cat.id);
+                    const stats = await db.getForumCategoryStats(cat.id, filterGoogleId);
                     return {
                         ...cat,
                         threadCount: stats.threadCount,
-                        totalPostCount: stats.totalPostCount
+                        totalPostCount: stats.totalPostCount,
+                        userPostCount: stats.userPostCount
                     };
                 }
                 return cat;

@@ -760,8 +760,31 @@ export function getForumThreads(categoryId, authorGoogleId = null) {
     });
 }
 
-export function getForumCategoryStats(categoryId) {
+export function getForumCategoryStats(categoryId, authorGoogleId = null) {
     return new Promise((resolve, reject) => {
+        if (authorGoogleId) {
+            db.get(`
+                SELECT 
+                    COUNT(DISTINCT t.id) as thread_count,
+                    COUNT(p.id) as total_post_count,
+                    SUM(CASE WHEN p.author = ? THEN 1 ELSE 0 END) as user_post_count
+                FROM forum_threads t
+                LEFT JOIN forum_posts p ON p.thread_id = t.id
+                WHERE t.category_id = ?
+            `, [authorGoogleId, categoryId], (err, row) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve({
+                    threadCount: row.thread_count || 0,
+                    totalPostCount: row.total_post_count || 0,
+                    userPostCount: row.user_post_count || 0
+                });
+            });
+            return;
+        }
+
         db.get(`
             SELECT 
                 COUNT(DISTINCT t.id) as thread_count,
@@ -776,7 +799,8 @@ export function getForumCategoryStats(categoryId) {
             }
             resolve({
                 threadCount: row.thread_count || 0,
-                totalPostCount: row.total_post_count || 0
+                totalPostCount: row.total_post_count || 0,
+                userPostCount: 0
             });
         });
     });
