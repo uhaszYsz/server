@@ -730,8 +730,15 @@ export function getForumCategoryByName(name, parentId = null) {
     });
 }
 
-export function getForumThreads(categoryId) {
+export function getForumThreads(categoryId, authorGoogleId = null) {
     return new Promise((resolve, reject) => {
+        const params = [categoryId];
+        let authorClause = '';
+        if (authorGoogleId) {
+            authorClause = ' AND t.author = ?';
+            params.push(authorGoogleId);
+        }
+
         db.all(`
             SELECT t.*, 
                    (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id) as post_count,
@@ -741,8 +748,9 @@ export function getForumThreads(categoryId) {
             FROM forum_threads t
             LEFT JOIN users u ON u.googleId = t.author
             WHERE t.category_id = ?
+            ${authorClause}
             ORDER BY t.updated_at DESC
-        `, [categoryId], (err, rows) => {
+        `, params, (err, rows) => {
             if (err) {
                 reject(err);
                 return;

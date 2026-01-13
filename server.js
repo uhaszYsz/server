@@ -2942,7 +2942,13 @@ wss.on('connection', (ws, req) => {
             return;
         }
         try {
-            const threads = await db.getForumThreads(data.categoryId);
+            let authorGoogleId = null;
+            if (data.filterUsername && typeof data.filterUsername === 'string' && data.filterUsername.trim()) {
+                const user = await db.getUserByName(data.filterUsername.trim());
+                authorGoogleId = user ? user.googleId : '__no_such_user__';
+            }
+
+            const threads = await db.getForumThreads(data.categoryId, authorGoogleId);
             
             // Get like counts for the first post of each thread
             const threadsWithLikes = await Promise.all(threads.map(async (thread) => {
