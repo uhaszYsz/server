@@ -6,3 +6,6 @@ sprites.db
 sprites.db-journal
 *.log
 
+# Local OpenAI key (do not commit)
+oak.txt
+
