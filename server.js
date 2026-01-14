@@ -165,36 +165,43 @@ async function verifyCodeWithOpenAI(code) {
         const resp = await client.chat.completions.create({
             model: 'gpt-4o-mini',
             temperature: 0.2,
-            max_tokens: 100,
+            max_tokens: 50,
             messages: [
                 {
                     role: 'system',
                     content:
                         'You review JavaScript game/editor code for safety. ' +
-                        'Be practical: identify what it can do, if it can exfiltrate data, persist, or execute dangerous APIs. ' +
-                        'Call out red flags (eval/new Function, fetch/XHR/WebSocket, DOM access, localStorage/IndexedDB, prototype pollution, infinite loops). ' +
-                        'CRITICAL: Your response MUST start with exactly one emoji: ✅ if SAFE, ❌ if UNSAFE, or ⚠️ if UNKNOWN. ' +
-                        'Then immediately give a very short explanation (under 100 chars total). ' +
-                        'Format: [EMOJI] [brief explanation]. Example: "✅ Safe: basic game logic, no dangerous APIs" or "❌ Unsafe: uses eval() and localStorage"'
+                        'Respond with: [EMOJI] [30 char explanation]. ' +
+                        'Emoji: ✅ if SAFE, ❌ if UNSAFE, or ⚠️ if UNKNOWN. ' +
+                        'Explanation must be exactly 30 characters or less. ' +
+                        'Example: "✅ Safe: basic game logic" or "❌ Unsafe: uses eval()"'
                 },
                 { role: 'user', content: userPrompt }
             ]
         });
 
         let rawAnswer = resp?.choices?.[0]?.message?.content || '';
-        // Ensure answer starts with emoji (force format if missing)
-        if (rawAnswer && !/^[✅❌⚠️]/.test(rawAnswer.trim())) {
+        // Extract emoji (first emoji found)
+        const emojiMatch = rawAnswer.match(/[✅❌⚠️]/);
+        const emoji = emojiMatch ? emojiMatch[0] : '⚠️';
+        
+        // Extract explanation (text after emoji, max 30 chars)
+        let explanation = rawAnswer.replace(/[✅❌⚠️]\s*/, '').trim();
+        if (!explanation || explanation.length === 0) {
+            // Fallback: try to infer from content
             const lower = rawAnswer.toLowerCase();
             if (lower.includes('safe') && !lower.includes('unsafe')) {
-                rawAnswer = '✅ ' + rawAnswer.trim();
+                explanation = 'Safe code';
             } else if (lower.includes('unsafe') || lower.includes('danger') || lower.includes('risk')) {
-                rawAnswer = '❌ ' + rawAnswer.trim();
+                explanation = 'Unsafe code detected';
             } else {
-                rawAnswer = '⚠️ ' + rawAnswer.trim();
+                explanation = 'Unknown safety status';
             }
         }
-        // Truncate to 100 chars (accounting for emoji)
-        return rawAnswer.length > 100 ? rawAnswer.slice(0, 97) + '...' : rawAnswer;
+        // Truncate to 30 chars
+        explanation = explanation.length > 30 ? explanation.slice(0, 27) + '...' : explanation;
+        
+        return `${emoji} ${explanation}`;
     } catch (error) {
         console.error('[verifyCodeWithOpenAI] Failed:', error);
         return null;
@@ -3155,37 +3162,43 @@ wss.on('connection', (ws, req) => {
             const resp = await client.chat.completions.create({
                 model: 'gpt-4o-mini',
                 temperature: 0.2,
-                max_tokens: 100,
+                max_tokens: 50,
                 messages: [
                     {
                         role: 'system',
                         content:
                             'You review JavaScript game/editor code for safety. ' +
-                            'Be practical: identify what it can do, if it can exfiltrate data, persist, or execute dangerous APIs. ' +
-                            'Call out red flags (eval/new Function, fetch/XHR/WebSocket, DOM access, localStorage/IndexedDB, prototype pollution, infinite loops). ' +
-                            'CRITICAL: Your response MUST start with exactly one emoji: ✅ if SAFE, ❌ if UNSAFE, or ⚠️ if UNKNOWN. ' +
-                            'Then immediately give a very short explanation (under 100 chars total). ' +
-                            'Format: [EMOJI] [brief explanation]. Example: "✅ Safe: basic game logic, no dangerous APIs" or "❌ Unsafe: uses eval() and localStorage"'
+                            'Respond with: [EMOJI] [30 char explanation]. ' +
+                            'Emoji: ✅ if SAFE, ❌ if UNSAFE, or ⚠️ if UNKNOWN. ' +
+                            'Explanation must be exactly 30 characters or less. ' +
+                            'Example: "✅ Safe: basic game logic" or "❌ Unsafe: uses eval()"'
                     },
                     { role: 'user', content: userPrompt }
                 ]
             });
 
             let rawAnswer = resp?.choices?.[0]?.message?.content || '';
-            // Ensure answer starts with emoji (force format if missing)
-            if (rawAnswer && !/^[✅❌⚠️]/.test(rawAnswer.trim())) {
-                // If no emoji, try to infer from content
+            // Extract emoji (first emoji found)
+            const emojiMatch = rawAnswer.match(/[✅❌⚠️]/);
+            const emoji = emojiMatch ? emojiMatch[0] : '⚠️';
+            
+            // Extract explanation (text after emoji, max 30 chars)
+            let explanation = rawAnswer.replace(/[✅❌⚠️]\s*/, '').trim();
+            if (!explanation || explanation.length === 0) {
+                // Fallback: try to infer from content
                 const lower = rawAnswer.toLowerCase();
                 if (lower.includes('safe') && !lower.includes('unsafe')) {
-                    rawAnswer = '✅ ' + rawAnswer.trim();
+                    explanation = 'Safe code';
                 } else if (lower.includes('unsafe') || lower.includes('danger') || lower.includes('risk')) {
-                    rawAnswer = '❌ ' + rawAnswer.trim();
+                    explanation = 'Unsafe code detected';
                 } else {
-                    rawAnswer = '⚠️ ' + rawAnswer.trim();
+                    explanation = 'Unknown safety status';
                 }
             }
-            // Truncate to 100 chars (accounting for emoji)
-            const answer = rawAnswer.length > 100 ? rawAnswer.slice(0, 97) + '...' : rawAnswer;
+            // Truncate to 30 chars
+            explanation = explanation.length > 30 ? explanation.slice(0, 27) + '...' : explanation;
+            
+            const answer = `${emoji} ${explanation}`;
 
             console.log('[verifySharedCode] Response ready:', { codeIndex, answerLen: answer.length });
             ws.send(msgpack.encode({
@@ -3462,9 +3475,9 @@ wss.on('connection', (ws, req) => {
                         
                         const verdict = await verifyCodeWithOpenAI(extractedCode);
                         if (verdict) {
-                            // Create second post with ChatGPT verdict
-                            await db.createForumPost(threadId, 'system', `[b]Auto-verification:[/b] ${verdict}`);
-                            console.log('[createForumThread] Verification post created with verdict:', verdict.substring(0, 50));
+                            // Create second post with ChatGPT verdict (just emoji)
+                            await db.createForumPost(threadId, 'system', verdict);
+                            console.log('[createForumThread] Verification post created with verdict:', verdict);
                         } else {
                             console.log('[createForumThread] Verification skipped (no API key or error)');
                         }
