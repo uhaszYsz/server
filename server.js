@@ -3098,7 +3098,7 @@ wss.on('connection', (ws, req) => {
             const resp = await client.chat.completions.create({
                 model: 'gpt-4o-mini',
                 temperature: 0.2,
-                max_tokens: 700,
+                max_tokens: 100,
                 messages: [
                     {
                         role: 'system',
@@ -3106,13 +3106,29 @@ wss.on('connection', (ws, req) => {
                             'You review JavaScript game/editor code for safety. ' +
                             'Be practical: identify what it can do, if it can exfiltrate data, persist, or execute dangerous APIs. ' +
                             'Call out red flags (eval/new Function, fetch/XHR/WebSocket, DOM access, localStorage/IndexedDB, prototype pollution, infinite loops). ' +
-                            'Give a clear verdict at the top: SAFE / UNSAFE / UNKNOWN, then short bullet reasons and recommended mitigations.'
+                            'CRITICAL: Your response MUST start with exactly one emoji: ✅ if SAFE, ❌ if UNSAFE, or ⚠️ if UNKNOWN. ' +
+                            'Then immediately give a very short explanation (under 100 chars total). ' +
+                            'Format: [EMOJI] [brief explanation]. Example: "✅ Safe: basic game logic, no dangerous APIs" or "❌ Unsafe: uses eval() and localStorage"'
                     },
                     { role: 'user', content: userPrompt }
                 ]
             });
 
-            const answer = resp?.choices?.[0]?.message?.content || '';
+            let rawAnswer = resp?.choices?.[0]?.message?.content || '';
+            // Ensure answer starts with emoji (force format if missing)
+            if (rawAnswer && !/^[✅❌⚠️]/.test(rawAnswer.trim())) {
+                // If no emoji, try to infer from content
+                const lower = rawAnswer.toLowerCase();
+                if (lower.includes('safe') && !lower.includes('unsafe')) {
+                    rawAnswer = '✅ ' + rawAnswer.trim();
+                } else if (lower.includes('unsafe') || lower.includes('danger') || lower.includes('risk')) {
+                    rawAnswer = '❌ ' + rawAnswer.trim();
+                } else {
+                    rawAnswer = '⚠️ ' + rawAnswer.trim();
+                }
+            }
+            // Truncate to 100 chars (accounting for emoji)
+            const answer = rawAnswer.length > 100 ? rawAnswer.slice(0, 97) + '...' : rawAnswer;
 
             console.log('[verifySharedCode] Response ready:', { codeIndex, answerLen: answer.length });
             ws.send(msgpack.encode({
