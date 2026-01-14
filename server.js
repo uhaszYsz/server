@@ -3053,6 +3053,13 @@ wss.on('connection', (ws, req) => {
       } else if (data.type === 'verifySharedCode') {
         // Verify shared forum code via OpenAI (server-side only)
         try {
+            console.log('[verifySharedCode] Request received:', {
+                fromClient: ws && ws.id,
+                hasAuth: !!ws.googleId,
+                codeIndex: data && data.codeIndex,
+                codeLen: (data && typeof data.code === 'string') ? data.code.length : 0
+            });
+
             const requestId = (data && typeof data.requestId === 'string') ? data.requestId : null;
             const codeIndex = (data && Number.isFinite(Number(data.codeIndex))) ? Number(data.codeIndex) : null;
 
@@ -3080,7 +3087,7 @@ wss.on('connection', (ws, req) => {
                     requestId,
                     codeIndex,
                     ok: false,
-                    error: 'Server missing OPENAI_API_KEY'
+                    error: 'Server missing OpenAI key (set OPENAI_API_KEY or put it in server/oak.txt)'
                 }));
                 return;
             }
@@ -3107,6 +3114,7 @@ wss.on('connection', (ws, req) => {
 
             const answer = resp?.choices?.[0]?.message?.content || '';
 
+            console.log('[verifySharedCode] Response ready:', { codeIndex, answerLen: answer.length });
             ws.send(msgpack.encode({
                 type: 'forumCodeVerificationResult',
                 requestId,
