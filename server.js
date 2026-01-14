@@ -144,6 +144,63 @@ function getOpenAIClient() {
     return _openaiClient;
 }
 
+// Helper function to verify code with OpenAI (returns verdict string)
+async function verifyCodeWithOpenAI(code) {
+    const client = getOpenAIClient();
+    if (!client) {
+        return null; // No API key
+    }
+
+    const trimmed = String(code || '').trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    // Basic payload cap to avoid abuse
+    const MAX_CODE_CHARS = 20000;
+    const safeCode = trimmed.length > MAX_CODE_CHARS ? trimmed.slice(0, MAX_CODE_CHARS) : trimmed;
+
+    try {
+        const userPrompt = `${safeCode}\n\n\nthis code been shared by someone, is it safe to run`;
+        const resp = await client.chat.completions.create({
+            model: 'gpt-4o-mini',
+            temperature: 0.2,
+            max_tokens: 100,
+            messages: [
+                {
+                    role: 'system',
+                    content:
+                        'You review JavaScript game/editor code for safety. ' +
+                        'Be practical: identify what it can do, if it can exfiltrate data, persist, or execute dangerous APIs. ' +
+                        'Call out red flags (eval/new Function, fetch/XHR/WebSocket, DOM access, localStorage/IndexedDB, prototype pollution, infinite loops). ' +
+                        'CRITICAL: Your response MUST start with exactly one emoji: ✅ if SAFE, ❌ if UNSAFE, or ⚠️ if UNKNOWN. ' +
+                        'Then immediately give a very short explanation (under 100 chars total). ' +
+                        'Format: [EMOJI] [brief explanation]. Example: "✅ Safe: basic game logic, no dangerous APIs" or "❌ Unsafe: uses eval() and localStorage"'
+                },
+                { role: 'user', content: userPrompt }
+            ]
+        });
+
+        let rawAnswer = resp?.choices?.[0]?.message?.content || '';
+        // Ensure answer starts with emoji (force format if missing)
+        if (rawAnswer && !/^[✅❌⚠️]/.test(rawAnswer.trim())) {
+            const lower = rawAnswer.toLowerCase();
+            if (lower.includes('safe') && !lower.includes('unsafe')) {
+                rawAnswer = '✅ ' + rawAnswer.trim();
+            } else if (lower.includes('unsafe') || lower.includes('danger') || lower.includes('risk')) {
+                rawAnswer = '❌ ' + rawAnswer.trim();
+            } else {
+                rawAnswer = '⚠️ ' + rawAnswer.trim();
+            }
+        }
+        // Truncate to 100 chars (accounting for emoji)
+        return rawAnswer.length > 100 ? rawAnswer.slice(0, 97) + '...' : rawAnswer;
+    } catch (error) {
+        console.error('[verifyCodeWithOpenAI] Failed:', error);
+        return null;
+    }
+}
+
 const MAX_LEVEL_NAME_LENGTH = 64;
 const MAX_LEVEL_DATA_BYTES = 256 * 1024; // 256 KB
 const LEVEL_SLUG_REGEX = /^[a-z0-9]+[a-z0-9-_]*$/;
@@ -3392,6 +3449,31 @@ wss.on('connection', (ws, req) => {
             // Create the first post with the thread content
             await db.createForumPost(threadId, ws.googleId, sanitizedContent);
             console.log('[createForumThread] First post created for thread:', threadId);
+            
+            // Auto-verify code for Objects/Functions categories
+            try {
+                const category = await db.getForumCategories().then(cats => cats.find(c => c.id === data.categoryId));
+                if (category && (category.name === 'Objects' || category.name === 'functions' || category.name === 'Functions')) {
+                    // Extract code from BBCode [code]...[/code]
+                    const codeMatch = sanitizedContent.match(/\[code\]([\s\S]*?)\[\/code\]/i);
+                    if (codeMatch && codeMatch[1]) {
+                        const extractedCode = codeMatch[1].trim();
+                        console.log('[createForumThread] Extracted code for verification, length:', extractedCode.length);
+                        
+                        const verdict = await verifyCodeWithOpenAI(extractedCode);
+                        if (verdict) {
+                            // Create second post with ChatGPT verdict
+                            await db.createForumPost(threadId, 'system', `[b]Auto-verification:[/b] ${verdict}`);
+                            console.log('[createForumThread] Verification post created with verdict:', verdict.substring(0, 50));
+                        } else {
+                            console.log('[createForumThread] Verification skipped (no API key or error)');
+                        }
+                    }
+                }
+            } catch (verifyErr) {
+                // Don't fail thread creation if verification fails
+                console.error('[createForumThread] Verification error (non-fatal):', verifyErr);
+            }
             
             ws.send(msgpack.encode({ type: 'forumThreadCreated', threadId }));
             console.log('[createForumThread] Success response sent for thread:', threadId);
