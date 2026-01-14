@@ -730,13 +730,17 @@ export function getForumCategoryByName(name, parentId = null) {
     });
 }
 
-export function getForumThreads(categoryId, authorGoogleId = null) {
+export function getForumThreads(categoryId, authorKeys = null) {
     return new Promise((resolve, reject) => {
         const params = [categoryId];
         let authorClause = '';
-        if (authorGoogleId) {
-            authorClause = ' AND t.author = ?';
-            params.push(authorGoogleId);
+        const keys = Array.isArray(authorKeys)
+            ? authorKeys.filter(Boolean)
+            : (authorKeys ? [authorKeys] : []);
+        if (keys.length > 0) {
+            const placeholders = keys.map(() => '?').join(',');
+            authorClause = ` AND t.author IN (${placeholders})`;
+            params.push(...keys);
         }
 
         db.all(`
@@ -762,16 +766,21 @@ export function getForumThreads(categoryId, authorGoogleId = null) {
 
 export function getForumCategoryStats(categoryId, authorGoogleId = null) {
     return new Promise((resolve, reject) => {
-        if (authorGoogleId) {
+        const keys = Array.isArray(authorGoogleId)
+            ? authorGoogleId.filter(Boolean)
+            : (authorGoogleId ? [authorGoogleId] : []);
+
+        if (keys.length > 0) {
+            const placeholders = keys.map(() => '?').join(',');
             db.get(`
                 SELECT 
                     COUNT(DISTINCT t.id) as thread_count,
                     COUNT(p.id) as total_post_count,
-                    SUM(CASE WHEN p.author = ? THEN 1 ELSE 0 END) as user_post_count
+                    SUM(CASE WHEN p.author IN (${placeholders}) THEN 1 ELSE 0 END) as user_post_count
                 FROM forum_threads t
                 LEFT JOIN forum_posts p ON p.thread_id = t.id
                 WHERE t.category_id = ?
-            `, [authorGoogleId, categoryId], (err, row) => {
+            `, [...keys, categoryId], (err, row) => {
                 if (err) {
                     reject(err);
                     return;

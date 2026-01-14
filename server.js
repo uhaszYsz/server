@@ -1,6 +1,6 @@
 // server.js
 import { WebSocketServer } from 'ws';
-import { promises as fs } from 'fs';
+import { promises as fs, readFileSync, existsSync } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
@@ -11,6 +11,7 @@ import bcrypt from 'bcrypt';
 import DOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
 import * as spritesDb from './spritesDatabase.js';
+import OpenAI from 'openai';
 
 // Password hashing configuration
 const BCRYPT_ROUNDS = 10; // Number of salt rounds (higher = more secure but slower)
@@ -106,6 +107,42 @@ const __dirname = path.dirname(__filename);
 const levelsDirectory = path.join(__dirname, 'levels');
 const weaponsDirectory = path.join(__dirname, 'weapons');
 const DEFAULT_CAMPAIGN_LEVEL_FILE = 'lev.json'; // Default slug for campaign level
+
+const OPENAI_KEY_FILE = path.join(__dirname, 'oak.txt');
+let _openaiClient = null;
+let _openaiApiKeyCached = null; // null = not loaded yet, '' = missing
+function loadOpenAIKeyOnce() {
+    if (_openaiApiKeyCached !== null) return _openaiApiKeyCached;
+
+    const envKey = process.env.OPENAI_API_KEY;
+    if (envKey && typeof envKey === 'string' && envKey.trim()) {
+        _openaiApiKeyCached = envKey.trim();
+        return _openaiApiKeyCached;
+    }
+
+    try {
+        if (existsSync(OPENAI_KEY_FILE)) {
+            const fileKey = String(readFileSync(OPENAI_KEY_FILE, 'utf8') || '').trim();
+            if (fileKey) {
+                _openaiApiKeyCached = fileKey;
+                return _openaiApiKeyCached;
+            }
+        }
+    } catch (_) {
+        // ignore
+    }
+
+    _openaiApiKeyCached = '';
+    return _openaiApiKeyCached;
+}
+
+function getOpenAIClient() {
+    const apiKey = loadOpenAIKeyOnce();
+    if (!apiKey) return null;
+    if (_openaiClient) return _openaiClient;
+    _openaiClient = new OpenAI({ apiKey });
+    return _openaiClient;
+}
 
 const MAX_LEVEL_NAME_LENGTH = 64;
 const MAX_LEVEL_DATA_BYTES = 256 * 1024; // 256 KB
@@ -2918,16 +2955,22 @@ wss.on('connection', (ws, req) => {
       } else if (data.type === 'getForumCategories') {
         try {
             const categories = await db.getForumCategories();
-            let filterGoogleId = null;
+            let filterAuthorKeys = null;
             if (data.filterUsername && typeof data.filterUsername === 'string' && data.filterUsername.trim()) {
-                const user = await db.getUserByName(data.filterUsername.trim());
-                filterGoogleId = user ? user.googleId : '__no_such_user__';
+                const raw = data.filterUsername.trim();
+                const user = await db.getUserByName(raw);
+                const keys = [raw, user && (user.googleId || user.username || user.name)].filter(Boolean);
+                // Also include any other common identifier fields if present
+                if (user && user.googleId) keys.push(user.googleId);
+                if (user && user.username) keys.push(user.username);
+                if (user && user.name) keys.push(user.name);
+                filterAuthorKeys = [...new Set(keys)];
             }
             // Get stats for each category
             const categoriesWithStats = await Promise.all(categories.map(async (cat) => {
                 if (cat.parent_id) {
                     // Only get stats for subcategories (not parent categories)
-                    const stats = await db.getForumCategoryStats(cat.id, filterGoogleId);
+                    const stats = await db.getForumCategoryStats(cat.id, filterAuthorKeys);
                     return {
                         ...cat,
                         threadCount: stats.threadCount,
@@ -2948,13 +2991,18 @@ wss.on('connection', (ws, req) => {
             return;
         }
         try {
-            let authorGoogleId = null;
+            let authorKeys = null;
             if (data.filterUsername && typeof data.filterUsername === 'string' && data.filterUsername.trim()) {
-                const user = await db.getUserByName(data.filterUsername.trim());
-                authorGoogleId = user ? user.googleId : '__no_such_user__';
+                const raw = data.filterUsername.trim();
+                const user = await db.getUserByName(raw);
+                const keys = [raw];
+                if (user && user.googleId) keys.push(user.googleId);
+                if (user && user.username) keys.push(user.username);
+                if (user && user.name) keys.push(user.name);
+                authorKeys = [...new Set(keys)];
             }
 
-            const threads = await db.getForumThreads(data.categoryId, authorGoogleId);
+            const threads = await db.getForumThreads(data.categoryId, authorKeys);
             
             // Get like counts for the first post of each thread
             const threadsWithLikes = await Promise.all(threads.map(async (thread) => {
@@ -3001,6 +3049,80 @@ wss.on('connection', (ws, req) => {
         } catch (error) {
             console.error('Failed to get forum thread', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to get forum thread' }));
+        }
+      } else if (data.type === 'verifySharedCode') {
+        // Verify shared forum code via OpenAI (server-side only)
+        try {
+            const requestId = (data && typeof data.requestId === 'string') ? data.requestId : null;
+            const codeIndex = (data && Number.isFinite(Number(data.codeIndex))) ? Number(data.codeIndex) : null;
+
+            const code = (data && typeof data.code === 'string') ? data.code : '';
+            const trimmed = code.trim();
+            if (!trimmed) {
+                ws.send(msgpack.encode({
+                    type: 'forumCodeVerificationResult',
+                    requestId,
+                    codeIndex,
+                    ok: false,
+                    error: 'No code provided'
+                }));
+                return;
+            }
+
+            // Basic payload cap to avoid abuse
+            const MAX_CODE_CHARS = 20000;
+            const safeCode = trimmed.length > MAX_CODE_CHARS ? trimmed.slice(0, MAX_CODE_CHARS) : trimmed;
+
+            const client = getOpenAIClient();
+            if (!client) {
+                ws.send(msgpack.encode({
+                    type: 'forumCodeVerificationResult',
+                    requestId,
+                    codeIndex,
+                    ok: false,
+                    error: 'Server missing OPENAI_API_KEY'
+                }));
+                return;
+            }
+
+            // Requirement: send whole code block, then 3 lines, then the question
+            const userPrompt = `${safeCode}\n\n\nthis code been shared by someone, is it safe to run`;
+
+            const resp = await client.chat.completions.create({
+                model: 'gpt-4o-mini',
+                temperature: 0.2,
+                max_tokens: 700,
+                messages: [
+                    {
+                        role: 'system',
+                        content:
+                            'You review JavaScript game/editor code for safety. ' +
+                            'Be practical: identify what it can do, if it can exfiltrate data, persist, or execute dangerous APIs. ' +
+                            'Call out red flags (eval/new Function, fetch/XHR/WebSocket, DOM access, localStorage/IndexedDB, prototype pollution, infinite loops). ' +
+                            'Give a clear verdict at the top: SAFE / UNSAFE / UNKNOWN, then short bullet reasons and recommended mitigations.'
+                    },
+                    { role: 'user', content: userPrompt }
+                ]
+            });
+
+            const answer = resp?.choices?.[0]?.message?.content || '';
+
+            ws.send(msgpack.encode({
+                type: 'forumCodeVerificationResult',
+                requestId,
+                codeIndex,
+                ok: true,
+                answer
+            }));
+        } catch (error) {
+            console.error('[verifySharedCode] Failed:', error);
+            ws.send(msgpack.encode({
+                type: 'forumCodeVerificationResult',
+                requestId: (data && typeof data.requestId === 'string') ? data.requestId : null,
+                codeIndex: (data && Number.isFinite(Number(data.codeIndex))) ? Number(data.codeIndex) : null,
+                ok: false,
+                error: error?.message || 'Verification failed'
+            }));
         }
       } else if (data.type === 'googleLogin') {
         // Handle Google login - verify email and googleId
