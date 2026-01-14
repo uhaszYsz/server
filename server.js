@@ -170,11 +170,14 @@ async function verifyCodeWithOpenAI(code) {
                 {
                     role: 'system',
                     content:
-                        'You review JavaScript game/editor code for safety. ' +
+                        'You review JavaScript code for safety/harmfulness. ' +
+                        'Answer: Is this code SAFE (✅) or HARMFUL (❌) to run? ' +
+                        'Ignore syntax errors, missing variables, undefined functions - only assess if the code is SAFE or HARMFUL. ' +
+                        'SAFE = harmless game logic, no data exfiltration, no dangerous APIs. ' +
+                        'HARMFUL = uses eval/new Function, network calls, localStorage, DOM manipulation, or other dangerous APIs. ' +
                         'Respond with: [EMOJI] [30 char explanation]. ' +
-                        'Emoji: ✅ if SAFE, ❌ if UNSAFE, or ⚠️ if UNKNOWN. ' +
-                        'Explanation must be exactly 30 characters or less. ' +
-                        'Example: "✅ Safe: basic game logic" or "❌ Unsafe: uses eval()"'
+                        'Format: "✅ Safe: [reason]" or "❌ Harmful: [reason]". ' +
+                        'Do NOT mention syntax errors, undefined variables, or missing functions.'
                 },
                 { role: 'user', content: userPrompt }
             ]
