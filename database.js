@@ -69,9 +69,31 @@ export function initDatabase() {
                 }
             });
             
-            // Create forum tables
+            // Create users table first (other tables may reference it)
             db.run(`
-                CREATE TABLE IF NOT EXISTS forum_categories (
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    googleId TEXT UNIQUE NOT NULL,
+                    name TEXT,
+                    email TEXT NOT NULL,
+                    stats TEXT NOT NULL DEFAULT '{}',
+                    inventory TEXT NOT NULL DEFAULT '[]',
+                    equipment TEXT NOT NULL DEFAULT '{}',
+                    weaponData TEXT,
+                    passiveAbility TEXT,
+                    rank TEXT NOT NULL DEFAULT 'player',
+                    verified TEXT
+                )
+            `, (err) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                console.log('✅ Users table initialized');
+                
+                // Create forum tables
+                db.run(`
+                    CREATE TABLE IF NOT EXISTS forum_categories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
                     parent_id INTEGER,
@@ -183,6 +205,7 @@ export function initDatabase() {
                     });
                 });
             });
+            }); // Close users table callback
         });
     });
 }
