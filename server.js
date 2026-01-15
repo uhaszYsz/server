@@ -2333,7 +2333,7 @@ wss.on('connection', (ws, req) => {
         }
 
         try {
-            const { filename, data: fileData, folderPath } = data;
+            const { filename, data: fileData, folderPath, description } = data;
             
             if (!filename || !fileData) {
                 throw new Error('Filename and file data are required');
@@ -2380,6 +2380,11 @@ wss.on('connection', (ws, req) => {
             }
             const userId = ws.userId.toString(); // Convert to string for folder path
             
+            // Check if user is admin or moderator and wants to upload to root
+            const isAdminOrModerator = ws.rank === 'admin' || ws.rank === 'moderator';
+            const wantsRootUpload = (description && description.includes('/root')) || 
+                                   (folderPath && (folderPath === '/root' || folderPath.includes('/root')));
+            
             // Validate and normalize folder path
             let normalizedFolderPath = folderPath || '';
             // Remove leading/trailing slashes and normalize
@@ -2389,11 +2394,13 @@ wss.on('connection', (ws, req) => {
                 throw new Error('Invalid folder path format');
             }
             
-            // Build final folder path: always use user's folder (never root)
-            // If folder path is empty: upload to user's root folder (userId)
-            // If folder path has value: upload to userId/folderPath (create folder inside user folder)
+            // Build final folder path
             let finalFolderPath;
-            if (!normalizedFolderPath) {
+            if (isAdminOrModerator && wantsRootUpload) {
+                // Admin/Moderator with /root marker: upload to global root folder (empty string)
+                finalFolderPath = '';
+                console.log(`[uploadSprite] Admin/Moderator ${ws.username} uploading to root folder`);
+            } else if (!normalizedFolderPath) {
                 // Empty folder path = user's root folder (not global root)
                 finalFolderPath = userId;
             } else {
