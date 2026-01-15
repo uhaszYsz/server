@@ -28,8 +28,7 @@ export function initSpritesDatabase() {
                     uploaded_by TEXT NOT NULL,
                     uploaded_at INTEGER NOT NULL,
                     file_size INTEGER NOT NULL,
-                    data TEXT NOT NULL,
-                    UNIQUE(filename, folder_path)
+                    data TEXT NOT NULL
                 )
             `, (err) => {
                 if (err) {
