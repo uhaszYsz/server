@@ -170,14 +170,13 @@ async function verifyCodeWithOpenAI(code) {
                 {
                     role: 'system',
                     content:
-                        'You review JavaScript code for safety/harmfulness. ' +
+                        'You review JavaScript code for security vulnerabilities and exploit attempts. ' +
+                        'Verify if there are no hack attempts in this code. ' +
                         'Answer: Is this code SAFE (✅) or HARMFUL (❌) to run? ' +
-                        'Ignore syntax errors, missing variables, undefined functions - only assess if the code is SAFE or HARMFUL. ' +
-                        'SAFE = harmless game logic, no data exfiltration, no dangerous APIs. ' +
-                        'HARMFUL = uses eval/new Function, network calls, localStorage, DOM manipulation, or other dangerous APIs. ' +
+                        'HARMFUL = any networking code, creating files on device, attempts to use window. or __realWindow parameters or functions. hack attempts ' +
+                        'SAFE = game logics, loops, creating bullets and objects  (createObject())' +
                         'Respond with: [EMOJI] [30 char explanation]. ' +
-                        'Format: "✅ Safe: [reason]" or "❌ Harmful: [reason]". ' +
-                        'Do NOT mention syntax errors, undefined variables, or missing functions.'
+                        'Format: "✅ Safe: [reason]" or "❌ Harmful: [reason]".'
                 },
                 { role: 'user', content: userPrompt }
             ]
@@ -3138,8 +3137,7 @@ wss.on('connection', (ws, req) => {
             const codeIndex = (data && Number.isFinite(Number(data.codeIndex))) ? Number(data.codeIndex) : null;
 
             const code = (data && typeof data.code === 'string') ? data.code : '';
-            const trimmed = code.trim();
-            if (!trimmed) {
+            if (!code.trim()) {
                 ws.send(msgpack.encode({
                     type: 'forumCodeVerificationResult',
                     requestId,
@@ -3150,65 +3148,19 @@ wss.on('connection', (ws, req) => {
                 return;
             }
 
-            // Basic payload cap to avoid abuse
-            const MAX_CODE_CHARS = 20000;
-            const safeCode = trimmed.length > MAX_CODE_CHARS ? trimmed.slice(0, MAX_CODE_CHARS) : trimmed;
-
-            const client = getOpenAIClient();
-            if (!client) {
+            // Use the shared verification function (uses prompt 1)
+            const answer = await verifyCodeWithOpenAI(code);
+            
+            if (!answer) {
                 ws.send(msgpack.encode({
                     type: 'forumCodeVerificationResult',
                     requestId,
                     codeIndex,
                     ok: false,
-                    error: 'Server missing OpenAI key (set OPENAI_API_KEY or put it in server/oak.txt)'
+                    error: 'Server missing OpenAI key or verification failed'
                 }));
                 return;
             }
-
-            // Requirement: send whole code block, then 3 lines, then the question
-            const userPrompt = `${safeCode}\n\n\nthis code been shared by someone, is it safe to run`;
-
-            const resp = await client.chat.completions.create({
-                model: 'gpt-4o-mini',
-                temperature: 0.2,
-                max_tokens: 50,
-                messages: [
-                    {
-                        role: 'system',
-                        content:
-                            'You review JavaScript game/editor code for safety. ' +
-                            'Respond with: [EMOJI] [30 char explanation]. ' +
-                            'Emoji: ✅ if SAFE, ❌ if UNSAFE, or ⚠️ if UNKNOWN. ' +
-                            'Explanation must be exactly 30 characters or less. ' +
-                            'Example: "✅ Safe: basic game logic" or "❌ Unsafe: uses eval()"'
-                    },
-                    { role: 'user', content: userPrompt }
-                ]
-            });
-
-            let rawAnswer = resp?.choices?.[0]?.message?.content || '';
-            // Extract emoji (first emoji found)
-            const emojiMatch = rawAnswer.match(/[✅❌⚠️]/);
-            const emoji = emojiMatch ? emojiMatch[0] : '⚠️';
-            
-            // Extract explanation (text after emoji, max 30 chars)
-            let explanation = rawAnswer.replace(/[✅❌⚠️]\s*/, '').trim();
-            if (!explanation || explanation.length === 0) {
-                // Fallback: try to infer from content
-                const lower = rawAnswer.toLowerCase();
-                if (lower.includes('safe') && !lower.includes('unsafe')) {
-                    explanation = 'Safe code';
-                } else if (lower.includes('unsafe') || lower.includes('danger') || lower.includes('risk')) {
-                    explanation = 'Unsafe code detected';
-                } else {
-                    explanation = 'Unknown safety status';
-                }
-            }
-            // Truncate to 30 chars
-            explanation = explanation.length > 30 ? explanation.slice(0, 27) + '...' : explanation;
-            
-            const answer = `${emoji} ${explanation}`;
 
             console.log('[verifySharedCode] Response ready:', { codeIndex, answerLen: answer.length });
             ws.send(msgpack.encode({
