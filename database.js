@@ -1041,7 +1041,7 @@ export function unlikePost(postId, googleId) {
 // Update forum post content
 export function updateForumPost(postId, content) {
     return new Promise((resolve, reject) => {
-        db.run('UPDATE forum_posts SET content = ?, edited_at = CURRENT_TIMESTAMP, is_edited = 1 WHERE id = ?', 
+        db.run('UPDATE forum_posts SET content = ? WHERE id = ?', 
             [content, postId], function(err) {
             if (err) {
                 reject(err);
