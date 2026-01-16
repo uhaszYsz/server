@@ -1038,6 +1038,26 @@ export function unlikePost(postId, googleId) {
     });
 }
 
+// Update forum post content
+export function updateForumPost(postId, content) {
+    return new Promise((resolve, reject) => {
+        db.run('UPDATE forum_posts SET content = ?, edited_at = CURRENT_TIMESTAMP, is_edited = 1 WHERE id = ?', 
+            [content, postId], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                // Update thread updated_at timestamp
+                db.get('SELECT thread_id FROM forum_posts WHERE id = ?', [postId], (err, row) => {
+                    if (!err && row) {
+                        db.run('UPDATE forum_threads SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [row.thread_id], () => {});
+                    }
+                });
+                resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
 // Get like counts and user likes for multiple posts
 export function getPostLikeInfo(postIds, googleId) {
     return new Promise((resolve, reject) => {

@@ -3180,6 +3180,83 @@ wss.on('connection', (ws, req) => {
                 error: error?.message || 'Verification failed'
             }));
         }
+      } else if (data.type === 'reverifyThreadCodes') {
+        // Re-verify all code blocks in a thread (admin only)
+        try {
+            const isAdmin = ws.rank === 'admin';
+            if (!isAdmin) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Only admins can re-verify code' }));
+                return;
+            }
+
+            const threadId = data.threadId;
+            const systemPostId = data.systemPostId;
+
+            if (!threadId || !systemPostId) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Thread ID and system post ID required' }));
+                return;
+            }
+
+            // Get all posts in the thread
+            const threadPosts = await db.getForumPosts(threadId);
+            if (!threadPosts || threadPosts.length === 0) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Thread not found' }));
+                return;
+            }
+
+            // Extract all code blocks from all posts (except system posts)
+            const codeBlocks = [];
+            threadPosts.forEach(post => {
+                if (post.author === 'system') return; // Skip system posts
+                
+                const codeMatches = post.content.match(/\[code\]([\s\S]*?)\[\/code\]/gi);
+                if (codeMatches) {
+                    codeMatches.forEach(match => {
+                        const codeMatch = match.match(/\[code\]([\s\S]*?)\[\/code\]/i);
+                        if (codeMatch && codeMatch[1]) {
+                            codeBlocks.push(codeMatch[1].trim());
+                        }
+                    });
+                }
+            });
+
+            if (codeBlocks.length === 0) {
+                ws.send(msgpack.encode({ type: 'error', message: 'No code blocks found in thread' }));
+                return;
+            }
+
+            // Verify all code blocks and collect results
+            const verificationResults = [];
+            for (const code of codeBlocks) {
+                const verdict = await verifyCodeWithOpenAI(code);
+                verificationResults.push(verdict || '⚠️ Unknown');
+            }
+
+            // Combine results: if any is harmful, mark as harmful; otherwise use first result
+            const hasHarmful = verificationResults.some(r => r && r.includes('❌'));
+            const finalVerdict = hasHarmful 
+                ? verificationResults.find(r => r && r.includes('❌')) || verificationResults[0] || '⚠️ Unknown'
+                : verificationResults[0] || '✅ Safe: verified';
+
+            // Update the system post with new verification result
+            await db.updateForumPost(systemPostId, finalVerdict);
+
+            console.log(`[reverifyThreadCodes] Re-verified ${codeBlocks.length} code blocks in thread ${threadId}, verdict: ${finalVerdict}`);
+
+            // Send success response and reload thread
+            ws.send(msgpack.encode({
+                type: 'reverifyThreadCodesResult',
+                ok: true,
+                threadId: threadId
+            }));
+        } catch (error) {
+            console.error('[reverifyThreadCodes] Failed:', error);
+            ws.send(msgpack.encode({
+                type: 'reverifyThreadCodesResult',
+                ok: false,
+                error: error?.message || 'Re-verification failed'
+            }));
+        }
       } else if (data.type === 'googleLogin') {
         // Handle Google login - verify email and googleId
         if (!data.email || !data.id) {
