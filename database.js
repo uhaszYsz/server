@@ -768,7 +768,7 @@ export function getForumThreads(categoryId, authorKeys = null) {
 
         db.all(`
             SELECT t.*, 
-                   (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id) as post_count,
+                   (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id AND author != 'system') as post_count,
                    (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date,
                    u.name as author_name,
                    COALESCE(u.rank, 'player') as author_rank
@@ -798,8 +798,8 @@ export function getForumCategoryStats(categoryId, authorGoogleId = null) {
             db.get(`
                 SELECT 
                     COUNT(DISTINCT t.id) as thread_count,
-                    COUNT(p.id) as total_post_count,
-                    SUM(CASE WHEN p.author IN (${placeholders}) THEN 1 ELSE 0 END) as user_post_count
+                    COUNT(CASE WHEN p.author != 'system' THEN p.id END) as total_post_count,
+                    SUM(CASE WHEN p.author IN (${placeholders}) AND p.author != 'system' THEN 1 ELSE 0 END) as user_post_count
                 FROM forum_threads t
                 LEFT JOIN forum_posts p ON p.thread_id = t.id
                 WHERE t.category_id = ?
@@ -820,7 +820,7 @@ export function getForumCategoryStats(categoryId, authorGoogleId = null) {
         db.get(`
             SELECT 
                 COUNT(DISTINCT t.id) as thread_count,
-                COUNT(p.id) as total_post_count
+                COUNT(CASE WHEN p.author != 'system' THEN p.id END) as total_post_count
             FROM forum_threads t
             LEFT JOIN forum_posts p ON p.thread_id = t.id
             WHERE t.category_id = ?
