@@ -3755,6 +3755,7 @@ wss.on('connection', (ws, req) => {
             const session = await db.createSession(user.id, verifiedGoogleId);
             
             // Set authentication data on WebSocket
+            ws.googleId = verifiedGoogleId; // Set Google ID for uploads and other operations
             ws.username = user.name;
             ws.name = user.name;
             ws.userId = user.id;
