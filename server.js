@@ -868,6 +868,31 @@ function cleanupMessageRateLimit(wsId) {
 // Create Express HTTP server for file downloads
 const httpApp = express();
 const HTTP_PORT = 8082; // Update server port (8081 is used by admin-server.js)
+const HTTPS_PORT = 93; // HTTPS port (custom port)
+const WS_PORT = 8080; // WebSocket port
+
+// SSL Certificate paths (Let's Encrypt)
+const SSL_CERT_PATH = '/etc/letsencrypt/live/szkodnikmajster.duckdns.org/fullchain.pem';
+const SSL_KEY_PATH = '/etc/letsencrypt/live/szkodnikmajster.duckdns.org/privkey.pem';
+
+// Check if SSL certificates exist
+let sslOptions = null;
+if (existsSync(SSL_CERT_PATH) && existsSync(SSL_KEY_PATH)) {
+    try {
+        sslOptions = {
+            cert: readFileSync(SSL_CERT_PATH),
+            key: readFileSync(SSL_KEY_PATH)
+        };
+        console.log('✅ SSL certificates loaded successfully');
+    } catch (error) {
+        console.error('❌ Failed to load SSL certificates:', error.message);
+        console.warn('⚠️  Server will run without HTTPS (insecure)');
+    }
+} else {
+    console.warn('⚠️  SSL certificates not found. Server will run without HTTPS (insecure)');
+    console.warn(`   Expected cert: ${SSL_CERT_PATH}`);
+    console.warn(`   Expected key: ${SSL_KEY_PATH}`);
+}
 
 // Middleware
 httpApp.use(express.json());
@@ -1027,23 +1052,69 @@ httpApp.post('/api/app/update/download-batch', async (req, res) => {
     }
 });
 
-// Start HTTP server
-httpApp.listen(HTTP_PORT, '0.0.0.0', () => {
-    console.log(`✅ HTTP server running on http://0.0.0.0:${HTTP_PORT} (for app updates)`);
-}).on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-        console.error(`❌ Port ${HTTP_PORT} is already in use. Please stop the other process or change HTTP_PORT in server.js`);
-    } else {
-        console.error('❌ Failed to start update HTTP server:', err);
-    }
-});
+// Start HTTP/HTTPS server
+if (sslOptions) {
+    // Create HTTPS server
+    const httpsServer = https.createServer(sslOptions, httpApp);
+    httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+        console.log(`✅ HTTPS server running on https://0.0.0.0:${HTTPS_PORT} (for app updates)`);
+        console.log(`   Access at: https://szkodnikmajster.duckdns.org:${HTTPS_PORT}`);
+    }).on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.error(`❌ Port ${HTTPS_PORT} is already in use. Please stop the other process or change HTTPS_PORT in server.js`);
+        } else {
+            console.error('❌ Failed to start HTTPS server:', err);
+        }
+    });
+    
+    // Also keep HTTP on 8082 for backward compatibility (optional - you can remove this)
+    httpApp.listen(HTTP_PORT, '0.0.0.0', () => {
+        console.log(`✅ HTTP server running on http://0.0.0.0:${HTTP_PORT} (for app updates - backward compatibility)`);
+    }).on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.warn(`⚠️  Port ${HTTP_PORT} is already in use (non-critical)`);
+        }
+    });
+} else {
+    // Fallback to HTTP if no SSL certificates
+    httpApp.listen(HTTP_PORT, '0.0.0.0', () => {
+        console.log(`✅ HTTP server running on http://0.0.0.0:${HTTP_PORT} (for app updates)`);
+        console.warn('⚠️  WARNING: Running without HTTPS - not secure for production!');
+    }).on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.error(`❌ Port ${HTTP_PORT} is already in use. Please stop the other process or change HTTP_PORT in server.js`);
+        } else {
+            console.error('❌ Failed to start update HTTP server:', err);
+        }
+    });
+}
 
-// Create WebSocket server on port 8080, listening on all interfaces
-const wss = new WebSocketServer({ 
-    port: 8080,
-    host: '0.0.0.0' // Listen on all network interfaces
-});
-console.log('✅ WebSocket server running on ws://0.0.0.0:8080 (accessible from all IPs)');
+// Create WebSocket server (WSS if SSL available, WS otherwise)
+let wss;
+let wssHttpsServer = null;
+
+if (sslOptions) {
+    // Create separate HTTPS server for WSS (different port from HTTP server)
+    wssHttpsServer = https.createServer(sslOptions);
+    wssHttpsServer.listen(WS_PORT, '0.0.0.0', () => {
+        console.log(`✅ HTTPS server for WSS running on port ${WS_PORT}`);
+    });
+    
+    // Create WSS (WebSocket Secure) server
+    wss = new WebSocketServer({ 
+        server: wssHttpsServer
+    });
+    console.log(`✅ WebSocket Secure (WSS) server running on wss://0.0.0.0:${WS_PORT} (accessible from all IPs)`);
+    console.log(`   Connect at: wss://szkodnikmajster.duckdns.org:${WS_PORT}`);
+} else {
+    // Fallback to unencrypted WS if no SSL
+    wss = new WebSocketServer({ 
+        port: WS_PORT,
+        host: '0.0.0.0'
+    });
+    console.log(`✅ WebSocket server running on ws://0.0.0.0:${WS_PORT} (accessible from all IPs)`);
+    console.warn('⚠️  WARNING: Running without WSS - not secure for production!');
+}
 console.log('🛡️  DDoS protection enabled:');
 console.log(`   - Max connections per IP: ${IP_CONNECTION_RATE_LIMIT} per ${IP_CONNECTION_WINDOW_MS/1000}s`);
 console.log(`   - Max messages per connection: ${MESSAGE_RATE_LIMIT} per ${MESSAGE_RATE_WINDOW_MS}ms`);
