@@ -1437,7 +1437,8 @@ async function sendPartyToGameRoom(party, options = {}) {
     }
 }
 
-wss.on('connection', (ws, req) => {
+// Shared connection handler for both WSS and WS fallback
+function handleWebSocketConnection(ws, req) {
   // Get client IP
   const clientIP = getClientIP(req);
   
@@ -4382,7 +4383,10 @@ wss.on('connection', (ws, req) => {
       }
     }
   });
-});
+}
+
+// Attach connection handler to WSS server
+wss.on('connection', handleWebSocketConnection);
 
 // Server console command handler
 const rl = readline.createInterface({
