@@ -74,9 +74,8 @@ export function initDatabase() {
             db.run(`
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    googleId TEXT UNIQUE NOT NULL,
+                    googleIdHash TEXT UNIQUE NOT NULL,
                     name TEXT,
-                    email TEXT NOT NULL,
                     stats TEXT NOT NULL DEFAULT '{}',
                     inventory TEXT NOT NULL DEFAULT '[]',
                     equipment TEXT NOT NULL DEFAULT '{}',
@@ -203,7 +202,6 @@ export function initDatabase() {
                                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                                         sessionId TEXT UNIQUE NOT NULL,
                                         userId INTEGER NOT NULL,
-                                        googleId TEXT NOT NULL,
                                         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                         expires_at TEXT NOT NULL,
                                         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
@@ -241,31 +239,27 @@ export async function verifyPassword(password, hash) {
     return await bcrypt.compare(password, hash);
 }
 
-// Create a new user (requires email, googleId, and name)
+// Create a new user (requires googleId and name)
 export function createUser(user) {
     return new Promise(async (resolve, reject) => {
         try {
             // Validate required fields
-            if (!user.email || !user.googleId || !user.name) {
-                reject(new Error('Email, googleId, and name are required'));
+            if (!user.googleId || !user.name) {
+                reject(new Error('googleId and name are required'));
                 return;
             }
             
-            // Hash the email before storing
-            const hashedEmail = await hashPassword(user.email.toLowerCase().trim());
-            
-            // Generate name from email if not provided
-            const name = user.name || user.email.split('@')[0] + '_google';
+            // Hash the Google ID before storing (for privacy)
+            const googleIdHash = await hashPassword(user.googleId);
             
             const stmt = db.prepare(`
-                INSERT INTO users (googleId, name, email, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO users (googleIdHash, name, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             stmt.run(
-                user.googleId, // PRIMARY KEY - Google user ID
-                name, // Display name
-                hashedEmail, // Store hashed email
+                googleIdHash, // Hashed Google user ID (for privacy)
+                user.name, // Display name
                 JSON.stringify(user.stats || {}),
                 JSON.stringify(user.inventory || []),
                 JSON.stringify(user.equipment || {}),
@@ -366,9 +360,7 @@ export function getUserById(id) {
             // Parse JSON fields
             const user = {
                 id: row.id,
-                googleId: row.googleId,
                 name: row.name || null,
-                email: row.email || null, // Hashed email
                 stats: JSON.parse(row.stats),
                 inventory: JSON.parse(row.inventory),
                 equipment: JSON.parse(row.equipment),
@@ -381,97 +373,68 @@ export function getUserById(id) {
     });
 }
 
-// Get user by googleId (primary lookup - googleId is now UNIQUE)
+// Get user by Google ID (lookup by hashed Google ID)
 export function getUserByGoogleId(googleId) {
-    return new Promise((resolve, reject) => {
-        db.get('SELECT * FROM users WHERE googleId = ?', [googleId], (err, row) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-
-            if (!row) {
-                resolve(null);
-                return;
-            }
-
-            // Parse JSON fields
-            const user = {
-                id: row.id,
-                googleId: row.googleId,
-                name: row.name || null,
-                email: row.email || null, // Hashed email
-                stats: JSON.parse(row.stats),
-                inventory: JSON.parse(row.inventory),
-                equipment: JSON.parse(row.equipment),
-                weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
-                rank: row.rank || 'player'
-            };
-
-            resolve(cleanDeprecatedStats(user));
-        });
-    });
-}
-
-// Verify user by email and googleId (matches client memory data)
-// Gets user by googleId first, then verifies email hash matches
-export function verifyUserByEmailAndGoogleId(email, googleId) {
     return new Promise(async (resolve, reject) => {
         try {
-            // First get user by googleId
-            const user = await getUserByGoogleId(googleId);
+            // Hash the Google ID for lookup
+            const googleIdHash = await hashPassword(googleId);
             
-            if (!user) {
-                resolve(false);
-                return;
-            }
-            
-            // Verify email hash matches (bcrypt comparison)
-            if (!user.email) {
-                resolve(false);
-                return;
-            }
-            
-            const emailMatches = await verifyPassword(email.toLowerCase().trim(), user.email);
-            resolve(emailMatches);
+            db.get('SELECT * FROM users WHERE googleIdHash = ?', [googleIdHash], (err, row) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                if (!row) {
+                    resolve(null);
+                    return;
+                }
+
+                // Parse JSON fields
+                const user = {
+                    id: row.id,
+                    name: row.name || null,
+                    stats: JSON.parse(row.stats),
+                    inventory: JSON.parse(row.inventory),
+                    equipment: JSON.parse(row.equipment),
+                    weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
+                    rank: row.rank || 'player'
+                };
+
+                resolve(cleanDeprecatedStats(user));
+            });
         } catch (error) {
             reject(error);
         }
     });
 }
 
-// Get user by email and googleId (returns user if verification passes)
+// Verify user by Google ID (no email needed - ID token already verified by Google)
+export function verifyUserByGoogleId(googleId) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const user = await getUserByGoogleId(googleId);
+            resolve(!!user);
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// Get user by Google ID (returns user if exists)
+// Email verification not needed - ID token already verified by Google
 export function getUserByEmailAndGoogleId(email, googleId) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const isValid = await verifyUserByEmailAndGoogleId(email, googleId);
-            if (!isValid) {
-                resolve(null);
-                return;
-            }
-            
-            // Verification passed, return the user
-            const user = await getUserByGoogleId(googleId);
-            resolve(user);
-        } catch (error) {
-            reject(error);
-        }
-    });
+    // Legacy function name kept for compatibility, but only uses googleId
+    return getUserByGoogleId(googleId);
 }
 
-// Update user by googleId
+// Update user by googleId (uses hashed Google ID for lookup)
 export function updateUser(googleId, userData) {
     return new Promise(async (resolve, reject) => {
         try {
-            // If email is being updated, hash it first
-            let emailToStore = null;
-            if (userData.email) {
-                emailToStore = await hashPassword(userData.email.toLowerCase().trim());
-            } else {
-                // No email update, get existing email from database
-                const existingUser = await getUserByGoogleId(googleId);
-                emailToStore = existingUser ? existingUser.email : null;
-            }
+            // Hash Google ID for lookup
+            const googleIdHash = await hashPassword(googleId);
             
             // Get existing name if not updating
             let nameToStore = userData.name || null;
@@ -483,7 +446,6 @@ export function updateUser(googleId, userData) {
             const stmt = db.prepare(`
                 UPDATE users 
                 SET name = COALESCE(?, name),
-                    email = COALESCE(?, email),
                     stats = ?,
                     inventory = ?,
                     equipment = ?,
@@ -491,12 +453,11 @@ export function updateUser(googleId, userData) {
                     passiveAbility = ?,
                     rank = ?,
                     verified = ?
-                WHERE googleId = ?
+                WHERE googleIdHash = ?
             `);
 
             stmt.run(
                 nameToStore,
-                emailToStore,
                 JSON.stringify(userData.stats || {}),
                 JSON.stringify(userData.inventory || []),
                 JSON.stringify(userData.equipment || {}),
@@ -504,7 +465,7 @@ export function updateUser(googleId, userData) {
                 null, // passiveAbility always null (deprecated)
                 userData.rank || 'player',
                 null, // verified always null (deprecated)
-                googleId,
+                googleIdHash,
                 function(err) {
                     if (err) {
                         reject(err);
@@ -521,31 +482,38 @@ export function updateUser(googleId, userData) {
     });
 }
 
-// Update user name by googleId
+// Update user name by googleId (uses hashed Google ID for lookup)
 export function updateName(googleId, newName) {
-    return new Promise((resolve, reject) => {
-        if (!newName || typeof newName !== 'string' || newName.trim().length === 0) {
-            reject(new Error('Name is required and must be a non-empty string'));
-            return;
-        }
-        
-        const trimmedName = newName.trim();
-        if (trimmedName.length > 20) {
-            reject(new Error('Name must be 20 characters or less'));
-            return;
-        }
-        
-        db.run('UPDATE users SET name = ? WHERE googleId = ?', [trimmedName, googleId], function(err) {
-            if (err) {
-                if (err.message.includes('UNIQUE constraint')) {
-                    reject(new Error('Name is already taken'));
-                } else {
-                    reject(err);
-                }
-            } else {
-                resolve(this.changes > 0);
+    return new Promise(async (resolve, reject) => {
+        try {
+            if (!newName || typeof newName !== 'string' || newName.trim().length === 0) {
+                reject(new Error('Name is required and must be a non-empty string'));
+                return;
             }
-        });
+            
+            const trimmedName = newName.trim();
+            if (trimmedName.length > 20) {
+                reject(new Error('Name must be 20 characters or less'));
+                return;
+            }
+            
+            // Hash Google ID for lookup
+            const googleIdHash = await hashPassword(googleId);
+            
+            db.run('UPDATE users SET name = ? WHERE googleIdHash = ?', [trimmedName, googleIdHash], function(err) {
+                if (err) {
+                    if (err.message.includes('UNIQUE constraint')) {
+                        reject(new Error('Name is already taken'));
+                    } else {
+                        reject(err);
+                    }
+                } else {
+                    resolve(this.changes > 0);
+                }
+            });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -600,22 +568,29 @@ export function deleteUser(googleId) {
     });
 }
 
-// Check if googleId exists
+// Check if googleId exists (lookup by hashed Google ID)
 export function googleIdExists(googleId) {
-    return new Promise((resolve, reject) => {
-        db.get('SELECT googleId FROM users WHERE googleId = ?', [googleId], (err, row) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            resolve(!!row);
-        });
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Hash the Google ID for lookup
+            const googleIdHash = await hashPassword(googleId);
+            
+            db.get('SELECT id FROM users WHERE googleIdHash = ?', [googleIdHash], (err, row) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(!!row);
+            });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
 // Session management functions
 // Create a new session
-export function createSession(userId, googleId) {
+export function createSession(userId) {
     return new Promise((resolve, reject) => {
         // Generate secure random session ID (32 bytes = 64 hex characters)
         const sessionId = crypto.randomBytes(32).toString('hex');
@@ -626,8 +601,8 @@ export function createSession(userId, googleId) {
         const expiresAtStr = expiresAt.toISOString();
         
         db.run(
-            'INSERT INTO sessions (sessionId, userId, googleId, expires_at) VALUES (?, ?, ?, ?)',
-            [sessionId, userId, googleId, expiresAtStr],
+            'INSERT INTO sessions (sessionId, userId, expires_at) VALUES (?, ?, ?)',
+            [sessionId, userId, expiresAtStr],
             function(err) {
                 if (err) {
                     reject(err);
@@ -636,7 +611,6 @@ export function createSession(userId, googleId) {
                 resolve({
                     sessionId,
                     userId,
-                    googleId,
                     expiresAt: expiresAtStr
                 });
             }
@@ -649,7 +623,7 @@ export function validateSession(sessionId) {
     return new Promise((resolve, reject) => {
         const now = new Date().toISOString();
         db.get(
-            `SELECT s.sessionId, s.userId, s.googleId, u.name, u.email, u.rank 
+            `SELECT s.sessionId, s.userId, u.name, u.rank 
              FROM sessions s 
              INNER JOIN users u ON s.userId = u.id 
              WHERE s.sessionId = ? AND s.expires_at > ?`,
@@ -668,9 +642,7 @@ export function validateSession(sessionId) {
                 resolve({
                     sessionId: row.sessionId,
                     userId: row.userId,
-                    googleId: row.googleId,
                     name: row.name,
-                    email: row.email,
                     rank: row.rank || 'player'
                 });
             }
@@ -691,10 +663,10 @@ export function deleteSession(sessionId) {
     });
 }
 
-// Delete all sessions for a user
-export function deleteUserSessions(googleId) {
+// Delete all sessions for a user (by userId)
+export function deleteUserSessions(userId) {
     return new Promise((resolve, reject) => {
-        db.run('DELETE FROM sessions WHERE googleId = ?', [googleId], function(err) {
+        db.run('DELETE FROM sessions WHERE userId = ?', [userId], function(err) {
             if (err) {
                 reject(err);
                 return;

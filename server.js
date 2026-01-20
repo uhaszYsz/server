@@ -304,18 +304,10 @@ async function validateSessionForRequest(ws, sessionId) {
         return { valid: false, error: 'Invalid or expired session' };
     }
     
-    // Verify the session matches the WebSocket's stored data
-    if (ws.googleId && ws.googleId !== sessionInfo.googleId) {
-        console.warn(`[Session] Session GoogleId mismatch: ws=${ws.googleId}, session=${sessionInfo.googleId}`);
-        return { valid: false, error: 'Session mismatch' };
-    }
-    
     // Update WebSocket with session info
-    ws.googleId = sessionInfo.googleId;
     ws.userId = sessionInfo.userId;
     ws.username = sessionInfo.name;
     ws.name = sessionInfo.name;
-    ws.email = sessionInfo.email;
     ws.rank = sessionInfo.rank || 'player';
     ws.isAdmin = (sessionInfo.rank === 'admin');
     ws.sessionId = sessionId;
@@ -3598,7 +3590,6 @@ wss.on('connection', (ws, req) => {
         // Handle Google login with proper authentication
         try {
             let verifiedGoogleId = null;
-            let verifiedEmail = null;
             
             // If ID token is provided, verify it with Google
             if (data.idToken) {
@@ -3608,25 +3599,23 @@ wss.on('connection', (ws, req) => {
                 if (tokenInfo) {
                     // Token verified successfully
                     verifiedGoogleId = tokenInfo.googleId;
-                    verifiedEmail = tokenInfo.email;
-                    console.log(`[GoogleLogin] Token verified: ${verifiedEmail} (${verifiedGoogleId})`);
+                    console.log(`[GoogleLogin] Token verified: ${verifiedGoogleId}`);
                 } else {
                     console.warn('[GoogleLogin] Token verification failed');
                     ws.send(msgpack.encode({ type: 'error', message: 'Invalid authentication token' }));
                     return;
                 }
             } else {
-                // Fallback: Use provided email and ID (less secure, but allows older clients)
-                if (!data.email || !data.id) {
-                    ws.send(msgpack.encode({ type: 'error', message: 'Email, Google ID, or ID token required' }));
+                // Fallback: Use provided ID (less secure, but allows older clients)
+                if (!data.id) {
+                    ws.send(msgpack.encode({ type: 'error', message: 'ID token or Google ID required' }));
                     return;
                 }
                 console.warn('[GoogleLogin] No ID token provided, using fallback verification');
                 verifiedGoogleId = data.id;
-                verifiedEmail = data.email;
             }
             
-            // Check if user exists by googleId
+            // Check if user exists by googleId (lookup uses hashed Google ID)
             let user = await db.getUserByGoogleId(verifiedGoogleId);
             
             if (!user) {
@@ -3639,7 +3628,6 @@ wss.on('connection', (ws, req) => {
                     const randomName = await generateUniqueRandomUsername();
                     
                     await db.createUser({
-                        email: verifiedEmail,
                         googleId: verifiedGoogleId,
                         name: randomName,
                         stats: defaultStats,
@@ -3647,7 +3635,7 @@ wss.on('connection', (ws, req) => {
                         equipment: equipment,
                         weaponData: weaponData
                     });
-                    console.log(`✅ Created new Google user: ${verifiedEmail} (${verifiedGoogleId}) with random name: ${randomName}`);
+                    console.log(`✅ Created new Google user: ${verifiedGoogleId} with random name: ${randomName}`);
                     
                     // Get the newly created user
                     user = await db.getUserByGoogleId(verifiedGoogleId);
@@ -3657,23 +3645,6 @@ wss.on('connection', (ws, req) => {
                     ws.send(msgpack.encode({ type: 'error', message: 'Failed to create account: ' + createErr.message }));
                     return;
                 }
-            } else {
-                // Verify email matches if we have a verified email from token
-                if (verifiedEmail && user.email !== verifiedEmail) {
-                    // Update email if it changed
-                    await db.updateUser(verifiedGoogleId, { email: verifiedEmail });
-                    console.log(`[GoogleLogin] Updated email for user ${verifiedGoogleId}`);
-                }
-                
-                // Verify email matches (additional security check for fallback case)
-                if (!data.idToken) {
-                    const isValid = await db.verifyUserByEmailAndGoogleId(verifiedEmail, verifiedGoogleId);
-                    if (!isValid) {
-                        console.warn(`[GoogleLogin] Email verification failed for ${verifiedEmail} (${verifiedGoogleId})`);
-                        ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
-                        return;
-                    }
-                }
             }
             
             if (!user) {
@@ -3681,14 +3652,12 @@ wss.on('connection', (ws, req) => {
                 return;
             }
             
-            // Create a session for this login
-            const session = await db.createSession(user.id, verifiedGoogleId);
+            // Create a session for this login (only needs userId, not googleId)
+            const session = await db.createSession(user.id);
             
             // Set authentication data on WebSocket
             ws.username = user.name;
             ws.name = user.name;
-            ws.email = verifiedEmail;
-            ws.googleId = verifiedGoogleId;
             ws.userId = user.id;
             ws.sessionId = session.sessionId; // Store session ID on WebSocket
             ws.rank = user.rank || 'player';
@@ -3703,56 +3672,41 @@ wss.on('connection', (ws, req) => {
                 sessionId: session.sessionId // Send session ID to client
             }));
             
-            console.log(`✅ Google login successful: ${verifiedEmail} (${verifiedGoogleId}) - Session: ${session.sessionId.substring(0, 16)}...`);
+            console.log(`✅ Google login successful: ${user.name} (${verifiedGoogleId}) - Session: ${session.sessionId.substring(0, 16)}...`);
         } catch (error) {
             console.error('Google login error:', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Login failed: ' + error.message }));
         }
       } else if (data.type === 'checkVerification') {
-        // Check email verification status
+        // Check verification status (legacy support - now just checks if user has valid session)
         console.log(
             '[checkVerification] Received checkVerification request from client',
             ws.id,
-            'email:',
-            ws.email ? 'present' : 'missing',
-            'googleId:',
-            ws.googleId ? 'present' : 'missing',
-            'msgEmail:',
-            data && data.email ? 'present' : 'missing',
-            'msgId:',
-            data && data.id ? 'present' : 'missing'
+            'hasSessionId:',
+            ws.sessionId ? 'present' : 'missing',
+            'hasUserId:',
+            ws.userId ? 'present' : 'missing'
         );
-
-        // Allow the client to provide these again (helps after reconnect / ordering issues)
-        if (!ws.email && data && data.email) ws.email = data.email;
-        if (!ws.googleId && data && data.id) ws.googleId = data.id;
-
-        if (!ws.email || !ws.googleId) {
-            console.log('[checkVerification] Missing email or googleId, returning false');
-            ws.send(msgpack.encode({ type: 'verificationResult', verified: false }));
-            return;
-        }
         
         try {
-            // Get the user to check if they exist
-            const user = await db.getUserByGoogleId(ws.googleId);
-            if (!user) {
-                console.log('[checkVerification] User not found for googleId:', ws.googleId);
-                ws.send(msgpack.encode({ type: 'verificationResult', verified: false }));
-                return;
-            }
-            
             // If we have session ID, verification is automatic (ID token was already verified)
-            if (ws.sessionId) {
+            if (ws.sessionId && ws.userId) {
                 console.log('[checkVerification] User has valid session, verification passed');
                 ws.send(msgpack.encode({ type: 'verificationResult', verified: true }));
                 return;
             }
             
-            // Otherwise, verify email hash matches
-            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            console.log('[checkVerification] Email verification result:', isValid, 'for:', ws.email?.substring(0, 10) + '...');
-            ws.send(msgpack.encode({ type: 'verificationResult', verified: isValid }));
+            // Fallback: If no session but have googleId, verify user exists
+            if (data && data.id) {
+                const user = await db.getUserByGoogleId(data.id);
+                const isValid = !!user;
+                console.log('[checkVerification] User lookup result:', isValid);
+                ws.send(msgpack.encode({ type: 'verificationResult', verified: isValid }));
+                return;
+            }
+            
+            console.log('[checkVerification] No session or googleId, returning false');
+            ws.send(msgpack.encode({ type: 'verificationResult', verified: false }));
         } catch (error) {
             console.error('[checkVerification] Error:', error);
             ws.send(msgpack.encode({ type: 'verificationResult', verified: false }));
