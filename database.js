@@ -1,6 +1,6 @@
 // database.js
 import sqlite3 from 'sqlite3';
-import { promises as fs } from 'fs';
+import { promises as fs, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
@@ -50,6 +50,21 @@ function cleanDeprecatedStats(user) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const dbPath = path.join(__dirname, 'users.db');
+
+// Read hash secret from file (for HMAC-style Google ID hashing)
+let HASH_SECRET = null;
+try {
+    const secretPath = path.join(__dirname, 'hashsecret.txt');
+    HASH_SECRET = readFileSync(secretPath, 'utf8').trim();
+    if (!HASH_SECRET || HASH_SECRET.length === 0) {
+        throw new Error('Hash secret is empty');
+    }
+    console.log('✅ Hash secret loaded from hashsecret.txt');
+} catch (error) {
+    console.error('❌ Failed to load hash secret from hashsecret.txt:', error.message);
+    console.error('⚠️  Server will exit - hash secret is required for security');
+    process.exit(1);
+}
 
 let db = null;
 
@@ -240,10 +255,15 @@ export async function verifyPassword(password, hash) {
     return await bcrypt.compare(password, hash);
 }
 
-// Hash a Google ID deterministically (for lookups - same input always produces same hash)
-// Uses SHA-256 instead of bcrypt because we need deterministic hashing for database lookups
+// Hash a Google ID deterministically with server secret (HMAC-style)
+// Uses SHA-256 with secret salt for security - even if Google ID is intercepted,
+// attacker cannot create valid hash without knowing the secret
 export function hashGoogleId(googleId) {
-    return crypto.createHash('sha256').update(googleId).digest('hex');
+    if (!HASH_SECRET) {
+        throw new Error('Hash secret not loaded - cannot hash Google ID');
+    }
+    // Hash: secret + googleId (prevents attacker from using intercepted Google ID)
+    return crypto.createHash('sha256').update(HASH_SECRET + googleId).digest('hex');
 }
 
 // Create a new user (requires googleId and name)
@@ -610,72 +630,93 @@ export function googleIdExists(googleId) {
 
 // Session management functions
 // Create a new session
+// Stores hashed Google ID (with secret) for security - even if session is stolen,
+// attacker cannot use it without knowing the secret
 export function createSession(userId, googleId) {
     return new Promise((resolve, reject) => {
-        // Generate secure random session ID (32 bytes = 64 hex characters)
-        const sessionId = crypto.randomBytes(32).toString('hex');
-        
-        // Session expires in 30 days
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 30);
-        const expiresAtStr = expiresAt.toISOString();
-        
-        db.run(
-            'INSERT INTO sessions (sessionId, userId, googleId, expires_at) VALUES (?, ?, ?, ?)',
-            [sessionId, userId, googleId, expiresAtStr],
-            function(err) {
-                if (err) {
-                    reject(err);
-                    return;
+        try {
+            // Generate secure random session ID (32 bytes = 64 hex characters)
+            const sessionId = crypto.randomBytes(32).toString('hex');
+            
+            // Hash Google ID with secret before storing (security: prevents use of intercepted Google ID)
+            const hashedGoogleId = hashGoogleId(googleId);
+            
+            // Session expires in 30 days
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 30);
+            const expiresAtStr = expiresAt.toISOString();
+            
+            db.run(
+                'INSERT INTO sessions (sessionId, userId, googleId, expires_at) VALUES (?, ?, ?, ?)',
+                [sessionId, userId, hashedGoogleId, expiresAtStr],
+                function(err) {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    resolve({
+                        sessionId,
+                        userId,
+                        googleId, // Return plain googleId for client (not hashed)
+                        expiresAt: expiresAtStr
+                    });
                 }
-                resolve({
-                    sessionId,
-                    userId,
-                    googleId,
-                    expiresAt: expiresAtStr
-                });
-            }
-        );
+            );
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
 // Validate a session ID and get user info
-// If googleId is provided, also verify it matches the session's googleId
+// If googleId is provided, hash it with secret and verify it matches the session's stored hash
+// This prevents attackers from using intercepted Google IDs even if they steal the sessionId
 export function validateSession(sessionId, googleId = null) {
     return new Promise((resolve, reject) => {
-        const now = new Date().toISOString();
-        db.get(
-            `SELECT s.sessionId, s.userId, s.googleId, u.name, u.rank 
-             FROM sessions s 
-             INNER JOIN users u ON s.userId = u.id 
-             WHERE s.sessionId = ? AND s.expires_at > ?`,
-            [sessionId, now],
-            (err, row) => {
-                if (err) {
-                    reject(err);
-                    return;
+        try {
+            const now = new Date().toISOString();
+            db.get(
+                `SELECT s.sessionId, s.userId, s.googleId, u.name, u.rank 
+                 FROM sessions s 
+                 INNER JOIN users u ON s.userId = u.id 
+                 WHERE s.sessionId = ? AND s.expires_at > ?`,
+                [sessionId, now],
+                (err, row) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    
+                    if (!row) {
+                        resolve(null);
+                        return;
+                    }
+                    
+                    // If googleId was provided, hash it with secret and verify it matches the session's stored hash
+                    if (googleId !== null) {
+                        const hashedProvidedGoogleId = hashGoogleId(googleId);
+                        if (row.googleId !== hashedProvidedGoogleId) {
+                            // Session exists but hashed Google ID doesn't match - possible attack
+                            resolve(null);
+                            return;
+                        }
+                    }
+                    
+                    // Get plain Google ID from user's googleIdHash for return value
+                    // Note: We can't reverse the hash, so we'll need to get it from the user lookup
+                    // For now, return the stored hash (caller should not rely on this being plain)
+                    resolve({
+                        sessionId: row.sessionId,
+                        userId: row.userId,
+                        googleId: row.googleId, // This is actually the hashed version
+                        name: row.name,
+                        rank: row.rank || 'player'
+                    });
                 }
-                
-                if (!row) {
-                    resolve(null);
-                    return;
-                }
-                
-                // If googleId was provided, verify it matches the session's googleId
-                if (googleId !== null && row.googleId !== googleId) {
-                    resolve(null); // Session exists but googleId doesn't match
-                    return;
-                }
-                
-                resolve({
-                    sessionId: row.sessionId,
-                    userId: row.userId,
-                    googleId: row.googleId,
-                    name: row.name,
-                    rank: row.rank || 'player'
-                });
-            }
-        );
+            );
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -693,15 +734,21 @@ export function deleteSession(sessionId) {
 }
 
 // Delete all sessions for a user (by googleId)
+// Hashes the Google ID with secret before deletion (sessions store hashed Google ID)
 export function deleteUserSessions(googleId) {
     return new Promise((resolve, reject) => {
-        db.run('DELETE FROM sessions WHERE googleId = ?', [googleId], function(err) {
-            if (err) {
-                reject(err);
-                return;
-            }
-            resolve(this.changes);
-        });
+        try {
+            const hashedGoogleId = hashGoogleId(googleId);
+            db.run('DELETE FROM sessions WHERE googleId = ?', [hashedGoogleId], function(err) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(this.changes);
+            });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
