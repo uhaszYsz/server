@@ -524,7 +524,7 @@ export function nameExists(name) {
             return;
         }
         
-        db.get('SELECT googleId FROM users WHERE name = ?', [name.trim()], (err, row) => {
+        db.get('SELECT id FROM users WHERE name = ?', [name.trim()], (err, row) => {
             if (err) {
                 reject(err);
                 return;
@@ -869,36 +869,65 @@ export function getForumCategoryByName(name, parentId = null) {
 }
 
 export function getForumThreads(categoryId, authorKeys = null) {
-    return new Promise((resolve, reject) => {
-        const params = [categoryId];
-        let authorClause = '';
-        const keys = Array.isArray(authorKeys)
-            ? authorKeys.filter(Boolean)
-            : (authorKeys ? [authorKeys] : []);
-        if (keys.length > 0) {
-            const placeholders = keys.map(() => '?').join(',');
-            authorClause = ` AND t.author IN (${placeholders})`;
-            params.push(...keys);
-        }
-
-        db.all(`
-            SELECT t.*, 
-                   (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id AND author != 'system') as post_count,
-                   (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date,
-                   u.name as author_name,
-                   COALESCE(u.rank, 'player') as author_rank
-            FROM forum_threads t
-            LEFT JOIN users u ON u.googleId = t.author
-            WHERE t.category_id = ?
-            ${authorClause}
-            ORDER BY t.updated_at DESC
-        `, params, (err, rows) => {
-            if (err) {
-                reject(err);
-                return;
+    return new Promise(async (resolve, reject) => {
+        try {
+            const params = [categoryId];
+            let authorClause = '';
+            const keys = Array.isArray(authorKeys)
+                ? authorKeys.filter(Boolean)
+                : (authorKeys ? [authorKeys] : []);
+            if (keys.length > 0) {
+                const placeholders = keys.map(() => '?').join(',');
+                authorClause = ` AND t.author IN (${placeholders})`;
+                params.push(...keys);
             }
-            resolve(rows);
-        });
+
+            db.all(`
+                SELECT t.*, 
+                       (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id AND author != 'system') as post_count,
+                       (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date
+                FROM forum_threads t
+                WHERE t.category_id = ?
+                ${authorClause}
+                ORDER BY t.updated_at DESC
+            `, params, async (err, rows) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                
+                // Look up author names and ranks for each thread
+                const rowsWithAuthors = await Promise.all(rows.map(async (row) => {
+                    if (row.author && row.author !== 'system') {
+                        try {
+                            const user = await getUserByGoogleId(row.author);
+                            return {
+                                ...row,
+                                author_name: user ? user.name : null,
+                                author_rank: user ? (user.rank || 'player') : 'player'
+                            };
+                        } catch (err) {
+                            console.error(`Error looking up author ${row.author}:`, err);
+                            return {
+                                ...row,
+                                author_name: null,
+                                author_rank: 'player'
+                            };
+                        }
+                    } else {
+                        return {
+                            ...row,
+                            author_name: row.author === 'system' ? 'System' : null,
+                            author_rank: 'player'
+                        };
+                    }
+                }));
+                
+                resolve(rowsWithAuthors);
+            });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -954,21 +983,51 @@ export function getForumCategoryStats(categoryId, authorGoogleId = null) {
 }
 
 export function getForumThread(threadId) {
-    return new Promise((resolve, reject) => {
-        db.get(`
-            SELECT t.*, 
-                   u.name as author_name,
-                   COALESCE(u.rank, 'player') as author_rank
-            FROM forum_threads t
-            LEFT JOIN users u ON u.googleId = t.author
-            WHERE t.id = ?
-        `, [threadId], (err, row) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            resolve(row);
-        });
+    return new Promise(async (resolve, reject) => {
+        try {
+            db.get(`
+                SELECT t.*
+                FROM forum_threads t
+                WHERE t.id = ?
+            `, [threadId], async (err, row) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                
+                if (!row) {
+                    resolve(null);
+                    return;
+                }
+                
+                // Look up author name and rank
+                if (row.author && row.author !== 'system') {
+                    try {
+                        const user = await getUserByGoogleId(row.author);
+                        resolve({
+                            ...row,
+                            author_name: user ? user.name : null,
+                            author_rank: user ? (user.rank || 'player') : 'player'
+                        });
+                    } catch (err) {
+                        console.error(`Error looking up author ${row.author}:`, err);
+                        resolve({
+                            ...row,
+                            author_name: null,
+                            author_rank: 'player'
+                        });
+                    }
+                } else {
+                    resolve({
+                        ...row,
+                        author_name: row.author === 'system' ? 'System' : null,
+                        author_rank: 'player'
+                    });
+                }
+            });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -986,22 +1045,51 @@ export function createForumThread(categoryId, title, author) {
 }
 
 export function getForumPosts(threadId) {
-    return new Promise((resolve, reject) => {
-        db.all(`
-            SELECT p.*, 
-                   u.name as author_name,
-                   COALESCE(u.rank, 'player') as author_rank
-            FROM forum_posts p
-            LEFT JOIN users u ON u.googleId = p.author
-            WHERE p.thread_id = ?
-            ORDER BY p.created_at ASC
-        `, [threadId], (err, rows) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            resolve(rows);
-        });
+    return new Promise(async (resolve, reject) => {
+        try {
+            db.all(`
+                SELECT p.*
+                FROM forum_posts p
+                WHERE p.thread_id = ?
+                ORDER BY p.created_at ASC
+            `, [threadId], async (err, rows) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                
+                // Look up author names and ranks for each post
+                const rowsWithAuthors = await Promise.all(rows.map(async (row) => {
+                    if (row.author && row.author !== 'system') {
+                        try {
+                            const user = await getUserByGoogleId(row.author);
+                            return {
+                                ...row,
+                                author_name: user ? user.name : null,
+                                author_rank: user ? (user.rank || 'player') : 'player'
+                            };
+                        } catch (err) {
+                            console.error(`Error looking up author ${row.author}:`, err);
+                            return {
+                                ...row,
+                                author_name: null,
+                                author_rank: 'player'
+                            };
+                        }
+                    } else {
+                        return {
+                            ...row,
+                            author_name: row.author === 'system' ? 'System' : null,
+                            author_rank: 'player'
+                        };
+                    }
+                }));
+                
+                resolve(rowsWithAuthors);
+            });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
