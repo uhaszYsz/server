@@ -4,6 +4,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 // Password hashing configuration
 const BCRYPT_ROUNDS = 10;
@@ -195,6 +196,25 @@ export function initDatabase() {
                                     return;
                                 }
                                 console.log('✅ Campaign levels table initialized');
+                                
+                                // Create sessions table for authentication
+                                db.run(`
+                                    CREATE TABLE IF NOT EXISTS sessions (
+                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        sessionId TEXT UNIQUE NOT NULL,
+                                        userId INTEGER NOT NULL,
+                                        googleId TEXT NOT NULL,
+                                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                        expires_at TEXT NOT NULL,
+                                        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+                                    )
+                                `, (err) => {
+                                    if (err) {
+                                        console.error('Error creating sessions table:', err);
+                                    } else {
+                                        console.log('✅ Sessions table initialized');
+                                    }
+                                });
                                 
                                 // Initialize default categories
                                 initForumCategories().then(() => {
@@ -593,6 +613,114 @@ export function googleIdExists(googleId) {
     });
 }
 
+// Session management functions
+// Create a new session
+export function createSession(userId, googleId) {
+    return new Promise((resolve, reject) => {
+        // Generate secure random session ID (32 bytes = 64 hex characters)
+        const sessionId = crypto.randomBytes(32).toString('hex');
+        
+        // Session expires in 30 days
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        const expiresAtStr = expiresAt.toISOString();
+        
+        db.run(
+            'INSERT INTO sessions (sessionId, userId, googleId, expires_at) VALUES (?, ?, ?, ?)',
+            [sessionId, userId, googleId, expiresAtStr],
+            function(err) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve({
+                    sessionId,
+                    userId,
+                    googleId,
+                    expiresAt: expiresAtStr
+                });
+            }
+        );
+    });
+}
+
+// Validate a session ID and get user info
+export function validateSession(sessionId) {
+    return new Promise((resolve, reject) => {
+        const now = new Date().toISOString();
+        db.get(
+            `SELECT s.sessionId, s.userId, s.googleId, u.name, u.email, u.rank 
+             FROM sessions s 
+             INNER JOIN users u ON s.userId = u.id 
+             WHERE s.sessionId = ? AND s.expires_at > ?`,
+            [sessionId, now],
+            (err, row) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                
+                if (!row) {
+                    resolve(null);
+                    return;
+                }
+                
+                resolve({
+                    sessionId: row.sessionId,
+                    userId: row.userId,
+                    googleId: row.googleId,
+                    name: row.name,
+                    email: row.email,
+                    rank: row.rank || 'player'
+                });
+            }
+        );
+    });
+}
+
+// Delete a session
+export function deleteSession(sessionId) {
+    return new Promise((resolve, reject) => {
+        db.run('DELETE FROM sessions WHERE sessionId = ?', [sessionId], function(err) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(this.changes > 0);
+        });
+    });
+}
+
+// Delete all sessions for a user
+export function deleteUserSessions(googleId) {
+    return new Promise((resolve, reject) => {
+        db.run('DELETE FROM sessions WHERE googleId = ?', [googleId], function(err) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(this.changes);
+        });
+    });
+}
+
+// Clean up expired sessions
+export function cleanupExpiredSessions() {
+    return new Promise((resolve, reject) => {
+        const now = new Date().toISOString();
+        db.run('DELETE FROM sessions WHERE expires_at <= ?', [now], function(err) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            if (this.changes > 0) {
+                console.log(`[Sessions] Cleaned up ${this.changes} expired sessions`);
+            }
+            resolve(this.changes);
+        });
+    });
+}
+
 // Initialize default forum categories
 function initForumCategories() {
     return new Promise((resolve, reject) => {
@@ -666,7 +794,7 @@ function initForumCategories() {
                                 // Define subcategories with order
                             const subcategories = [
                                 { name: 'General', parent_id: discussionsId, description: 'General game discussions', order: 1 },
-                                { name: 'Help', parent_id: discussionsId, description: 'Get help', order: 2 },
+                                { name: 'Help', parent_id: discussionsId, description: 'Ask questions here', order: 2 },
                                 { name: 'Bug reports', parent_id: discussionsId, description: 'Report bugs', order: 3 },
                                 { name: 'Levels', parent_id: sharedId, description: 'Share levels', order: 1 },
                                 { name: 'Objects', parent_id: sharedId, description: 'Share objects', order: 2 },

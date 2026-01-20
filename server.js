@@ -13,6 +13,7 @@ import { JSDOM } from 'jsdom';
 import * as spritesDb from './spritesDatabase.js';
 import OpenAI from 'openai';
 import express from 'express';
+import https from 'https';
 
 // Password hashing configuration
 const BCRYPT_ROUNDS = 10; // Number of salt rounds (higher = more secure but slower)
@@ -116,6 +117,42 @@ const APP_FILES_DIRECTORY = path.join(__dirname, '..', 'MyApplication', 'app', '
 const OPENAI_KEY_FILE = path.join(__dirname, 'oak.txt');
 let _openaiClient = null;
 let _openaiApiKeyCached = null; // null = not loaded yet, '' = missing
+
+// Google OAuth Web Client ID (read from oak.txt, can be on same file or separate)
+let _googleClientIdCached = null; // null = not loaded yet, '' = missing
+function loadGoogleClientId() {
+    if (_googleClientIdCached !== null) return _googleClientIdCached;
+    
+    try {
+        if (existsSync(OPENAI_KEY_FILE)) {
+            const fileContent = readFileSync(OPENAI_KEY_FILE, 'utf8').trim();
+            const lines = fileContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            
+            // Look for a line that looks like a Google Client ID (ends with .apps.googleusercontent.com)
+            for (const line of lines) {
+                if (line.includes('.apps.googleusercontent.com')) {
+                    _googleClientIdCached = line;
+                    console.log('[GoogleAuth] Loaded Google Client ID from oak.txt');
+                    return _googleClientIdCached;
+                }
+            }
+            
+            // If no Google Client ID found, but file exists, check if it's the only content
+            // (in case the user only put the Google Client ID in the file)
+            if (lines.length > 0 && lines[0] && !lines[0].startsWith('sk-')) {
+                // If first line doesn't look like an OpenAI key, might be Google Client ID
+                _googleClientIdCached = lines[0];
+                console.log('[GoogleAuth] Loaded potential Google Client ID from oak.txt');
+                return _googleClientIdCached;
+            }
+        }
+    } catch (error) {
+        console.warn('[GoogleAuth] Error reading Google Client ID from oak.txt:', error.message);
+    }
+    
+    _googleClientIdCached = ''; // Mark as missing
+    return _googleClientIdCached;
+}
 function loadOpenAIKeyOnce() {
     if (_openaiApiKeyCached !== null) return _openaiApiKeyCached;
 
@@ -257,6 +294,114 @@ function generateRandomItem(slotName) {
 }
 
 // Default stats for new players
+// Session validation helper
+async function validateSessionForRequest(ws, sessionId) {
+    if (!sessionId) {
+        return { valid: false, error: 'Session ID required' };
+    }
+    
+    const sessionInfo = await db.validateSession(sessionId);
+    if (!sessionInfo) {
+        return { valid: false, error: 'Invalid or expired session' };
+    }
+    
+    // Verify the session matches the WebSocket's stored data
+    if (ws.googleId && ws.googleId !== sessionInfo.googleId) {
+        console.warn(`[Session] Session GoogleId mismatch: ws=${ws.googleId}, session=${sessionInfo.googleId}`);
+        return { valid: false, error: 'Session mismatch' };
+    }
+    
+    // Update WebSocket with session info
+    ws.googleId = sessionInfo.googleId;
+    ws.userId = sessionInfo.userId;
+    ws.username = sessionInfo.name;
+    ws.name = sessionInfo.name;
+    ws.email = sessionInfo.email;
+    ws.rank = sessionInfo.rank || 'player';
+    ws.isAdmin = (sessionInfo.rank === 'admin');
+    ws.sessionId = sessionId;
+    
+    return { valid: true, user: sessionInfo };
+}
+
+// Verify Google ID token
+async function verifyGoogleIdToken(idToken) {
+    return new Promise((resolve, reject) => {
+        if (!idToken) {
+            resolve(null);
+            return;
+        }
+        
+        // Use Google's tokeninfo endpoint to verify the token
+        const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`;
+        
+        https.get(url, (res) => {
+            let data = '';
+            
+            res.on('data', (chunk) => {
+                data += chunk;
+            });
+            
+            res.on('end', () => {
+                try {
+                    if (res.statusCode !== 200) {
+                        console.warn(`[GoogleAuth] Token verification failed with status ${res.statusCode}`);
+                        resolve(null);
+                        return;
+                    }
+                    
+                    const tokenInfo = JSON.parse(data);
+                    
+                    // Verify the token is valid and has required fields
+                    if (tokenInfo.error) {
+                        console.warn(`[GoogleAuth] Token verification error: ${tokenInfo.error}`);
+                        resolve(null);
+                        return;
+                    }
+                    
+                    // Check if token has expired
+                    if (tokenInfo.exp) {
+                        const expTime = parseInt(tokenInfo.exp) * 1000; // Convert to milliseconds
+                        if (Date.now() >= expTime) {
+                            console.warn('[GoogleAuth] Token has expired');
+                            resolve(null);
+                            return;
+                        }
+                    }
+                    
+                    // Verify audience (client ID) if we have it configured
+                    const googleClientId = loadGoogleClientId();
+                    if (googleClientId && tokenInfo.aud) {
+                        // Verify the token was issued for our client ID
+                        if (tokenInfo.aud !== googleClientId) {
+                            console.warn(`[GoogleAuth] Token audience mismatch: expected ${googleClientId}, got ${tokenInfo.aud}`);
+                            resolve(null);
+                            return;
+                        }
+                    } else if (googleClientId) {
+                        console.warn('[GoogleAuth] Token missing audience field');
+                    }
+                    
+                    // Token is valid, return user info
+                    resolve({
+                        googleId: tokenInfo.sub || tokenInfo.user_id,
+                        email: tokenInfo.email,
+                        emailVerified: tokenInfo.email_verified === 'true',
+                        name: tokenInfo.name,
+                        picture: tokenInfo.picture
+                    });
+                } catch (error) {
+                    console.error('[GoogleAuth] Error parsing token info:', error);
+                    resolve(null);
+                }
+            });
+        }).on('error', (error) => {
+            console.error('[GoogleAuth] Error verifying token:', error);
+            resolve(null);
+        });
+    });
+}
+
 function getDefaultStats() {
     return {
         maxHp: 100,
@@ -1279,6 +1424,23 @@ wss.on('connection', (ws, req) => {
     
     try {
       const data = msgpack.decode(message);
+      
+      // Validate session if sessionId is provided (for authenticated requests)
+      if (data.sessionId && typeof data.sessionId === 'string') {
+        const sessionValidation = await validateSessionForRequest(ws, data.sessionId);
+        if (!sessionValidation.valid) {
+          // Session invalid - send error and don't process request
+          // Only send error for non-login requests (to avoid loop)
+          if (data.type !== 'googleLogin') {
+            ws.send(msgpack.encode({ 
+              type: 'error', 
+              message: sessionValidation.error || 'Invalid session',
+              sessionExpired: true
+            }));
+            return;
+          }
+        }
+      }
       
       // (Verification removed)
       
@@ -2852,9 +3014,9 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to list lobby rooms' }));
         }
       } else if (data.type === 'getLevel') {
-        // Allow unregistered users to import levels from forum
-        // No authentication required for reading public level data
-        
+        // Allow unregistered users to import levels (level data is public on the forum)
+        // Removed authentication check: if (!ws.username)
+
         try {
             const identifier = typeof data.slug === 'string' ? data.slug : data.name;
             const slug = ensureValidSlug(identifier);
@@ -3434,17 +3596,41 @@ wss.on('connection', (ws, req) => {
             }));
         }
       } else if (data.type === 'googleLogin') {
-        // Handle Google login - verify email and googleId
-        if (!data.email || !data.id) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Email and Google ID required' }));
-            return;
-        }
-        
+        // Handle Google login with proper authentication
         try {
-            // Check if user exists by googleId first
-            const existingUser = await db.getUserByGoogleId(data.id);
+            let verifiedGoogleId = null;
+            let verifiedEmail = null;
             
-            if (!existingUser) {
+            // If ID token is provided, verify it with Google
+            if (data.idToken) {
+                console.log('[GoogleLogin] Verifying ID token with Google...');
+                const tokenInfo = await verifyGoogleIdToken(data.idToken);
+                
+                if (tokenInfo) {
+                    // Token verified successfully
+                    verifiedGoogleId = tokenInfo.googleId;
+                    verifiedEmail = tokenInfo.email;
+                    console.log(`[GoogleLogin] Token verified: ${verifiedEmail} (${verifiedGoogleId})`);
+                } else {
+                    console.warn('[GoogleLogin] Token verification failed');
+                    ws.send(msgpack.encode({ type: 'error', message: 'Invalid authentication token' }));
+                    return;
+                }
+            } else {
+                // Fallback: Use provided email and ID (less secure, but allows older clients)
+                if (!data.email || !data.id) {
+                    ws.send(msgpack.encode({ type: 'error', message: 'Email, Google ID, or ID token required' }));
+                    return;
+                }
+                console.warn('[GoogleLogin] No ID token provided, using fallback verification');
+                verifiedGoogleId = data.id;
+                verifiedEmail = data.email;
+            }
+            
+            // Check if user exists by googleId
+            let user = await db.getUserByGoogleId(verifiedGoogleId);
+            
+            if (!user) {
                 // User doesn't exist, create new user with random username
                 try {
                     const defaultStats = getDefaultStats();
@@ -3454,59 +3640,74 @@ wss.on('connection', (ws, req) => {
                     const randomName = await generateUniqueRandomUsername();
                     
                     await db.createUser({
-                        email: data.email,
-                        googleId: data.id,
+                        email: verifiedEmail,
+                        googleId: verifiedGoogleId,
                         name: randomName,
                         stats: defaultStats,
                         inventory: inventory,
                         equipment: equipment,
                         weaponData: weaponData
                     });
-                    console.log(`✅ Created new Google user: ${data.email} (${data.id}) with random name: ${randomName}`);
+                    console.log(`✅ Created new Google user: ${verifiedEmail} (${verifiedGoogleId}) with random name: ${randomName}`);
+                    
+                    // Get the newly created user
+                    user = await db.getUserByGoogleId(verifiedGoogleId);
                 } catch (createErr) {
                     console.error('Failed to create Google user:', createErr);
                     console.error('Create error details:', createErr.message, createErr.stack);
                     ws.send(msgpack.encode({ type: 'error', message: 'Failed to create account: ' + createErr.message }));
                     return;
                 }
+            } else {
+                // Verify email matches if we have a verified email from token
+                if (verifiedEmail && user.email !== verifiedEmail) {
+                    // Update email if it changed
+                    await db.updateUser(verifiedGoogleId, { email: verifiedEmail });
+                    console.log(`[GoogleLogin] Updated email for user ${verifiedGoogleId}`);
+                }
+                
+                // Verify email matches (additional security check for fallback case)
+                if (!data.idToken) {
+                    const isValid = await db.verifyUserByEmailAndGoogleId(verifiedEmail, verifiedGoogleId);
+                    if (!isValid) {
+                        console.warn(`[GoogleLogin] Email verification failed for ${verifiedEmail} (${verifiedGoogleId})`);
+                        ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
+                        return;
+                    }
+                }
             }
             
-            // Get user data
-            const user = await db.getUserByGoogleId(data.id);
             if (!user) {
                 ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
             
-            // Verify email matches the stored email (security check)
-            const isValid = await db.verifyUserByEmailAndGoogleId(data.email, data.id);
-            if (!isValid) {
-                console.warn(`[GoogleLogin] Email verification failed for ${data.email} (${data.id})`);
-                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
-                return;
-            }
+            // Create a session for this login
+            const session = await db.createSession(user.id, verifiedGoogleId);
             
             // Set authentication data on WebSocket
             ws.username = user.name;
             ws.name = user.name;
-            ws.email = data.email;
-            ws.googleId = data.id;
-            ws.userId = user.id; // Store user ID for folder operations
+            ws.email = verifiedEmail;
+            ws.googleId = verifiedGoogleId;
+            ws.userId = user.id;
+            ws.sessionId = session.sessionId; // Store session ID on WebSocket
             ws.rank = user.rank || 'player';
             ws.isAdmin = (ws.rank === 'admin');
             
-            // Send login success
+            // Send login success with session ID
             ws.send(msgpack.encode({
                 type: 'loginSuccess',
                 username: user.name,
                 name: user.name,
-                rank: user.rank || 'player'
+                rank: user.rank || 'player',
+                sessionId: session.sessionId // Send session ID to client
             }));
             
-            console.log(`✅ Google login successful: ${data.email} (${data.id})`);
+            console.log(`✅ Google login successful: ${verifiedEmail} (${verifiedGoogleId}) - Session: ${session.sessionId.substring(0, 16)}...`);
         } catch (error) {
             console.error('Google login error:', error);
-            ws.send(msgpack.encode({ type: 'error', message: 'Login failed' }));
+            ws.send(msgpack.encode({ type: 'error', message: 'Login failed: ' + error.message }));
         }
       } else if (data.type === 'checkVerification') {
         // Check email verification status
@@ -3540,6 +3741,45 @@ wss.on('connection', (ws, req) => {
         } catch (error) {
             console.error('[checkVerification] Error:', error);
             ws.send(msgpack.encode({ type: 'verificationResult', verified: false }));
+        }
+      } else if (data.type === 'restoreSession') {
+        // Restore session from session ID
+        if (!data.sessionId || typeof data.sessionId !== 'string') {
+            ws.send(msgpack.encode({ type: 'error', message: 'Session ID required' }));
+            return;
+        }
+        
+        try {
+            const sessionValidation = await validateSessionForRequest(ws, data.sessionId);
+            if (!sessionValidation.valid) {
+                ws.send(msgpack.encode({ 
+                    type: 'error', 
+                    message: sessionValidation.error || 'Invalid session',
+                    sessionExpired: true
+                }));
+                return;
+            }
+            
+            // Get user data
+            const user = await db.getUserByGoogleId(sessionValidation.user.googleId);
+            if (!user) {
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+                return;
+            }
+            
+            // Send session restored
+            ws.send(msgpack.encode({
+                type: 'sessionRestored',
+                username: user.name,
+                name: user.name,
+                rank: user.rank || 'player',
+                sessionId: data.sessionId
+            }));
+            
+            console.log(`✅ Session restored: ${user.name} (${sessionValidation.user.googleId})`);
+        } catch (error) {
+            console.error('Session restore error:', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to restore session' }));
         }
       } else if (data.type === 'changeName') {
         // Change user display name
