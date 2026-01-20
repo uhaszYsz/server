@@ -1072,42 +1072,7 @@ httpApp.post('/api/app/update/download-batch', async (req, res) => {
     }
 });
 
-// Start HTTP/HTTPS server
-if (sslOptions) {
-    // Create HTTPS server
-    const httpsServer = https.createServer(sslOptions, httpApp);
-    httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
-        console.log(`✅ HTTPS server running on https://0.0.0.0:${HTTPS_PORT} (for app updates)`);
-        console.log(`   Access at: https://szkodnik.com:${HTTPS_PORT}`);
-    }).on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-            console.error(`❌ Port ${HTTPS_PORT} is already in use. Please stop the other process or change HTTPS_PORT in server.js`);
-        } else {
-            console.error('❌ Failed to start HTTPS server:', err);
-        }
-    });
-    
-    // Also keep HTTP on 8082 for backward compatibility (optional - you can remove this)
-    httpApp.listen(HTTP_PORT, '0.0.0.0', () => {
-        console.log(`✅ HTTP server running on http://0.0.0.0:${HTTP_PORT} (for app updates - backward compatibility)`);
-    }).on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-            console.warn(`⚠️  Port ${HTTP_PORT} is already in use (non-critical)`);
-        }
-    });
-} else {
-    // Fallback to HTTP if no SSL certificates
-    httpApp.listen(HTTP_PORT, '0.0.0.0', () => {
-        console.log(`✅ HTTP server running on http://0.0.0.0:${HTTP_PORT} (for app updates)`);
-        console.warn('⚠️  WARNING: Running without HTTPS - not secure for production!');
-    }).on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-            console.error(`❌ Port ${HTTP_PORT} is already in use. Please stop the other process or change HTTP_PORT in server.js`);
-        } else {
-            console.error('❌ Failed to start update HTTP server:', err);
-        }
-    });
-}
+// HTTP/HTTPS servers disabled - only WSS WebSocket server runs
 
 // Create WebSocket server - WSS only (secure)
 let wss;
