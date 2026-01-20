@@ -868,12 +868,12 @@ function cleanupMessageRateLimit(wsId) {
 // Create Express HTTP server for file downloads
 const httpApp = express();
 const HTTP_PORT = 8082; // Update server port (8081 is used by admin-server.js)
-const HTTPS_PORT = 93; // HTTPS port (custom port)
+const HTTPS_PORT = 443; // HTTPS port (standard HTTPS port)
 const WS_PORT = 8080; // WebSocket port
 
 // SSL Certificate paths (Let's Encrypt)
-const SSL_CERT_PATH = '/etc/letsencrypt/live/szkodnikmajster.duckdns.org/fullchain.pem';
-const SSL_KEY_PATH = '/etc/letsencrypt/live/szkodnikmajster.duckdns.org/privkey.pem';
+const SSL_CERT_PATH = '/etc/letsencrypt/live/szkodnik.com/fullchain.pem';
+const SSL_KEY_PATH = '/etc/letsencrypt/live/szkodnik.com/privkey.pem';
 
 // Check if SSL certificates exist
 let sslOptions = null;
@@ -896,6 +896,26 @@ if (existsSync(SSL_CERT_PATH) && existsSync(SSL_KEY_PATH)) {
 
 // Middleware
 httpApp.use(express.json());
+
+// Serve privacy policy
+httpApp.get('/privacy-policy', (req, res) => {
+    const privacyPolicyPath = path.join(__dirname, 'privacy-policy.html');
+    if (existsSync(privacyPolicyPath)) {
+        res.sendFile(privacyPolicyPath);
+    } else {
+        res.status(404).send('Privacy policy not found');
+    }
+});
+
+// Also serve on /privacy (shorter URL)
+httpApp.get('/privacy', (req, res) => {
+    const privacyPolicyPath = path.join(__dirname, 'privacy-policy.html');
+    if (existsSync(privacyPolicyPath)) {
+        res.sendFile(privacyPolicyPath);
+    } else {
+        res.status(404).send('Privacy policy not found');
+    }
+});
 
 // Calculate file hash (MD5) for version checking
 async function calculateFileHash(filePath) {
@@ -1058,7 +1078,7 @@ if (sslOptions) {
     const httpsServer = https.createServer(sslOptions, httpApp);
     httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
         console.log(`✅ HTTPS server running on https://0.0.0.0:${HTTPS_PORT} (for app updates)`);
-        console.log(`   Access at: https://szkodnikmajster.duckdns.org:${HTTPS_PORT}`);
+        console.log(`   Access at: https://szkodnik.com:${HTTPS_PORT}`);
     }).on('error', (err) => {
         if (err.code === 'EADDRINUSE') {
             console.error(`❌ Port ${HTTPS_PORT} is already in use. Please stop the other process or change HTTPS_PORT in server.js`);
@@ -1105,7 +1125,7 @@ if (sslOptions) {
         server: wssHttpsServer
     });
     console.log(`✅ WebSocket Secure (WSS) server running on wss://0.0.0.0:${WS_PORT} (accessible from all IPs)`);
-    console.log(`   Connect at: wss://szkodnikmajster.duckdns.org:${WS_PORT}`);
+    console.log(`   Connect at: wss://szkodnik.com:${WS_PORT}`);
 } else {
     // Fallback to unencrypted WS if no SSL
     wss = new WebSocketServer({ 
