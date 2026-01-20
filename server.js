@@ -1109,12 +1109,12 @@ if (sslOptions) {
     });
 }
 
-// Create WebSocket server (WSS if SSL available, WS otherwise)
+// Create WebSocket server - WSS only (secure)
 let wss;
 let wssHttpsServer = null;
 
 if (sslOptions) {
-    // Create separate HTTPS server for WSS (different port from HTTP server)
+    // Create HTTPS server for WSS
     wssHttpsServer = https.createServer(sslOptions);
     wssHttpsServer.listen(WS_PORT, '0.0.0.0', () => {
         console.log(`✅ HTTPS server for WSS running on port ${WS_PORT}`);
@@ -1127,13 +1127,9 @@ if (sslOptions) {
     console.log(`✅ WebSocket Secure (WSS) server running on wss://0.0.0.0:${WS_PORT} (accessible from all IPs)`);
     console.log(`   Connect at: wss://szkodnik.com:${WS_PORT}`);
 } else {
-    // Fallback to unencrypted WS if no SSL
-    wss = new WebSocketServer({ 
-        port: WS_PORT,
-        host: '0.0.0.0'
-    });
-    console.log(`✅ WebSocket server running on ws://0.0.0.0:${WS_PORT} (accessible from all IPs)`);
-    console.warn('⚠️  WARNING: Running without WSS - not secure for production!');
+    console.error('❌ SSL options not available - WSS server cannot start');
+    console.error('   Please configure SSL certificates to run WSS server');
+    process.exit(1);
 }
 console.log('🛡️  DDoS protection enabled:');
 console.log(`   - Max connections per IP: ${IP_CONNECTION_RATE_LIMIT} per ${IP_CONNECTION_WINDOW_MS/1000}s`);
