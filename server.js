@@ -115,39 +115,38 @@ const DEFAULT_CAMPAIGN_LEVEL_FILE = 'lev.json'; // Default slug for campaign lev
 const APP_FILES_DIRECTORY = path.join(__dirname, '..', 'MyApplication', 'app', 'src', 'main', 'assets', 'www');
 
 const OPENAI_KEY_FILE = path.join(__dirname, 'oak.txt');
+const OAUTH_CLIENT_ID_FILE = path.join(__dirname, 'oauth.txt');
 let _openaiClient = null;
 let _openaiApiKeyCached = null; // null = not loaded yet, '' = missing
 
-// Google OAuth Web Client ID (read from oak.txt, can be on same file or separate)
+// Google OAuth Web Client ID (read from oauth.txt)
 let _googleClientIdCached = null; // null = not loaded yet, '' = missing
 function loadGoogleClientId() {
     if (_googleClientIdCached !== null) return _googleClientIdCached;
     
     try {
-        if (existsSync(OPENAI_KEY_FILE)) {
-            const fileContent = readFileSync(OPENAI_KEY_FILE, 'utf8').trim();
+        if (existsSync(OAUTH_CLIENT_ID_FILE)) {
+            const fileContent = readFileSync(OAUTH_CLIENT_ID_FILE, 'utf8').trim();
             const lines = fileContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             
             // Look for a line that looks like a Google Client ID (ends with .apps.googleusercontent.com)
             for (const line of lines) {
                 if (line.includes('.apps.googleusercontent.com')) {
                     _googleClientIdCached = line;
-                    console.log('[GoogleAuth] Loaded Google Client ID from oak.txt');
+                    console.log('[GoogleAuth] Loaded Google Client ID from oauth.txt');
                     return _googleClientIdCached;
                 }
             }
             
-            // If no Google Client ID found, but file exists, check if it's the only content
-            // (in case the user only put the Google Client ID in the file)
-            if (lines.length > 0 && lines[0] && !lines[0].startsWith('sk-')) {
-                // If first line doesn't look like an OpenAI key, might be Google Client ID
+            // If no Google Client ID format found, use first non-empty line
+            if (lines.length > 0 && lines[0]) {
                 _googleClientIdCached = lines[0];
-                console.log('[GoogleAuth] Loaded potential Google Client ID from oak.txt');
+                console.log('[GoogleAuth] Loaded OAuth Client ID from oauth.txt (first line)');
                 return _googleClientIdCached;
             }
         }
     } catch (error) {
-        console.warn('[GoogleAuth] Error reading Google Client ID from oak.txt:', error.message);
+        console.warn('[GoogleAuth] Error reading Google Client ID from oauth.txt:', error.message);
     }
     
     _googleClientIdCached = ''; // Mark as missing
