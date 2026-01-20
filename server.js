@@ -3734,8 +3734,24 @@ wss.on('connection', (ws, req) => {
         }
         
         try {
+            // Get the user to check if they exist
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                console.log('[checkVerification] User not found for googleId:', ws.googleId);
+                ws.send(msgpack.encode({ type: 'verificationResult', verified: false }));
+                return;
+            }
+            
+            // If we have session ID, verification is automatic (ID token was already verified)
+            if (ws.sessionId) {
+                console.log('[checkVerification] User has valid session, verification passed');
+                ws.send(msgpack.encode({ type: 'verificationResult', verified: true }));
+                return;
+            }
+            
+            // Otherwise, verify email hash matches
             const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            console.log('[checkVerification] Verification result:', isValid);
+            console.log('[checkVerification] Email verification result:', isValid, 'for:', ws.email?.substring(0, 10) + '...');
             ws.send(msgpack.encode({ type: 'verificationResult', verified: isValid }));
         } catch (error) {
             console.error('[checkVerification] Error:', error);
