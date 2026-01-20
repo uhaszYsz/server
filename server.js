@@ -305,6 +305,7 @@ async function validateSessionForRequest(ws, sessionId) {
     }
     
     // Update WebSocket with session info
+    ws.googleId = sessionInfo.googleId;
     ws.userId = sessionInfo.userId;
     ws.username = sessionInfo.name;
     ws.name = sessionInfo.name;
@@ -3652,8 +3653,8 @@ wss.on('connection', (ws, req) => {
                 return;
             }
             
-            // Create a session for this login (only needs userId, not googleId)
-            const session = await db.createSession(user.id);
+            // Create a session for this login
+            const session = await db.createSession(user.id, verifiedGoogleId);
             
             // Set authentication data on WebSocket
             ws.username = user.name;

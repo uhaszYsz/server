@@ -202,6 +202,7 @@ export function initDatabase() {
                                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                                         sessionId TEXT UNIQUE NOT NULL,
                                         userId INTEGER NOT NULL,
+                                        googleId TEXT NOT NULL,
                                         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                         expires_at TEXT NOT NULL,
                                         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
@@ -295,9 +296,8 @@ export function getAllUsers() {
             // Parse JSON fields
             const users = rows.map(row => {
                 const user = {
-                    googleId: row.googleId,
+                    id: row.id,
                     name: row.name || null,
-                    email: row.email, // Hashed email
                     stats: JSON.parse(row.stats),
                     inventory: JSON.parse(row.inventory),
                     equipment: JSON.parse(row.equipment),
@@ -328,9 +328,8 @@ export function getUserByName(name) {
 
             // Parse JSON fields
             const user = {
-                googleId: row.googleId,
+                id: row.id,
                 name: row.name || null,
-                email: row.email || null, // Hashed email
                 stats: JSON.parse(row.stats),
                 inventory: JSON.parse(row.inventory),
                 equipment: JSON.parse(row.equipment),
@@ -535,36 +534,50 @@ export function nameExists(name) {
     });
 }
 
-// Set user rank by googleId
+// Set user rank by googleId (uses hashed Google ID for lookup)
 export function setUserRank(googleId, rank) {
-    return new Promise((resolve, reject) => {
-        // Validate rank
-        const validRanks = ['player', 'moderator', 'admin'];
-        if (!validRanks.includes(rank.toLowerCase())) {
-            reject(new Error(`Invalid rank. Must be one of: ${validRanks.join(', ')}`));
-            return;
-        }
-        
-        db.run('UPDATE users SET rank = ? WHERE googleId = ?', [rank.toLowerCase(), googleId], function(err) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(this.changes > 0);
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Validate rank
+            const validRanks = ['player', 'moderator', 'admin'];
+            if (!validRanks.includes(rank.toLowerCase())) {
+                reject(new Error(`Invalid rank. Must be one of: ${validRanks.join(', ')}`));
+                return;
             }
-        });
+            
+            // Hash Google ID for lookup
+            const googleIdHash = await hashPassword(googleId);
+            
+            db.run('UPDATE users SET rank = ? WHERE googleIdHash = ?', [rank.toLowerCase(), googleIdHash], function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.changes > 0);
+                }
+            });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
 // Delete user by googleId
 export function deleteUser(googleId) {
-    return new Promise((resolve, reject) => {
-        db.run('DELETE FROM users WHERE googleId = ?', [googleId], function(err) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(this.changes > 0);
-            }
-        });
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Hash Google ID for lookup
+            const googleIdHash = await hashPassword(googleId);
+            
+            db.run('DELETE FROM users WHERE googleIdHash = ?', [googleIdHash], function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.changes > 0);
+                }
+            });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -590,7 +603,7 @@ export function googleIdExists(googleId) {
 
 // Session management functions
 // Create a new session
-export function createSession(userId) {
+export function createSession(userId, googleId) {
     return new Promise((resolve, reject) => {
         // Generate secure random session ID (32 bytes = 64 hex characters)
         const sessionId = crypto.randomBytes(32).toString('hex');
@@ -601,8 +614,8 @@ export function createSession(userId) {
         const expiresAtStr = expiresAt.toISOString();
         
         db.run(
-            'INSERT INTO sessions (sessionId, userId, expires_at) VALUES (?, ?, ?)',
-            [sessionId, userId, expiresAtStr],
+            'INSERT INTO sessions (sessionId, userId, googleId, expires_at) VALUES (?, ?, ?, ?)',
+            [sessionId, userId, googleId, expiresAtStr],
             function(err) {
                 if (err) {
                     reject(err);
@@ -611,6 +624,7 @@ export function createSession(userId) {
                 resolve({
                     sessionId,
                     userId,
+                    googleId,
                     expiresAt: expiresAtStr
                 });
             }
@@ -623,7 +637,7 @@ export function validateSession(sessionId) {
     return new Promise((resolve, reject) => {
         const now = new Date().toISOString();
         db.get(
-            `SELECT s.sessionId, s.userId, u.name, u.rank 
+            `SELECT s.sessionId, s.userId, s.googleId, u.name, u.rank 
              FROM sessions s 
              INNER JOIN users u ON s.userId = u.id 
              WHERE s.sessionId = ? AND s.expires_at > ?`,
@@ -642,6 +656,7 @@ export function validateSession(sessionId) {
                 resolve({
                     sessionId: row.sessionId,
                     userId: row.userId,
+                    googleId: row.googleId,
                     name: row.name,
                     rank: row.rank || 'player'
                 });
@@ -663,10 +678,10 @@ export function deleteSession(sessionId) {
     });
 }
 
-// Delete all sessions for a user (by userId)
-export function deleteUserSessions(userId) {
+// Delete all sessions for a user (by googleId)
+export function deleteUserSessions(googleId) {
     return new Promise((resolve, reject) => {
-        db.run('DELETE FROM sessions WHERE userId = ?', [userId], function(err) {
+        db.run('DELETE FROM sessions WHERE googleId = ?', [googleId], function(err) {
             if (err) {
                 reject(err);
                 return;
