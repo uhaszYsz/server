@@ -294,14 +294,19 @@ function generateRandomItem(slotName) {
 
 // Default stats for new players
 // Session validation helper
-async function validateSessionForRequest(ws, sessionId) {
+async function validateSessionForRequest(ws, sessionId, googleId = null) {
     if (!sessionId) {
         return { valid: false, error: 'Session ID required' };
     }
     
-    const sessionInfo = await db.validateSession(sessionId);
+    // Require googleId for session validation (security: bind session to Google ID)
+    if (!googleId) {
+        return { valid: false, error: 'Google ID required for session validation' };
+    }
+    
+    const sessionInfo = await db.validateSession(sessionId, googleId);
     if (!sessionInfo) {
-        return { valid: false, error: 'Invalid or expired session' };
+        return { valid: false, error: 'Invalid or expired session, or Google ID mismatch' };
     }
     
     // Update WebSocket with session info
@@ -1418,8 +1423,10 @@ wss.on('connection', (ws, req) => {
       const data = msgpack.decode(message);
       
       // Validate session if sessionId is provided (for authenticated requests)
+      // Require both sessionId and googleId for security (bind session to Google ID)
       if (data.sessionId && typeof data.sessionId === 'string') {
-        const sessionValidation = await validateSessionForRequest(ws, data.sessionId);
+        const googleId = data.id || null; // Get googleId from request
+        const sessionValidation = await validateSessionForRequest(ws, data.sessionId, googleId);
         if (!sessionValidation.valid) {
           // Session invalid - send error and don't process request
           // Only send error for non-login requests (to avoid loop)
@@ -3695,8 +3702,9 @@ wss.on('connection', (ws, req) => {
         
         try {
             // First, try to restore session if sessionId is provided in the request
-            if (data.sessionId && typeof data.sessionId === 'string') {
-                const sessionValidation = await validateSessionForRequest(ws, data.sessionId);
+            // Require both sessionId and googleId for security
+            if (data.sessionId && typeof data.sessionId === 'string' && data.id) {
+                const sessionValidation = await validateSessionForRequest(ws, data.sessionId, data.id);
                 if (sessionValidation.valid) {
                     console.log('[checkVerification] Session restored from request, verification passed');
                     ws.send(msgpack.encode({ type: 'verificationResult', verified: true }));
@@ -3727,14 +3735,19 @@ wss.on('connection', (ws, req) => {
             ws.send(msgpack.encode({ type: 'verificationResult', verified: false }));
         }
       } else if (data.type === 'restoreSession') {
-        // Restore session from session ID
+        // Restore session from session ID - requires both sessionId and googleId for security
         if (!data.sessionId || typeof data.sessionId !== 'string') {
             ws.send(msgpack.encode({ type: 'error', message: 'Session ID required' }));
             return;
         }
         
+        if (!data.id) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Google ID required for session restoration' }));
+            return;
+        }
+        
         try {
-            const sessionValidation = await validateSessionForRequest(ws, data.sessionId);
+            const sessionValidation = await validateSessionForRequest(ws, data.sessionId, data.id);
             if (!sessionValidation.valid) {
                 ws.send(msgpack.encode({ 
                     type: 'error', 

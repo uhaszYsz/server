@@ -640,7 +640,8 @@ export function createSession(userId, googleId) {
 }
 
 // Validate a session ID and get user info
-export function validateSession(sessionId) {
+// If googleId is provided, also verify it matches the session's googleId
+export function validateSession(sessionId, googleId = null) {
     return new Promise((resolve, reject) => {
         const now = new Date().toISOString();
         db.get(
@@ -657,6 +658,12 @@ export function validateSession(sessionId) {
                 
                 if (!row) {
                     resolve(null);
+                    return;
+                }
+                
+                // If googleId was provided, verify it matches the session's googleId
+                if (googleId !== null && row.googleId !== googleId) {
+                    resolve(null); // Session exists but googleId doesn't match
                     return;
                 }
                 
