@@ -240,6 +240,12 @@ export async function verifyPassword(password, hash) {
     return await bcrypt.compare(password, hash);
 }
 
+// Hash a Google ID deterministically (for lookups - same input always produces same hash)
+// Uses SHA-256 instead of bcrypt because we need deterministic hashing for database lookups
+export function hashGoogleId(googleId) {
+    return crypto.createHash('sha256').update(googleId).digest('hex');
+}
+
 // Create a new user (requires googleId and name)
 export function createUser(user) {
     return new Promise(async (resolve, reject) => {
@@ -251,7 +257,8 @@ export function createUser(user) {
             }
             
             // Hash the Google ID before storing (for privacy)
-            const googleIdHash = await hashPassword(user.googleId);
+            // Use deterministic hash (SHA-256) so we can look it up later
+            const googleIdHash = hashGoogleId(user.googleId);
             
             const stmt = db.prepare(`
                 INSERT INTO users (googleIdHash, name, stats, inventory, equipment, weaponData, passiveAbility, rank, verified)
@@ -374,10 +381,10 @@ export function getUserById(id) {
 
 // Get user by Google ID (lookup by hashed Google ID)
 export function getUserByGoogleId(googleId) {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         try {
-            // Hash the Google ID for lookup
-            const googleIdHash = await hashPassword(googleId);
+            // Hash the Google ID for lookup (deterministic hash)
+            const googleIdHash = hashGoogleId(googleId);
             
             db.get('SELECT * FROM users WHERE googleIdHash = ?', [googleIdHash], (err, row) => {
                 if (err) {
@@ -432,8 +439,8 @@ export function getUserByEmailAndGoogleId(email, googleId) {
 export function updateUser(googleId, userData) {
     return new Promise(async (resolve, reject) => {
         try {
-            // Hash Google ID for lookup
-            const googleIdHash = await hashPassword(googleId);
+            // Hash Google ID for lookup (deterministic hash)
+            const googleIdHash = hashGoogleId(googleId);
             
             // Get existing name if not updating
             let nameToStore = userData.name || null;
@@ -496,8 +503,8 @@ export function updateName(googleId, newName) {
                 return;
             }
             
-            // Hash Google ID for lookup
-            const googleIdHash = await hashPassword(googleId);
+            // Hash Google ID for lookup (deterministic hash)
+            const googleIdHash = hashGoogleId(googleId);
             
             db.run('UPDATE users SET name = ? WHERE googleIdHash = ?', [trimmedName, googleIdHash], function(err) {
                 if (err) {
@@ -545,8 +552,8 @@ export function setUserRank(googleId, rank) {
                 return;
             }
             
-            // Hash Google ID for lookup
-            const googleIdHash = await hashPassword(googleId);
+            // Hash Google ID for lookup (deterministic hash)
+            const googleIdHash = hashGoogleId(googleId);
             
             db.run('UPDATE users SET rank = ? WHERE googleIdHash = ?', [rank.toLowerCase(), googleIdHash], function(err) {
                 if (err) {
@@ -565,8 +572,8 @@ export function setUserRank(googleId, rank) {
 export function deleteUser(googleId) {
     return new Promise(async (resolve, reject) => {
         try {
-            // Hash Google ID for lookup
-            const googleIdHash = await hashPassword(googleId);
+            // Hash Google ID for lookup (deterministic hash)
+            const googleIdHash = hashGoogleId(googleId);
             
             db.run('DELETE FROM users WHERE googleIdHash = ?', [googleIdHash], function(err) {
                 if (err) {
@@ -583,10 +590,10 @@ export function deleteUser(googleId) {
 
 // Check if googleId exists (lookup by hashed Google ID)
 export function googleIdExists(googleId) {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         try {
-            // Hash the Google ID for lookup
-            const googleIdHash = await hashPassword(googleId);
+            // Hash the Google ID for lookup (deterministic hash)
+            const googleIdHash = hashGoogleId(googleId);
             
             db.get('SELECT id FROM users WHERE googleIdHash = ?', [googleIdHash], (err, row) => {
                 if (err) {

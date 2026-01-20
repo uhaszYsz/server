@@ -3686,13 +3686,27 @@ wss.on('connection', (ws, req) => {
             'hasSessionId:',
             ws.sessionId ? 'present' : 'missing',
             'hasUserId:',
-            ws.userId ? 'present' : 'missing'
+            ws.userId ? 'present' : 'missing',
+            'data.sessionId:',
+            data.sessionId ? 'present' : 'missing',
+            'data.id:',
+            data.id ? 'present' : 'missing'
         );
         
         try {
-            // If we have session ID, verification is automatic (ID token was already verified)
+            // First, try to restore session if sessionId is provided in the request
+            if (data.sessionId && typeof data.sessionId === 'string') {
+                const sessionValidation = await validateSessionForRequest(ws, data.sessionId);
+                if (sessionValidation.valid) {
+                    console.log('[checkVerification] Session restored from request, verification passed');
+                    ws.send(msgpack.encode({ type: 'verificationResult', verified: true }));
+                    return;
+                }
+            }
+            
+            // If we have session ID on WebSocket, verification is automatic (ID token was already verified)
             if (ws.sessionId && ws.userId) {
-                console.log('[checkVerification] User has valid session, verification passed');
+                console.log('[checkVerification] User has valid session on WebSocket, verification passed');
                 ws.send(msgpack.encode({ type: 'verificationResult', verified: true }));
                 return;
             }
@@ -3701,7 +3715,7 @@ wss.on('connection', (ws, req) => {
             if (data && data.id) {
                 const user = await db.getUserByGoogleId(data.id);
                 const isValid = !!user;
-                console.log('[checkVerification] User lookup result:', isValid);
+                console.log('[checkVerification] User lookup by googleId result:', isValid, user ? `(user: ${user.name})` : '');
                 ws.send(msgpack.encode({ type: 'verificationResult', verified: isValid }));
                 return;
             }
