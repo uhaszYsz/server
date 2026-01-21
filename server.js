@@ -2601,6 +2601,73 @@ function handleWebSocketConnection(ws, req) {
                         forumPostId = await db.createForumPost(threadId, uploaderGoogleId, postContent);
                         console.log(`[uploadedLevel] Forum post created for thread ID: ${threadId}`);
                         
+                        // Verify all codeObjects in the stage
+                        try {
+                            let stageData = sanitizedPayload.data;
+                            
+                            // If data is a string, parse it
+                            if (typeof stageData === 'string') {
+                                try {
+                                    stageData = JSON.parse(stageData);
+                                } catch (parseErr) {
+                                    console.error('[uploadedLevel] Failed to parse stage data as JSON:', parseErr);
+                                    stageData = null;
+                                }
+                            }
+                            
+                            if (stageData && typeof stageData === 'object' && stageData.codeObjects && Array.isArray(stageData.codeObjects)) {
+                                console.log(`[uploadedLevel] Found ${stageData.codeObjects.length} codeObjects to verify`);
+                                
+                                // Process each codeObject
+                                for (const codeObjectEntry of stageData.codeObjects) {
+                                    // Handle both [name, code] array format and object format
+                                    let objectName, code;
+                                    if (Array.isArray(codeObjectEntry) && codeObjectEntry.length >= 2) {
+                                        [objectName, code] = codeObjectEntry;
+                                    } else if (codeObjectEntry && typeof codeObjectEntry === 'object') {
+                                        objectName = codeObjectEntry.name || codeObjectEntry.key || 'Unknown';
+                                        code = codeObjectEntry.code || codeObjectEntry.value || '';
+                                    } else {
+                                        console.log(`[uploadedLevel] Skipping invalid codeObject entry:`, codeObjectEntry);
+                                        continue;
+                                    }
+                                    
+                                    if (!code || typeof code !== 'string' || !code.trim()) {
+                                        console.log(`[uploadedLevel] Skipping empty codeObject: ${objectName}`);
+                                        continue;
+                                    }
+                                    
+                                    try {
+                                        console.log(`[uploadedLevel] Verifying codeObject "${objectName}" (${code.length} chars)`);
+                                        const verdict = await verifyCodeWithOpenAI(code.trim());
+                                        if (verdict) {
+                                            // Create verification post for this codeObject
+                                            const verificationPost = `**Code Object: ${objectName}**\n\n${verdict}`;
+                                            await db.createForumPost(threadId, 'system', verificationPost);
+                                            console.log(`[uploadedLevel] Verification post created for codeObject "${objectName}"`);
+                                        } else {
+                                            console.log(`[uploadedLevel] Verification skipped for codeObject "${objectName}" (no API key or error)`);
+                                        }
+                                    } catch (codeVerifyErr) {
+                                        console.error(`[uploadedLevel] Failed to verify codeObject "${objectName}":`, codeVerifyErr);
+                                        // Continue with other codeObjects even if one fails
+                                    }
+                                }
+                            } else {
+                                if (!stageData) {
+                                    console.log(`[uploadedLevel] Stage data is null or invalid`);
+                                } else if (!stageData.codeObjects) {
+                                    console.log(`[uploadedLevel] No codeObjects property in stage data`);
+                                } else if (!Array.isArray(stageData.codeObjects)) {
+                                    console.log(`[uploadedLevel] codeObjects exists but is not an array (type: ${typeof stageData.codeObjects})`);
+                                }
+                            }
+                        } catch (codeObjectsError) {
+                            // Don't fail the level upload if code verification fails
+                            console.error('[uploadedLevel] Error verifying codeObjects (non-fatal):', codeObjectsError);
+                            console.error('[uploadedLevel] Error stack:', codeObjectsError.stack);
+                        }
+                        
                         console.log(`✅ Auto-created forum thread for level: "${threadTitle}" (thread ID: ${threadId}, category ID: ${levelsCategory.id})`);
                     } else {
                         console.error(`[uploadedLevel] "Levels" category not found - cannot create forum thread`);
@@ -3923,18 +3990,19 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         
-        // Verify user exists and email matches
+        // Verify user exists (we already have googleId from login, just verify user exists)
         try {
-            if (!ws.email || !ws.googleId) {
-                console.error('[createForumThread] Missing email or googleId');
+            if (!ws.googleId) {
+                console.error('[createForumThread] Missing googleId');
                 ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
                 return;
             }
             
-            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            if (!isValid) {
-                console.error('[createForumThread] Email verification failed for:', ws.googleId);
-                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
+            // Verify user exists by Google ID
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                console.error('[createForumThread] User not found for googleId:', ws.googleId.substring(0, 20) + '...');
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
         } catch (verifyErr) {
@@ -4016,6 +4084,129 @@ function handleWebSocketConnection(ws, req) {
             console.error('[createForumThread] Error stack:', error.stack);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to create forum thread: ' + error.message }));
         }
+      } else if (data.type === 'shareObjectToForum') {
+        // Share object to forum - automatically create thread like stages do
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        // Verify user exists (we already have googleId from login, just verify user exists)
+        try {
+            if (!ws.googleId) {
+                console.error('[shareObjectToForum] Missing googleId');
+                ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
+                return;
+            }
+            
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                console.error('[shareObjectToForum] User not found for googleId:', ws.googleId.substring(0, 20) + '...');
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+                return;
+            }
+        } catch (verifyErr) {
+            console.error('[shareObjectToForum] Verification error:', verifyErr);
+            ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+            return;
+        }
+
+        if (!data.objectName || !data.code) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Object name and code required' }));
+            return;
+        }
+
+        try {
+            // Find Objects category under Shared
+            let sharedCategory = await db.getForumCategoryByName('Shared', null);
+            if (!sharedCategory) {
+                const allCategories = await db.getForumCategories();
+                sharedCategory = allCategories.find(cat => cat.name === 'Shared' && cat.parent_id === null);
+            }
+
+            if (!sharedCategory) {
+                console.error('[shareObjectToForum] "Shared" category not found');
+                ws.send(msgpack.encode({ type: 'error', message: 'Objects category not found' }));
+                return;
+            }
+
+            let objectsCategory = await db.getForumCategoryByName('Objects', sharedCategory.id);
+            if (!objectsCategory) {
+                const allCategories = await db.getForumCategories();
+                objectsCategory = allCategories.find(cat => cat.name === 'Objects' && cat.parent_id === sharedCategory.id);
+            }
+
+            if (!objectsCategory) {
+                console.error('[shareObjectToForum] "Objects" category not found');
+                ws.send(msgpack.encode({ type: 'error', message: 'Objects category not found' }));
+                return;
+            }
+
+            // Validate and sanitize title
+            const titleValidation = validateForumTitle(data.objectName);
+            if (!titleValidation.valid) {
+                ws.send(msgpack.encode({ type: 'error', message: titleValidation.error }));
+                return;
+            }
+            
+            // Validate and sanitize content
+            const contentValidation = validateForumContent(data.code);
+            if (!contentValidation.valid) {
+                ws.send(msgpack.encode({ type: 'error', message: contentValidation.error }));
+                return;
+            }
+            
+            // Sanitize title and content to prevent XSS
+            const sanitizedTitle = purify.sanitize(titleValidation.value, {
+                ALLOWED_TAGS: [], // No HTML tags allowed in title
+                ALLOWED_ATTR: []
+            });
+            
+            const sanitizedContent = purify.sanitize(contentValidation.value, {
+                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre'], // Allow basic formatting
+                ALLOWED_ATTR: []
+            });
+
+            // Create thread with object name as title
+            console.log(`[shareObjectToForum] Creating forum thread: title="${sanitizedTitle}", categoryId=${objectsCategory.id}`);
+            const threadId = await db.createForumThread(objectsCategory.id, sanitizedTitle, ws.googleId);
+            console.log(`[shareObjectToForum] Forum thread created with ID: ${threadId}`);
+
+            // Create first post with code in BBCode
+            const forumPostId = await db.createForumPost(threadId, ws.googleId, sanitizedContent);
+            console.log(`[shareObjectToForum] Forum post created for thread ID: ${threadId}`);
+
+            // Auto-verify code for Objects category
+            try {
+                const codeMatch = sanitizedContent.match(/\[code\]([\s\S]*?)\[\/code\]/i);
+                if (codeMatch && codeMatch[1]) {
+                    const extractedCode = codeMatch[1].trim();
+                    console.log('[shareObjectToForum] Extracted code for verification, length:', extractedCode.length);
+                    
+                    const verdict = await verifyCodeWithOpenAI(extractedCode);
+                    if (verdict) {
+                        await db.createForumPost(threadId, 'system', verdict);
+                        console.log('[shareObjectToForum] Verification post created with verdict:', verdict);
+                    } else {
+                        console.log('[shareObjectToForum] Verification skipped (no API key or error)');
+                    }
+                }
+            } catch (verifyErr) {
+                console.error('[shareObjectToForum] Verification error (non-fatal):', verifyErr);
+            }
+
+            ws.send(msgpack.encode({
+                type: 'sharedObjectSuccess',
+                objectName: sanitizedTitle,
+                forumThreadId: threadId,
+                forumPostId: forumPostId
+            }));
+            console.log(`[shareObjectToForum] Success response sent for thread: ${threadId}`);
+        } catch (error) {
+            console.error('[shareObjectToForum] Failed to share object:', error);
+            console.error('[shareObjectToForum] Error stack:', error.stack);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to share object: ' + error.message }));
+        }
       } else if (data.type === 'createForumPost') {
         // Verify user is authenticated (googleId is set during Google login)
         if (!ws.googleId) {
@@ -4023,18 +4214,18 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         
-        // Verify user exists and email matches
+        // Verify user exists (we already have googleId from login, just verify user exists)
         try {
-            if (!ws.email || !ws.googleId) {
-                console.error('[createForumPost] Missing email or googleId');
+            if (!ws.googleId) {
+                console.error('[createForumPost] Missing googleId');
                 ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
                 return;
             }
             
-            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            if (!isValid) {
-                console.error('[createForumPost] Email verification failed for:', ws.googleId);
-                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                console.error('[createForumPost] User not found for googleId:', ws.googleId.substring(0, 20) + '...');
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
         } catch (verifyErr) {
@@ -4074,18 +4265,18 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         
-        // Verify user exists and email matches
+        // Verify user exists (we already have googleId from login, just verify user exists)
         try {
-            if (!ws.email || !ws.googleId) {
-                console.error('[createForumPost] Missing email or googleId');
+            if (!ws.googleId) {
+                console.error('[createForumPost] Missing googleId');
                 ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
                 return;
             }
             
-            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            if (!isValid) {
-                console.error('[createForumPost] Email verification failed for:', ws.googleId);
-                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                console.error('[createForumPost] User not found for googleId:', ws.googleId.substring(0, 20) + '...');
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
         } catch (verifyErr) {
@@ -4150,18 +4341,18 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         
-        // Verify user exists and email matches
+        // Verify user exists (we already have googleId from login, just verify user exists)
         try {
-            if (!ws.email || !ws.googleId) {
-                console.error('[createForumPost] Missing email or googleId');
+            if (!ws.googleId) {
+                console.error('[createForumPost] Missing googleId');
                 ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
                 return;
             }
             
-            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            if (!isValid) {
-                console.error('[createForumPost] Email verification failed for:', ws.googleId);
-                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                console.error('[createForumPost] User not found for googleId:', ws.googleId.substring(0, 20) + '...');
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
         } catch (verifyErr) {
@@ -4227,18 +4418,18 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         
-        // Verify user exists and email matches
+        // Verify user exists (we already have googleId from login, just verify user exists)
         try {
-            if (!ws.email || !ws.googleId) {
-                console.error('[createForumPost] Missing email or googleId');
+            if (!ws.googleId) {
+                console.error('[createForumPost] Missing googleId');
                 ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
                 return;
             }
             
-            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            if (!isValid) {
-                console.error('[createForumPost] Email verification failed for:', ws.googleId);
-                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                console.error('[createForumPost] User not found for googleId:', ws.googleId.substring(0, 20) + '...');
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
         } catch (verifyErr) {
@@ -4271,18 +4462,18 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         
-        // Verify user exists and email matches
+        // Verify user exists (we already have googleId from login, just verify user exists)
         try {
-            if (!ws.email || !ws.googleId) {
-                console.error('[createForumPost] Missing email or googleId');
+            if (!ws.googleId) {
+                console.error('[createForumPost] Missing googleId');
                 ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
                 return;
             }
             
-            const isValid = await db.verifyUserByEmailAndGoogleId(ws.email, ws.googleId);
-            if (!isValid) {
-                console.error('[createForumPost] Email verification failed for:', ws.googleId);
-                ws.send(msgpack.encode({ type: 'error', message: 'Email verification failed' }));
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                console.error('[createForumPost] User not found for googleId:', ws.googleId.substring(0, 20) + '...');
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
         } catch (verifyErr) {
