@@ -310,13 +310,16 @@ async function validateSessionForRequest(ws, sessionId, googleId = null) {
     }
     
     // Update WebSocket with session info
-    ws.googleId = sessionInfo.googleId;
+    // Use the raw googleId parameter (already verified) instead of the hashed version from sessionInfo
+    ws.googleId = googleId;
     ws.userId = sessionInfo.userId;
     ws.username = sessionInfo.name;
     ws.name = sessionInfo.name;
     ws.rank = sessionInfo.rank || 'player';
     ws.isAdmin = (sessionInfo.rank === 'admin');
     ws.sessionId = sessionId;
+    // Note: ws.email is not set here during session restoration - it's only set during googleLogin
+    // This is fine for most operations, but forum operations that require email verification will need re-authentication
     
     return { valid: true, user: sessionInfo };
 }
@@ -1089,8 +1092,13 @@ if (sslOptions) {
     wss = new WebSocketServer({ 
         server: wssHttpsServer
     });
-    console.log(`✅ WebSocket Secure (WSS) server running on wss://0.0.0.0:${WS_PORT} (accessible from all IPs)`);
+    
+    console.log(`✅ WebSocket Secure (WSS) server created`);
+    console.log(`   Server will listen on wss://0.0.0.0:${WS_PORT} (accessible from all IPs)`);
     console.log(`   Connect at: wss://szkodnik.com:${WS_PORT}`);
+    
+    // Attach connection handler - function is hoisted so this works even though it's defined later
+    // Handler will be attached after function definition below to ensure it's ready
 } else {
     console.error('❌ SSL options not available - WSS server cannot start');
     console.error('   Please configure SSL certificates to run WSS server');
@@ -3653,9 +3661,10 @@ function handleWebSocketConnection(ws, req) {
             let verifiedGoogleId = null;
             
             // If ID token is provided, verify it with Google
+            let tokenInfo = null;
             if (data.idToken) {
                 console.log('[GoogleLogin] Verifying ID token with Google...');
-                const tokenInfo = await verifyGoogleIdToken(data.idToken);
+                tokenInfo = await verifyGoogleIdToken(data.idToken);
                 
                 if (tokenInfo) {
                     // Token verified successfully
@@ -3675,6 +3684,9 @@ function handleWebSocketConnection(ws, req) {
                 console.warn('[GoogleLogin] No ID token provided, using fallback verification');
                 verifiedGoogleId = data.id;
             }
+            
+            // Get email from tokenInfo (if available) or from data
+            const userEmail = (tokenInfo && tokenInfo.email) || data.email || null;
             
             // Check if user exists by googleId (lookup uses hashed Google ID)
             let user = await db.getUserByGoogleId(verifiedGoogleId);
@@ -3718,6 +3730,7 @@ function handleWebSocketConnection(ws, req) {
             
             // Set authentication data on WebSocket
             ws.googleId = verifiedGoogleId; // Set Google ID for uploads and other operations
+            ws.email = userEmail; // Set email for forum operations (required for createForumThread)
             ws.username = user.name;
             ws.name = user.name;
             ws.userId = user.id;
@@ -3962,8 +3975,10 @@ function handleWebSocketConnection(ws, req) {
         
         try {
             console.log('[createForumThread] Creating thread in category:', data.categoryId);
+            // Use ws.name (username) if available, otherwise fallback to googleId for lookup
+            const authorId = ws.name || ws.username || ws.googleId;
             const threadId = await db.createForumThread(data.categoryId, sanitizedTitle, ws.googleId);
-            console.log('[createForumThread] Thread created with ID:', threadId);
+            console.log('[createForumThread] Thread created with ID:', threadId, 'author stored as googleId:', ws.googleId, 'display name:', ws.name);
             
             // Create the first post with the thread content
             await db.createForumPost(threadId, ws.googleId, sanitizedContent);
@@ -4350,8 +4365,13 @@ function handleWebSocketConnection(ws, req) {
   });
 }
 
-// Attach connection handler to WSS server
-wss.on('connection', handleWebSocketConnection);
+// Attach connection handler to WSS server (after function is defined)
+if (wss) {
+    wss.on('connection', handleWebSocketConnection);
+    console.log('✅ Connection handler attached to WSS server');
+} else {
+    console.error('❌ WSS server not initialized - cannot attach connection handler');
+}
 
 // Server console command handler
 const rl = readline.createInterface({

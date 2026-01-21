@@ -962,13 +962,16 @@ export function getForumThreads(categoryId, authorKeys = null) {
                     if (row.author && row.author !== 'system') {
                         try {
                             const user = await getUserByGoogleId(row.author);
+                            if (!user) {
+                                console.warn(`[getForumThreads] User not found for author Google ID: ${row.author.substring(0, 20)}...`);
+                            }
                             return {
                                 ...row,
                                 author_name: user ? user.name : null,
                                 author_rank: user ? (user.rank || 'player') : 'player'
                             };
                         } catch (err) {
-                            console.error(`Error looking up author ${row.author}:`, err);
+                            console.error(`[getForumThreads] Error looking up author ${row.author.substring(0, 20)}...:`, err.message || err);
                             return {
                                 ...row,
                                 author_name: null,
