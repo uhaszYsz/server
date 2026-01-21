@@ -4150,10 +4150,29 @@ function handleWebSocketConnection(ws, req) {
             }
             
             // Validate and sanitize content
-            const contentValidation = validateForumContent(data.code);
-            if (!contentValidation.valid) {
-                ws.send(msgpack.encode({ type: 'error', message: contentValidation.error }));
-                return;
+            // For shared objects, allow content that is only code tags (BBCode)
+            const trimmedCode = data.code.trim();
+            const codeTagMatch = trimmedCode.match(/^\[code\]([\s\S]*?)\[\/code\]$/i);
+            
+            let contentValidation;
+            // If content is only code tags, allow it even if it would normally fail validation
+            if (codeTagMatch) {
+                const codeInside = codeTagMatch[1];
+                // If code inside has content, allow the BBCode format
+                if (codeInside.trim().length > 0) {
+                    // Code-only content is valid for shared objects - bypass normal validation
+                    contentValidation = { valid: true, value: trimmedCode };
+                } else {
+                    // Even empty code tags are allowed for shared objects
+                    contentValidation = { valid: true, value: trimmedCode };
+                }
+            } else {
+                // Not code-only format, use normal validation
+                contentValidation = validateForumContent(data.code);
+                if (!contentValidation.valid) {
+                    ws.send(msgpack.encode({ type: 'error', message: contentValidation.error }));
+                    return;
+                }
             }
             
             // Sanitize title and content to prevent XSS
