@@ -776,7 +776,7 @@ let globalTimer = Date.now();
 // application-level protection for WebSocket-specific attacks
 
 // Connection rate limiting per IP
-const IP_CONNECTION_RATE_LIMIT = 5; // Max connections per IP per window
+const IP_CONNECTION_RATE_LIMIT = 30; // Max connections per IP per window
 const IP_CONNECTION_WINDOW_MS = 60000; // 1 minute window
 const ipConnectionAttempts = new Map(); // IP -> {count, resetTime}
 
