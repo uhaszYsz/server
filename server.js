@@ -2714,6 +2714,12 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
 
+        // Verify user is admin before allowing campaign upload
+        if (ws.rank !== 'admin') {
+            ws.send(msgpack.encode({ type: 'error', message: 'Only administrators can upload campaign levels' }));
+            return;
+        }
+
         try {
             const levelPayload = data.level ?? { name: data.name, data: data.data };
             const { fileName, sanitizedPayload } = sanitizeLevelPayload(levelPayload);
