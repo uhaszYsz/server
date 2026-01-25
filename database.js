@@ -1008,37 +1008,48 @@ async function initHelpThreads(categoryName, categoryId) {
 
     for (const item of items) {
         await new Promise((resolve, reject) => {
-            // Check if thread already exists
-            db.get('SELECT id FROM forum_threads WHERE category_id = ? AND title = ?', [categoryId, item.name], (err, thread) => {
+            const titleToUse = item.threadTitle || item.name;
+            // Check if thread already exists (by old name or new threadTitle)
+            db.get('SELECT id, title FROM forum_threads WHERE category_id = ? AND (title = ? OR title = ?)', [categoryId, item.name, titleToUse], (err, thread) => {
                 if (err) return reject(err);
-                
+
                 if (thread) {
-                    // Thread exists, check if post exists
-                    db.get('SELECT id FROM forum_posts WHERE thread_id = ?', [thread.id], (err, post) => {
-                        if (err) return reject(err);
-                        if (!post) {
-                            // Create post if missing
-                            db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)',
-                                [thread.id, 'system', item.content], (err) => {
-                                    if (err) reject(err);
-                                    else resolve();
-                                });
-                        } else {
-                            // Update existing post content if it changed
-                            if (post.author === 'system' && post.content !== item.content) {
-                                db.run('UPDATE forum_posts SET content = ? WHERE id = ?', [item.content, post.id], (err) => {
-                                    if (err) reject(err);
-                                    else resolve();
-                                });
+                    // Migrate title to threadTitle format if we have threadTitle and it differs
+                    const doPostCheck = () => {
+                        db.get('SELECT id FROM forum_posts WHERE thread_id = ?', [thread.id], (err, post) => {
+                            if (err) return reject(err);
+                            if (!post) {
+                                // Create post if missing
+                                db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)',
+                                    [thread.id, 'system', item.content], (err) => {
+                                        if (err) reject(err);
+                                        else resolve();
+                                    });
                             } else {
-                                resolve();
+                                // Update existing post content if it changed
+                                if (post.author === 'system' && post.content !== item.content) {
+                                    db.run('UPDATE forum_posts SET content = ? WHERE id = ?', [item.content, post.id], (err) => {
+                                        if (err) reject(err);
+                                        else resolve();
+                                    });
+                                } else {
+                                    resolve();
+                                }
                             }
-                        }
-                    });
+                        });
+                    };
+                    if (item.threadTitle && thread.title !== titleToUse) {
+                        db.run('UPDATE forum_threads SET title = ? WHERE id = ?', [titleToUse, thread.id], (err) => {
+                            if (err) return reject(err);
+                            doPostCheck();
+                        });
+                    } else {
+                        doPostCheck();
+                    }
                 } else {
-                    // Create thread and post
+                    // Create thread and post with funcname(arg,arg1) style title when threadTitle is set
                     db.run('INSERT INTO forum_threads (category_id, title, author) VALUES (?, ?, ?)',
-                        [categoryId, item.name, 'system'], function(err) {
+                        [categoryId, titleToUse, 'system'], function(err) {
                             if (err) return reject(err);
                             const threadId = this.lastID;
                             db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)',
