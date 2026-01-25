@@ -782,10 +782,12 @@ function initForumCategories() {
             let discussionsId;
             if (discussionsRow) {
                 discussionsId = discussionsRow.id;
+                // Ensure Discussions is at the top
+                db.run('UPDATE forum_categories SET display_order = 1 WHERE id = ?', [discussionsId]);
             } else {
                 // Insert Discussions parent category
-                db.run('INSERT INTO forum_categories (name, parent_id, description) VALUES (?, ?, ?)', 
-                    ['Discussions', null, 'General discussions'], function(err) {
+                db.run('INSERT INTO forum_categories (name, parent_id, description, display_order) VALUES (?, ?, ?, ?)', 
+                    ['Discussions', null, 'General discussions', 1], function(err) {
                     if (err) {
                         reject(err);
                         return;
@@ -808,9 +810,11 @@ function initForumCategories() {
                     let sharedId;
                     if (sharedRow) {
                         sharedId = sharedRow.id;
+                        // Ensure Shared is in the middle
+                        db.run('UPDATE forum_categories SET display_order = 2 WHERE id = ?', [sharedId]);
                     } else {
-                        db.run('INSERT INTO forum_categories (name, parent_id, description) VALUES (?, ?, ?)', 
-                            ['Shared', null, 'Shared content'], function(err) {
+                        db.run('INSERT INTO forum_categories (name, parent_id, description, display_order) VALUES (?, ?, ?, ?)', 
+                            ['Shared', null, 'Shared content', 2], function(err) {
                             if (err) {
                                 reject(err);
                                 return;
@@ -833,9 +837,11 @@ function initForumCategories() {
                             let manualsId;
                             if (manualsRow) {
                                 manualsId = manualsRow.id;
+                                // Ensure Manuals is at the bottom
+                                db.run('UPDATE forum_categories SET display_order = 3 WHERE id = ?', [manualsId]);
                             } else {
-                                db.run('INSERT INTO forum_categories (name, parent_id, description) VALUES (?, ?, ?)', 
-                                    ['Manuals', null, 'Game manuals and documentation'], function(err) {
+                                db.run('INSERT INTO forum_categories (name, parent_id, description, display_order) VALUES (?, ?, ?, ?)', 
+                                    ['Manuals', null, 'Game manuals and documentation', 3], function(err) {
                                     if (err) {
                                         reject(err);
                                         return;
