@@ -11,6 +11,48 @@
             box-sizing: border-box;
         }
 
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-card h2 {
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .login-card input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .login-card button {
+            width: 100%;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -314,6 +356,16 @@
     </style>
 </head>
 <body>
+    <div id="login-overlay" style="display: none;">
+        <div class="login-card">
+            <h2>🔐 Admin Login</h2>
+            <p style="margin-bottom: 20px; color: #666;">Enter database manager password</p>
+            <input type="password" id="admin-password" placeholder="Password" onkeyup="if(event.key==='Enter') login()">
+            <button class="btn btn-primary" onclick="login()">Login</button>
+            <div id="login-error" style="color: #e74c3c; margin-top: 15px; display: none;"></div>
+        </div>
+    </div>
+
     <div class="container">
         <h1>🗄️ Database Administration Panel</h1>
 
@@ -369,6 +421,53 @@
         let tables = [];
         let currentPrimaryKey = null;
         let selectedRows = new Set();
+        let adminPassword = localStorage.getItem('db_admin_password') || '';
+
+        async function login() {
+            const password = document.getElementById('admin-password').value;
+            const errorEl = document.getElementById('login-error');
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    adminPassword = password;
+                    localStorage.setItem('db_admin_password', password);
+                    document.getElementById('login-overlay').style.display = 'none';
+                    loadTables();
+                } else {
+                    errorEl.textContent = data.error || 'Invalid password';
+                    errorEl.style.display = 'block';
+                }
+            } catch (error) {
+                errorEl.textContent = 'Connection error';
+                errorEl.style.display = 'block';
+            }
+        }
+
+        async function authenticatedFetch(url, options = {}) {
+            options.headers = {
+                ...options.headers,
+                'x-admin-password': adminPassword
+            };
+            
+            const response = await fetch(url, options);
+            
+            if (response.status === 401) {
+                document.getElementById('login-overlay').style.display = 'flex';
+                document.getElementById('admin-password').value = '';
+                localStorage.removeItem('db_admin_password');
+                throw new Error('Unauthorized');
+            }
+            
+            return response;
+        }
 
         function showStatus(message, type = 'info') {
             const statusEl = document.getElementById('status');
@@ -394,7 +493,7 @@
             container.innerHTML = '<div class="loading">Loading tables...</div>';
 
             try {
-                const response = await fetch(`/api/db/${currentDatabase}/tables`);
+                const response = await authenticatedFetch(`/api/db/${currentDatabase}/tables`);
                 if (!response.ok) throw new Error('Failed to load tables');
                 
                 tables = await response.json();
@@ -431,7 +530,7 @@
             });
 
             try {
-                const response = await fetch(`/api/db/${currentDatabase}/table/${tableName}`);
+                const response = await authenticatedFetch(`/api/db/${currentDatabase}/table/${tableName}`);
                 if (!response.ok) throw new Error('Failed to load table data');
                 
                 const data = await response.json();
@@ -532,7 +631,7 @@
             resultsEl.innerHTML = '<div class="loading">Executing query...</div>';
 
             try {
-                const response = await fetch(`/api/db/${currentDatabase}/query`, {
+                const response = await authenticatedFetch(`/api/db/${currentDatabase}/query`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -688,7 +787,7 @@
             contentEl.innerHTML = '<div class="loading">Deleting rows...</div>';
 
             try {
-                const response = await fetch(`/api/db/${currentDatabase}/table/${currentTable}/delete`, {
+                const response = await authenticatedFetch(`/api/db/${currentDatabase}/table/${currentTable}/delete`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -724,8 +823,24 @@
         }
 
         // Load tables on page load
-        window.addEventListener('load', () => {
-            loadTables();
+        window.addEventListener('load', async () => {
+            // Check if login is required
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword })
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    loadTables();
+                } else {
+                    document.getElementById('login-overlay').style.display = 'flex';
+                }
+            } catch (e) {
+                document.getElementById('login-overlay').style.display = 'flex';
+            }
         });
     </script>
 </body>

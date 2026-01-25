@@ -4,20 +4,171 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import sqlite3 from 'sqlite3';
+import { readFileSync, existsSync } from 'fs';
+import fs from 'fs/promises';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const ADMIN_PORT = 8081;
+const DB_PASS_FILE = path.join(__dirname, 'dbpass.txt');
+const BACKUP_DIR = path.join(__dirname, 'backups');
+
+// Database backup logic
+async function performBackup() {
+    try {
+        await fs.mkdir(BACKUP_DIR, { recursive: true });
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const databases = ['users.db', 'sprites.db'];
+
+        for (const dbName of databases) {
+            const sourcePath = path.join(__dirname, dbName);
+            if (existsSync(sourcePath)) {
+                const backupPath = path.join(BACKUP_DIR, `${dbName}.${timestamp}.bak`);
+                await fs.copyFile(sourcePath, backupPath);
+                console.log(`[Backup] Created backup: ${backupPath}`);
+            }
+        }
+
+        // Clean up old backups (keep max 3 per database)
+        for (const dbName of databases) {
+            const files = await fs.readdir(BACKUP_DIR);
+            const backups = files
+                .filter(f => f.startsWith(dbName) && f.endsWith('.bak'))
+                .map(f => ({ name: f, path: path.join(BACKUP_DIR, f), mtime: 0 }));
+            
+            for (const b of backups) {
+                const stats = await fs.stat(b.path);
+                b.mtime = stats.mtimeMs;
+            }
+
+            backups.sort((a, b) => b.mtime - a.mtime);
+
+            if (backups.length > 3) {
+                const toDelete = backups.slice(3);
+                for (const b of toDelete) {
+                    await fs.unlink(b.path);
+                    console.log(`[Backup] Deleted old backup: ${b.name}`);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('[Backup] Error during backup:', error);
+    }
+}
+
+// Schedule backup every 24 hours
+setInterval(performBackup, 24 * 60 * 60 * 1000);
+// Perform initial backup on start
+performBackup();
+
+// Simple in-memory store for rate limiting
+// In a production app, you might use Redis or a database
+const loginAttempts = new Map();
+
+const checkRateLimit = (ip) => {
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    
+    if (!loginAttempts.has(ip)) {
+        loginAttempts.set(ip, { count: 0, firstAttempt: now });
+        return { allowed: true };
+    }
+
+    const attemptData = loginAttempts.get(ip);
+    
+    // Reset if an hour has passed
+    if (now - attemptData.firstAttempt > oneHour) {
+        attemptData.count = 0;
+        attemptData.firstAttempt = now;
+    }
+
+    if (attemptData.count >= 5) {
+        const timeLeft = Math.ceil((oneHour - (now - attemptData.firstAttempt)) / (60 * 1000));
+        return { allowed: false, timeLeft };
+    }
+
+    return { allowed: true };
+};
+
+const recordAttempt = (ip, success) => {
+    if (success) {
+        loginAttempts.delete(ip); // Reset on success
+        return;
+    }
+    
+    const attemptData = loginAttempts.get(ip);
+    if (attemptData) {
+        attemptData.count++;
+    }
+};
 
 // Middleware
 app.use(express.json());
+
+// Auth Middleware
+const authMiddleware = (req, res, next) => {
+    // Skip auth for the login page and its assets if any
+    if (req.path === '/login' || req.path === '/api/login') {
+        return next();
+    }
+
+    // Check if password is required
+    if (existsSync(DB_PASS_FILE)) {
+        // In a real app, we'd use sessions. For simplicity, we'll check a header or query param
+        // or just redirect to login if not authenticated.
+        // For this implementation, we'll use a simple token-based approach in headers
+        const authToken = req.headers['x-admin-password'];
+        const correctPassword = readFileSync(DB_PASS_FILE, 'utf8').trim();
+
+        if (authToken === correctPassword) {
+            return next();
+        } else {
+            return res.status(401).json({ error: 'Unauthorized. Please login.' });
+        }
+    }
+    
+    // If dbpass.txt doesn't exist, allow access (as per current state)
+    next();
+};
+
+app.use(authMiddleware);
 app.use(express.static(__dirname));
 
 // Serve the admin HTML file
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'db-admin.html'));
+});
+
+// Login API
+app.post('/api/login', (req, res) => {
+    const { password } = req.body;
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    
+    if (!existsSync(DB_PASS_FILE)) {
+        return res.json({ success: true, message: 'No password set' });
+    }
+
+    const rateLimit = checkRateLimit(ip);
+    if (!rateLimit.allowed) {
+        return res.status(429).json({ 
+            error: `Too many login attempts. Please try again in ${rateLimit.timeLeft} minutes.` 
+        });
+    }
+
+    try {
+        const correctPassword = readFileSync(DB_PASS_FILE, 'utf8').trim();
+        if (password === correctPassword) {
+            recordAttempt(ip, true);
+            res.json({ success: true });
+        } else {
+            recordAttempt(ip, false);
+            res.status(401).json({ error: 'Invalid password' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Error reading password file' });
+    }
 });
 
 // Get list of tables for a database

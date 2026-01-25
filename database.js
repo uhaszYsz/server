@@ -791,14 +791,14 @@ function initForumCategories() {
                         return;
                     }
                     discussionsId = this.lastID;
-                    continueWithSubcategories();
+                    continueWithShared();
                 });
                 return;
             }
             
-            continueWithSubcategories();
+            continueWithShared();
             
-            function continueWithSubcategories() {
+            function continueWithShared() {
                 db.get('SELECT id FROM forum_categories WHERE name = ? AND parent_id IS NULL', ['Shared'], (err, sharedRow) => {
                     if (err) {
                         reject(err);
@@ -816,81 +816,113 @@ function initForumCategories() {
                                 return;
                             }
                             sharedId = this.lastID;
-                            processSubcategories();
+                            continueWithManuals();
                         });
                         return;
                     }
                     
-                    processSubcategories();
+                    continueWithManuals();
                     
-                    function processSubcategories() {
-                        // Update "Danmaku raiders general" to "General" if it exists
-                        db.run('UPDATE forum_categories SET name = ?, display_order = ? WHERE name = ? AND parent_id = ?',
-                            ['General', 1, 'Danmaku raiders general', discussionsId], (err) => {
+                    function continueWithManuals() {
+                        db.get('SELECT id FROM forum_categories WHERE name = ? AND parent_id IS NULL', ['Manuals'], (err, manualsRow) => {
                             if (err) {
-                                console.error('Error updating old category name:', err);
-                            }
-                        });
-                            
-                        // Delete Tutorials category if it exists (user doesn't want it)
-                        db.run('DELETE FROM forum_categories WHERE name = ? AND parent_id = ?',
-                            ['Tutorials', discussionsId], (err) => {
-                                if (err) {
-                                    console.error('Error deleting Tutorials category:', err);
-                                }
-                                
-                                // Define subcategories with order
-                            const subcategories = [
-                                { name: 'General', parent_id: discussionsId, description: 'General game discussions', order: 1 },
-                                { name: 'Help', parent_id: discussionsId, description: 'Ask questions here', order: 2 },
-                                { name: 'Bug reports', parent_id: discussionsId, description: 'Report bugs', order: 3 },
-                                { name: 'Levels', parent_id: sharedId, description: 'Share levels', order: 1 },
-                                { name: 'Objects', parent_id: sharedId, description: 'Share objects', order: 2 },
-                                { name: 'functions', parent_id: sharedId, description: 'Share functions', order: 3 }
-                            ];
-                            
-                            let processed = 0;
-                            const total = subcategories.length;
-                            
-                            if (total === 0) {
-                                resolve();
+                                reject(err);
                                 return;
                             }
                             
-                            subcategories.forEach(cat => {
-                                // Check if category exists
-                                db.get('SELECT id FROM forum_categories WHERE name = ? AND parent_id = ?', 
-                                    [cat.name, cat.parent_id], (err, row) => {
+                            let manualsId;
+                            if (manualsRow) {
+                                manualsId = manualsRow.id;
+                            } else {
+                                db.run('INSERT INTO forum_categories (name, parent_id, description) VALUES (?, ?, ?)', 
+                                    ['Manuals', null, 'Game manuals and documentation'], function(err) {
                                     if (err) {
-                                        console.error('Error checking category:', err);
-                                        processed++;
-                                        if (processed === total) resolve();
+                                        reject(err);
+                                        return;
+                                    }
+                                    manualsId = this.lastID;
+                                    processAllSubcategories();
+                                });
+                                return;
+                            }
+                            
+                            processAllSubcategories();
+                            
+                            function processAllSubcategories() {
+                                // Update "Danmaku raiders general" to "General" if it exists
+                                db.run('UPDATE forum_categories SET name = ?, display_order = ? WHERE name = ? AND parent_id = ?',
+                                    ['General', 1, 'Danmaku raiders general', discussionsId], (err) => {
+                                    if (err) {
+                                        console.error('Error updating old category name:', err);
+                                    }
+                                });
+                                    
+                                // Delete Tutorials category if it exists (user doesn't want it)
+                                db.run('DELETE FROM forum_categories WHERE name = ? AND parent_id = ?',
+                                    ['Tutorials', discussionsId], (err) => {
+                                        if (err) {
+                                            console.error('Error deleting Tutorials category:', err);
+                                        }
+                                        
+                                        // Define subcategories with order
+                                        const subcategories = [
+                                            { name: 'General', parent_id: discussionsId, description: 'General game discussions', order: 1 },
+                                            { name: 'Help', parent_id: discussionsId, description: 'Ask questions here', order: 2 },
+                                            { name: 'Bug reports', parent_id: discussionsId, description: 'Report bugs', order: 3 },
+                                            { name: 'Levels', parent_id: sharedId, description: 'Share levels', order: 1 },
+                                            { name: 'Objects', parent_id: sharedId, description: 'Share objects', order: 2 },
+                                            { name: 'functions', parent_id: sharedId, description: 'Share functions', order: 3 },
+                                            { name: 'Special Keywords', parent_id: manualsId, description: 'Manual for special keywords', order: 1 },
+                                            { name: 'Built-in Variables', parent_id: manualsId, description: 'Manual for built-in variables', order: 2 },
+                                            { name: 'Danmaku Helpers', parent_id: manualsId, description: 'Manual for danmaku helpers', order: 3 },
+                                            { name: 'DragonBones', parent_id: manualsId, description: 'Manual for DragonBones', order: 4 },
+                                            { name: 'JavaScript Stuff', parent_id: manualsId, description: 'Manual for JavaScript stuff', order: 5 }
+                                        ];
+                                    
+                                    let processed = 0;
+                                    const total = subcategories.length;
+                                    
+                                    if (total === 0) {
+                                        resolve();
                                         return;
                                     }
                                     
-                                    if (row) {
-                                        // Update existing category
-                                        db.run('UPDATE forum_categories SET description = ?, display_order = ? WHERE id = ?',
-                                            [cat.description, cat.order, row.id], (err) => {
+                                    subcategories.forEach(cat => {
+                                        // Check if category exists
+                                        db.get('SELECT id FROM forum_categories WHERE name = ? AND parent_id = ?', 
+                                            [cat.name, cat.parent_id], (err, row) => {
                                             if (err) {
-                                                console.error('Error updating category:', err);
+                                                console.error('Error checking category:', err);
+                                                processed++;
+                                                if (processed === total) resolve();
+                                                return;
                                             }
-                                            processed++;
-                                            if (processed === total) resolve();
-                                        });
-                                    } else {
-                                        // Insert new category
-                                        db.run('INSERT INTO forum_categories (name, parent_id, description, display_order) VALUES (?, ?, ?, ?)', 
-                                            [cat.name, cat.parent_id, cat.description, cat.order], (err) => {
-                                            if (err) {
-                                                console.error('Error inserting subcategory:', err);
+                                            
+                                            if (row) {
+                                                // Update existing category
+                                                db.run('UPDATE forum_categories SET description = ?, display_order = ? WHERE id = ?',
+                                                    [cat.description, cat.order, row.id], (err) => {
+                                                    if (err) {
+                                                        console.error('Error updating category:', err);
+                                                    }
+                                                    processed++;
+                                                    if (processed === total) resolve();
+                                                });
+                                            } else {
+                                                // Insert new category
+                                                db.run('INSERT INTO forum_categories (name, parent_id, description, display_order) VALUES (?, ?, ?, ?)', 
+                                                    [cat.name, cat.parent_id, cat.description, cat.order], (err) => {
+                                                    if (err) {
+                                                        console.error('Error inserting subcategory:', err);
+                                                    }
+                                                    processed++;
+                                                    if (processed === total) resolve();
+                                                });
                                             }
-                                            processed++;
-                                            if (processed === total) resolve();
                                         });
-                                    }
+                                    });
                                 });
-                            });
+                            }
                         });
                     }
                 });
@@ -1619,4 +1651,3 @@ export function closeDatabase() {
         }
     });
 }
-
