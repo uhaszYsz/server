@@ -1005,7 +1005,15 @@ async function initHelpThreads(categoryName, categoryId) {
                                     else resolve();
                                 });
                         } else {
-                            resolve();
+                            // Update existing post content if it changed
+                            if (post.author === 'system' && post.content !== item.content) {
+                                db.run('UPDATE forum_posts SET content = ? WHERE id = ?', [item.content, post.id], (err) => {
+                                    if (err) reject(err);
+                                    else resolve();
+                                });
+                            } else {
+                                resolve();
+                            }
                         }
                     });
                 } else {
@@ -1343,19 +1351,25 @@ export function findForumPostByLevelSlug(levelSlug) {
 // Delete forum thread
 export function deleteForumThread(threadId) {
     return new Promise((resolve, reject) => {
-        // First delete all posts in the thread
-        db.run('DELETE FROM forum_posts WHERE thread_id = ?', [threadId], (err) => {
+        // First delete all likes for all posts in this thread
+        db.run(`DELETE FROM forum_post_likes WHERE post_id IN (SELECT id FROM forum_posts WHERE thread_id = ?)`, [threadId], (err) => {
             if (err) {
-                reject(err);
-                return;
+                console.error('Error deleting thread post likes:', err);
             }
-            // Then delete the thread
-            db.run('DELETE FROM forum_threads WHERE id = ?', [threadId], function(err) {
+            // Then delete all posts in the thread
+            db.run('DELETE FROM forum_posts WHERE thread_id = ?', [threadId], (err) => {
                 if (err) {
                     reject(err);
-                } else {
-                    resolve(this.changes > 0);
+                    return;
                 }
+                // Then delete the thread
+                db.run('DELETE FROM forum_threads WHERE id = ?', [threadId], function(err) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(this.changes > 0);
+                    }
+                });
             });
         });
     });
