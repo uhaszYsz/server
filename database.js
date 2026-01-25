@@ -883,15 +883,14 @@ function initForumCategories() {
                                             { name: 'Built-in Variables', parent_id: manualsId, description: 'Manual for built-in variables', order: 2 },
                                             { name: 'Danmaku Helpers', parent_id: manualsId, description: 'Manual for danmaku helpers', order: 3 },
                                             { name: 'DragonBones', parent_id: manualsId, description: 'Manual for DragonBones', order: 4 },
-                                            { name: 'JavaScript Stuff', parent_id: manualsId, description: 'Manual for JavaScript stuff', order: 5 },
-                                            { name: 'Math Functions', parent_id: manualsId, description: 'Manual for math functions', order: 6 },
-                                            { name: 'Array Methods', parent_id: manualsId, description: 'Manual for array methods', order: 7 },
-                                            { name: 'String Methods', parent_id: manualsId, description: 'Manual for string methods', order: 8 },
-                                            { name: 'Number Methods', parent_id: manualsId, description: 'Manual for number methods', order: 9 },
-                                            { name: 'Global Functions', parent_id: manualsId, description: 'Manual for global functions', order: 10 },
-                                            { name: 'Array Constructor', parent_id: manualsId, description: 'Manual for array constructor', order: 11 },
-                                            { name: 'String & Number Constructors', parent_id: manualsId, description: 'Manual for string & number constructors', order: 12 }
+                                            { name: 'JavaScript Stuff', parent_id: manualsId, description: 'Manual for JavaScript stuff', order: 5 }
                                         ];
+
+                                        // Delete old granular JavaScript categories if they exist
+                                        const oldCategories = ['Math Functions', 'Array Methods', 'String Methods', 'Number Methods', 'Global Functions', 'Array Constructor', 'String & Number Constructors'];
+                                        for (const oldCat of oldCategories) {
+                                            db.run('DELETE FROM forum_categories WHERE name = ? AND parent_id = ?', [oldCat, manualsId]);
+                                        }
                                     
                                     let processed = 0;
                                     const total = subcategories.length;
@@ -973,14 +972,16 @@ async function initHelpThreads(categoryName, categoryId) {
         'Built-in Variables': helpContent.builtInVariablesHelp,
         'Danmaku Helpers': helpContent.danmakuHelpersHelp,
         'DragonBones': helpContent.dragonBonesHelp,
-        'JavaScript Stuff': helpContent.javaScriptStuffHelp,
-        'Math Functions': helpContent.mathFunctionsHelp,
-        'Array Methods': helpContent.arrayMethodsHelp,
-        'String Methods': helpContent.stringMethodsHelp,
-        'Number Methods': helpContent.numberMethodsHelp,
-        'Global Functions': helpContent.globalFunctionsHelp,
-        'Array Constructor': helpContent.arrayConstructorHelp,
-        'String & Number Constructors': helpContent.stringNumberConstructorsHelp
+        'JavaScript Stuff': [
+            ...helpContent.javaScriptStuffHelp,
+            ...helpContent.mathFunctionsHelp,
+            ...helpContent.arrayMethodsHelp,
+            ...helpContent.stringMethodsHelp,
+            ...helpContent.numberMethodsHelp,
+            ...helpContent.globalFunctionsHelp,
+            ...helpContent.arrayConstructorHelp,
+            ...helpContent.stringNumberConstructorsHelp
+        ]
     };
 
     const items = helpMap[categoryName];
@@ -1071,6 +1072,7 @@ export function getForumThreads(categoryId, authorKeys = null) {
 
             db.all(`
                 SELECT t.*, 
+                       (SELECT content FROM forum_posts WHERE thread_id = t.id ORDER BY created_at ASC LIMIT 1) as first_post_content,
                        (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id AND author != 'system') as post_count,
                        (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date
                 FROM forum_threads t

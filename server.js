@@ -4039,6 +4039,22 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({ type: 'error', message: 'Category ID required' }));
             return;
         }
+
+        // Restriction: Only admins can create threads in Manuals subcategories
+        try {
+            const categories = await db.getForumCategories();
+            const category = categories.find(c => c.id === data.categoryId);
+            if (category && category.parent_id) {
+                const parent = categories.find(p => p.id === category.parent_id);
+                if (parent && parent.name === 'Manuals' && !ws.isAdmin) {
+                    console.warn(`[createForumThread] Non-admin user ${ws.name} attempted to create thread in Manuals subcategory: ${category.name}`);
+                    ws.send(msgpack.encode({ type: 'error', message: 'Only administrators can create threads in Manuals subcategories' }));
+                    return;
+                }
+            }
+        } catch (catErr) {
+            console.error('[createForumThread] Error checking category restriction:', catErr);
+        }
         
         // Validate and sanitize title
         const titleValidation = validateForumTitle(data.title);
@@ -4399,6 +4415,55 @@ function handleWebSocketConnection(ws, req) {
         } catch (error) {
             console.error('Failed to unlike post', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to unlike post' }));
+        }
+      } else if (data.type === 'editForumPost') {
+        // Verify user is authenticated
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        if (!data.postId || !data.content) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Post ID and content required' }));
+            return;
+        }
+
+        try {
+            // Get post to check ownership
+            const post = await db.getForumPostById(data.postId);
+            if (!post) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Post not found' }));
+                return;
+            }
+
+            const isAdmin = ws.rank === 'admin';
+            const isOwner = post.author === ws.googleId;
+            const isSystemPost = post.author === 'system';
+
+            // Allow edit if user is owner OR if user is admin (even for system posts)
+            if (!isOwner && !(isAdmin)) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
+                return;
+            }
+
+            // Validate and sanitize content
+            const contentValidation = validateForumContent(data.content);
+            if (!contentValidation.valid) {
+                ws.send(msgpack.encode({ type: 'error', message: contentValidation.error }));
+                return;
+            }
+            
+            const sanitizedContent = purify.sanitize(contentValidation.value, {
+                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre'],
+                ALLOWED_ATTR: []
+            });
+
+            await db.updateForumPost(data.postId, sanitizedContent);
+            ws.send(msgpack.encode({ type: 'forumPostUpdated', postId: data.postId }));
+            console.log(`✅ Post ${data.postId} updated by ${ws.name || ws.googleId} (isAdmin: ${isAdmin})`);
+        } catch (error) {
+            console.error('Failed to edit forum post', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to edit forum post' }));
         }
       }
 
