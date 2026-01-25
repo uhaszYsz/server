@@ -110,7 +110,7 @@ app.use(express.json());
 // Auth Middleware
 const authMiddleware = (req, res, next) => {
     // Skip auth for the login page and its assets if any
-    if (req.path === '/login' || req.path === '/api/login') {
+    if (req.path === '/' || req.path === '/login' || req.path === '/api/login') {
         return next();
     }
 
