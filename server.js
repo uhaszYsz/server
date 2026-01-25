@@ -187,6 +187,7 @@ function getOpenAIClient() {
 
 // Helper function to verify code with OpenAI (returns verdict string)
 async function verifyCodeWithOpenAI(code) {
+    return null; // Code verification disabled
     const client = getOpenAIClient();
     if (!client) {
         return null; // No API key
