@@ -7,7 +7,9 @@ export const specialKeywordsHelp = [
         content: `Bakes all draws into a vertex buffer stored under the name given as argument. Use drawBackground(x, y, "name") to draw it. Runs once at compilation.
 
 [b]Arguments:[/b]
+[code]
 name - string - Buffer name to store draws under. Use with drawBackground(x, y, "name").
+[/code]
 
 [b]Example:[/b]
 [code]background("bg1")
@@ -44,7 +46,9 @@ score += 1;[/code]
         content: `Lets you change bullet parameters. Accepts a single bullet ID or an array of IDs.
 
 [b]Arguments:[/b]
+[code]
 id - number or array - Bullet ID or array of bullet IDs to modify.
+[/code]
 
 [b]Example:[/b]
 [code]var Id = createBullet(X, Y, 5, direction, 2)
@@ -57,7 +61,9 @@ inBullet(Id)
         content: `Repeats a block of code n times. Use indentation (#) to define the block.
 
 [b]Arguments:[/b]
+[code]
 n - number - Number of times to repeat the block.
+[/code]
 
 [b]Example:[/b]
 [code]var i = 0
@@ -132,8 +138,10 @@ self.speed = 2;[/code]`
         content: `Calculates the direction angle in degrees from current position to target point.
 
 [b]Arguments:[/b]
+[code]
 x - real - Target X position in world coordinates.
 y - real - Target Y position in world coordinates.
+[/code]
 
 [b][color=#ffa500]Returns: the angle in degrees (0-360).[/color][/b]
 
@@ -146,7 +154,9 @@ y - real - Target Y position in world coordinates.
         content: `Normalizes numbers like -90 or 450 to 0-360 direction.
 
 [b]Arguments:[/b]
+[code]
 angle - real - Angle in degrees to normalize to 0-360.
+[/code]
 
 [b][color=#ffa500]Returns:[/color][/b] the normalized angle as a number.
 [b]Example:[/b]
@@ -158,8 +168,10 @@ angle - real - Angle in degrees to normalize to 0-360.
         content: `Calculates the shortest angle difference between two angles in degrees.
 
 [b]Arguments:[/b]
+[code]
 a - real - First angle in degrees.
 b - real - Second angle in degrees.
+[/code]
 
 [b][color=#ffa500]Returns: the angle difference as a number (can be negative).[/color][/b]
 
@@ -172,8 +184,10 @@ b - real - Second angle in degrees.
         content: `Calculates the distance from current position to target point.
 
 [b]Arguments:[/b]
+[code]
 x - real - Target X position in world coordinates.
 y - real - Target Y position in world coordinates.
+[/code]
 
 [b][color=#ffa500]Returns: the distance as a number.[/color][/b]
 
@@ -186,8 +200,10 @@ y - real - Target Y position in world coordinates.
         content: `Converts length and direction (angle in degrees) to X component.
 
 [b]Arguments:[/b]
+[code]
 len - real - Length/distance.
 dir - real - Direction angle in degrees.
+[/code]
 
 [b][color=#ffa500]Returns: the X component as a number.[/color][/b]
 
@@ -200,8 +216,10 @@ dir - real - Direction angle in degrees.
         content: `Converts length and direction (angle in degrees) to Y component.
 
 [b]Arguments:[/b]
+[code]
 len - real - Length/distance.
 dir - real - Direction angle in degrees.
+[/code]
 
 [b][color=#ffa500]Returns: the Y component as a number.[/color][/b]
 
@@ -214,8 +232,10 @@ dir - real - Direction angle in degrees.
         content: `Moves the instance by the given length in the given direction (angle in degrees). Modifies X and Y positions directly.
 
 [b]Arguments:[/b]
+[code]
 len - real - Distance to move in pixels.
 dir - real - Direction angle in degrees.
+[/code]
 
 [b]Example:[/b]
 [code]move(5, 90); // moves 5 pixels upward
@@ -227,7 +247,9 @@ move(10, 0); // moves 10 pixels to the right[/code]`
         content: `Checks if a variable is undefined or not declared.
 
 [b]Arguments:[/b]
+[code]
 v - any - Variable or expression to check.
+[/code]
 
 [b][color=#ffa500]Returns:[/color][/b] true if undefined, false otherwise.
 [b]Example:[/b]
@@ -239,8 +261,10 @@ v - any - Variable or expression to check.
         content: `Generates a random number between min and max.
 
 [b]Arguments:[/b]
+[code]
 min - real - Minimum value (inclusive).
 max - real - Maximum value (inclusive).
+[/code]
 
 [b][color=#ffa500]Returns: a random number.[/color][/b]
 
@@ -284,8 +308,10 @@ for(var i=0; i<enemies.length; i++) {
         content: `Gradually turns the current direction towards target direction, limited by maxTurn degrees per frame.
 
 [b]Arguments:[/b]
+[code]
 target - real - Target direction angle in degrees.
 maxTurn - real - Maximum degrees to turn per frame.
+[/code]
 
 [b][color=#ffa500]Returns: true if speed is greater than 0, false otherwise.[/color][/b]
 
@@ -298,7 +324,9 @@ maxTurn - real - Maximum degrees to turn per frame.
         content: `Gradually turns the current direction towards the player, limited by maxTurn degrees per frame.
 
 [b]Arguments:[/b]
+[code]
 maxTurn - real - Maximum degrees to turn per frame.
+[/code]
 
 [b][color=#ffa500]Returns: true if player exists and speed is greater than 0, false otherwise.[/color][/b]
 
@@ -311,7 +339,9 @@ maxTurn - real - Maximum degrees to turn per frame.
         content: `Selects a wave by its id/number (stage editor waves).
 
 [b]Arguments:[/b]
+[code]
 id - number - Wave id/number from the stage editor.
+[/code]
 
 [b][color=#ffa500]Returns: true if the wave exists and was selected, false otherwise.[/color][/b]
 
@@ -346,11 +376,13 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Draws a circle at specified position with optional outline and color.
 
 [b]Arguments:[/b]
+[code]
 x - real - X position (center).
 y - real - Y position (center).
 r - real - Radius.
 outline - number - Outline width (0 = filled). Optional.
 color - string or array - Hex color (e.g. "#ff0000") or RGBA array. Optional.
+[/code]
 
 [b]Example:[/b]
 [code]drawCircle(100, 200, 5); // filled white circle
@@ -363,11 +395,13 @@ color - string or array - Hex color (e.g. "#ff0000") or RGBA array. Optional.
         content: `Draws a rectangle at specified position with optional color. x, y: bottom-left corner position. w, h: width and height.
 
 [b]Arguments:[/b]
+[code]
 x - real - Bottom-left corner X.
 y - real - Bottom-left corner Y.
 w - real - Width.
 h - real - Height.
 color - string or array - Hex color or RGBA array. Optional.
+[/code]
 
 [b]Example:[/b]
 [code]drawRectangle(10, 20, 50, 30); // white rectangle
@@ -380,9 +414,11 @@ color - string or array - Hex color or RGBA array. Optional.
         content: `Draws a grid of rectangles covering the whole world. cellWidth and cellHeight are the dimensions of each grid cell.
 
 [b]Arguments:[/b]
+[code]
 cellW - real - Width of each grid cell. Optional.
 cellH - real - Height of each grid cell. Optional.
 color - string or array - Hex color or RGBA array. Optional.
+[/code]
 
 [b]Example:[/b]
 [code]drawGround(10, 10, [1.0, 0.0, 0.0, 1.0]); // red grid with 10x10 cells
@@ -395,10 +431,12 @@ color - string or array - Hex color or RGBA array. Optional.
         content: `Adds a light source that makes ground squares lighter based on distance. Closer squares become lighter. x and y are the light position. radius is the effect radius (optional, default: 50). power is the light intensity 0-1 (optional, default: 1.0).
 
 [b]Arguments:[/b]
+[code]
 x - real - Light X position.
 y - real - Light Y position.
 radius - real - Effect radius. Optional, default 50.
 power - real - Light intensity 0-1. Optional, default 1.0.
+[/code]
 
 [b]Example:[/b]
 [code]drawLight(90, 160, 50, 1.0); // bright light at center
@@ -438,11 +476,13 @@ power - real - Light intensity 0-1. Optional, default 1.0.
         content: `Draws text at specified position with optional color and size.
 
 [b]Arguments:[/b]
+[code]
 x - real - X position.
 y - real - Y position.
 text - string - Text to draw.
 color - string or array - Hex color or RGB/RGBA array. Optional.
 size - number - Font size. Optional.
+[/code]
 
 [b]Example:[/b]
 [code]drawText(50, 100, "Hello", [255, 0, 0], 12);[/code]`
@@ -453,9 +493,11 @@ size - number - Font size. Optional.
         content: `Plays an MP3 sound effect from the sfx folder. Sound: filename without .mp3 extension. Volume: 0.0 to 1.0 (default 1.0). Pitch: 1.0 = normal.
 
 [b]Arguments:[/b]
+[code]
 sound - string - Filename without .mp3 extension (from sfx folder).
 volume - real - Volume 0.0 to 1.0. Optional, default 1.0.
 pitch - real - Pitch multiplier, 1.0 = normal. Optional.
+[/code]
 
 [b]Example:[/b]
 [code]soundPlay("explosion", 1.0, 1.0);
@@ -467,6 +509,7 @@ pitch - real - Pitch multiplier, 1.0 = normal. Optional.
         content: `Draws a sprite from the server. spriteName must start with @ and end with .gif or .png. xScale and yScale are scale factors. color: optional hex color string or RGBA array to tint/blend the sprite.
 
 [b]Arguments:[/b]
+[code]
 x - real - X position.
 y - real - Y position.
 name - string - Sprite filename; must start with @ and end with .gif or .png.
@@ -474,6 +517,7 @@ scaleX - real - Horizontal scale factor.
 scaleY - real - Vertical scale factor.
 rotation - real - Rotation in degrees. Optional.
 color - string or array - Hex color or RGBA array to tint. Optional.
+[/code]
 
 [b]Example:[/b]
 [code]drawSprite(90, 160, "@grassBlades.gif", 1, 1, 45); // GIF sprite, 1:1 scale, 45° rotation
@@ -486,12 +530,14 @@ drawSprite(90, 160, "@sprite.png", 1, 1, 0, "#FF0000"); // Red tinted sprite[/co
         content: `Draws a frame from a spritesheet. spriteName must start with @ and end with .gif or .png. frame: frame index (0-based). maxCellsX: number of cells horizontally. maxCellsY: number of cells vertically.
 
 [b]Arguments:[/b]
+[code]
 x - real - X position.
 y - real - Y position.
 name - string - Spritesheet filename; must start with @ and end with .gif or .png.
 frame - number - Frame index (0-based).
 maxCellsX - number - Number of cells horizontally in the sheet.
 maxCellsY - number - Number of cells vertically in the sheet.
+[/code]
 
 [b]Example:[/b]
 [code]drawSheetSprite(90, 160, "@spriteSheet.png", 0, 4, 3); // Draw first frame
@@ -503,11 +549,13 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
         content: `Embeds a YouTube video at specified world coordinates. x, y: world coordinates for top-left corner. w, h: width and height. url: YouTube URL or video ID.
 
 [b]Arguments:[/b]
+[code]
 x - real - Top-left X in world coordinates.
 y - real - Top-left Y in world coordinates.
 w - real - Width.
 h - real - Height.
 url - string - YouTube URL or video ID.
+[/code]
 
 [b]Example:[/b]
 [code]youtubePlay(50, 200, 80, 60, "dQw4w9WgXcQ");[/code]`
@@ -526,10 +574,12 @@ url - string - YouTube URL or video ID.
         content: `Creates a new instance of a coded object. If typeName is provided, calls the object's type function on creation.
 
 [b]Arguments:[/b]
+[code]
 x - real - X position for the new instance.
 y - real - Y position for the new instance.
 name - string - Object name (codeChild name from the editor).
 type - string - Type function to call on creation. Optional.
+[/code]
 
 [b][color=#ffa500]Returns: the created object or null if failed.[/color][/b]
 
@@ -551,12 +601,14 @@ type - string - Type function to call on creation. Optional.
         content: `Creates a bullet at specified position with given properties (x, y, speed, direction, size required).
 
 [b]Arguments:[/b]
+[code]
 x - real - X position.
 y - real - Y position.
 speed - real - Bullet speed.
 dir - real - Direction in degrees.
 size - real - Bullet size.
 ... - optional - Further args: [R,G,B], Alpha, ScaleY, Rotation, Lifetime, Homing, Spin, Shape, GlowSize, GlowPower, [GlowR,GlowG,GlowB].
+[/code]
 
 [b][color=#ffa500]Returns: the bullet's unique ID.[/color][/b]
 
@@ -569,6 +621,7 @@ size - real - Bullet size.
         content: `Displays an animated character sprite at specified position.
 
 [b]Arguments:[/b]
+[code]
 x - real - X position.
 y - real - Y position.
 name - string - DragonBones armature name (asset name).
@@ -576,6 +629,7 @@ anim - string - Animation name to play.
 bones - array - Array of bone names to hide. Optional.
 scaleX - real - Horizontal scale. Optional.
 scaleY - real - Vertical scale. Optional.
+[/code]
 
 [b][color=#ffa500]Returns: a handle object that allows control of the animation.[/color][/b]
 
@@ -591,7 +645,9 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
         content: `Removes the specified instance or self if no id provided.
 
 [b]Arguments:[/b]
+[code]
 id - number - Instance/codeChild ID to remove. Omit to remove self.
+[/code]
 
 [b][color=#ffa500]Returns: true if removal was successful, false otherwise.[/color][/b]
 
@@ -605,7 +661,9 @@ id - number - Instance/codeChild ID to remove. Omit to remove self.
         content: `Adds a debug message to the chat tab.
 
 [b]Arguments:[/b]
+[code]
 msg - string - Message to show in the chat/debug tab.
+[/code]
 
 [b]Example:[/b]
 [code]debugMessage("Player HP: " + playerHp);[/code]`
@@ -616,9 +674,11 @@ msg - string - Message to show in the chat/debug tab.
         content: `Checks if the object at specified position is outside screen bounds.
 
 [b]Arguments:[/b]
+[code]
 x - real - X position to check.
 y - real - Y position to check.
 margin - real - Extra margin (0-1 or pixels) outside the visible area. Optional.
+[/code]
 
 [b][color=#ffa500]Returns: true if outside screen, false otherwise.[/color][/b]
 
@@ -631,9 +691,11 @@ margin - real - Extra margin (0-1 or pixels) outside the visible area. Optional.
         content: `Finds all player bullet IDs within radius of (x,y) this frame.
 
 [b]Arguments:[/b]
+[code]
 x - real - Center X position.
 y - real - Center Y position.
 radius - real - Search radius.
+[/code]
 
 [b][color=#ffa500]Returns: an array of player bullet IDs; [] if none.[/color][/b]
 
@@ -648,11 +710,13 @@ inBullet(bids)
         content: `Circle vs circle collision detection. Skips self.
 
 [b]Arguments:[/b]
+[code]
 x - real - Center X position.
 y - real - Center Y position.
 radius - real - Collision radius for this object.
 tag - string - Tag to filter objects by. Only objects with this tag are considered.
 size - real - Radius to use for the other objects (or their collision size).
+[/code]
 
 [b][color=#ffa500]Returns: the first colliding codeChild or null.[/color][/b]
 
@@ -666,7 +730,9 @@ if (other !== null) { other.hp -= 1; }[/code]`
         content: `Creates a static background that is baked into a vertex buffer at compilation time.
 
 [b]Arguments:[/b]
+[code]
 name - string - Buffer name. Use with drawBackground(x, y, "name") to draw it.
+[/code]
 
 [b]Example:[/b]
 [code]background("bg1")
@@ -680,9 +746,11 @@ drawBackground(0, 0, "bg1")[/code]`
         content: `Draws a background buffer at specified position.
 
 [b]Arguments:[/b]
+[code]
 x - real - X position to draw at.
 y - real - Y position to draw at.
 name - string - Name of the background buffer (from background("name")).
+[/code]
 
 [b]Example:[/b]
 [code]background("myBg")
@@ -696,9 +764,11 @@ drawBackground(90, 160, "myBg")[/code]`
         content: `Plays a soundtrack file from music/soundtracks/. songName must start with $.
 
 [b]Arguments:[/b]
+[code]
 name - string - Song filename; must start with $ (from music/soundtracks/).
 seq - number - Starting sequence/order number. Optional.
 vol - real - Volume 0-1. Optional.
+[/code]
 
 [b]Example:[/b]
 [code]musicPlay("$lethal-weapon-level-1.xm");
@@ -722,7 +792,9 @@ musicPlay("$song.xm", 2, 0.5);[/code]`
         content: `Instantly plays the current song from the specified sequence/order number.
 
 [b]Arguments:[/b]
-seq - number - Sequence/order number to jump to.`
+[code]
+seq - number - Sequence/order number to jump to.
+[/code]`
     }
 ];
 
@@ -742,7 +814,9 @@ ani.alpha = 0.9;
         content: `Finds a bone by name on the armature.
 
 [b]Arguments:[/b]
+[code]
 name - string - Bone name on the armature.
+[/code]
 
 [b][color=#ffa500]Returns: dragonBones.Bone or null if not found.[/color][/b]
 [code]var bone = ani.armature.getBone("arm");[/code]`
