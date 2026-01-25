@@ -4,7 +4,10 @@
 export const specialKeywordsHelp = [
     {
         name: 'background',
-        content: `[b]Description:[/b] Bakes all draws into a vertex buffer stored under the name given as argument. Use drawBackground(x, y, "name") to draw it. Runs once at compilation.
+        content: `Bakes all draws into a vertex buffer stored under the name given as argument. Use drawBackground(x, y, "name") to draw it. Runs once at compilation.
+
+[b]Arguments:[/b]
+name - string - Buffer name to store draws under. Use with drawBackground(x, y, "name").
 
 [b]Example:[/b]
 [code]background("bg1")
@@ -17,7 +20,7 @@ drawBackground(0, 0, "bg1")[/code]
     },
     {
         name: 'def',
-        content: `[b]Description:[/b] Defines a variable with an initial value. The variable persists across frames.
+        content: `Defines a variable with an initial value. The variable persists across frames.
 
 [b]Example:[/b]
 [code]def myVar = 10;
@@ -26,7 +29,7 @@ def myString = "hello";[/code]
     },
     {
         name: 'globalvar',
-        content: `[b]Description:[/b] Define a global variable with initial value. Initialized only once, shared across ALL codeChildren (all objects).
+        content: `Define a global variable with initial value. Initialized only once, shared across ALL codeChildren (all objects).
 
 [b]Example:[/b]
 [code]globalvar score = 0;
@@ -38,7 +41,10 @@ score += 1;[/code]
     {
         name: 'inBullet',
         threadTitle: 'inBullet(id)',
-        content: `[b]Description:[/b] Lets you change bullet parameters. Accepts a single bullet ID or an array of IDs.
+        content: `Lets you change bullet parameters. Accepts a single bullet ID or an array of IDs.
+
+[b]Arguments:[/b]
+id - number or array - Bullet ID or array of bullet IDs to modify.
 
 [b]Example:[/b]
 [code]var Id = createBullet(X, Y, 5, direction, 2)
@@ -48,7 +54,10 @@ inBullet(Id)
     },
     {
         name: 'repeat',
-        content: `[b]Description:[/b] Repeats a block of code n times. Use indentation (#) to define the block.
+        content: `Repeats a block of code n times. Use indentation (#) to define the block.
+
+[b]Arguments:[/b]
+n - number - Number of times to repeat the block.
 
 [b]Example:[/b]
 [code]var i = 0
@@ -62,45 +71,45 @@ repeat(5)
 export const builtInVariablesHelp = [
     {
         name: 'player',
-        content: `[b]Description:[/b] Player object. 
+        content: `Player object. 
 [b]Properties:[/b] [color=#ffa500]X[/color], [color=#ffa500]Y[/color], [color=#ffa500]hp[/color], [color=#ffa500]knockbackTime[/color], [color=#ffa500]knockbackPower[/color], [color=#ffa500]knockbackDirection[/color]`
     },
     {
         name: 'bulletData',
-        content: `[b]Description:[/b] Array of all existing bullets and their parameters. Use inBullet() to iterate.
+        content: `Array of all existing bullets and their parameters. Use inBullet() to iterate.
 [b]Properties:[/b] [color=#ffa500]Id[/color], [color=#ffa500]X[/color], [color=#ffa500]Y[/color], [color=#ffa500]R[/color], [color=#ffa500]G[/color], [color=#ffa500]B[/color], [color=#ffa500]Alpha[/color], [color=#ffa500]Size[/color], [color=#ffa500]ScaleY[/color], [color=#ffa500]Rotation[/color], [color=#ffa500]Lifetime[/color], [color=#ffa500]Homing[/color], [color=#ffa500]Spin[/color], [color=#ffa500]Shape[/color], [color=#ffa500]GlowSize[/color], [color=#ffa500]GlowPower[/color], [color=#ffa500]GlowR[/color], [color=#ffa500]GlowG[/color], [color=#ffa500]GlowB[/color]`
     },
     {
         name: 'bulletCount',
-        content: `[b]Description:[/b] Number of active bullets`
+        content: `Number of active bullets`
     },
     {
         name: 'tapX',
-        content: `[b]Description:[/b] Mouse/tap X position in world coordinates`
+        content: `Mouse/tap X position in world coordinates`
     },
     {
         name: 'tapY',
-        content: `[b]Description:[/b] Mouse/tap Y position in world coordinates`
+        content: `Mouse/tap Y position in world coordinates`
     },
     {
         name: 'X',
-        content: `[b]Description:[/b] X position of the current object`
+        content: `X position of the current object`
     },
     {
         name: 'Y',
-        content: `[b]Description:[/b] Y position of the current object`
+        content: `Y position of the current object`
     },
     {
         name: 'speed',
-        content: `[b]Description:[/b] Speed of the current object`
+        content: `Speed of the current object`
     },
     {
         name: 'direction',
-        content: `[b]Description:[/b] Direction in degrees of the current object`
+        content: `Direction in degrees of the current object`
     },
     {
         name: 'Id',
-        content: `[b]Description:[/b] Unique ID of this codeChild`
+        content: `Unique ID of this codeChild`
     }
 ];
 
@@ -108,7 +117,7 @@ export const danmakuHelpersHelp = [
     {
         name: 'getSelf',
         threadTitle: 'getSelf()',
-        content: `[b]Description:[/b] Gives a reference to the current running object (codeChild). This is NOT a copy. You can read/write properties on it (e.g. getSelf().x = 0).
+        content: `Gives a reference to the current running object (codeChild). This is NOT a copy. You can read/write properties on it (e.g. getSelf().x = 0).
 
 [b][color=#ffa500]Returns: a reference to the current running object.[/color][/b]
 
@@ -120,7 +129,11 @@ self.speed = 2;[/code]`
     {
         name: 'getDirection',
         threadTitle: 'getDirection(x, y)',
-        content: `[b]Description:[/b] Calculates the direction angle in degrees from current position to target point.
+        content: `Calculates the direction angle in degrees from current position to target point.
+
+[b]Arguments:[/b]
+x - real - Target X position in world coordinates.
+y - real - Target Y position in world coordinates.
 
 [b][color=#ffa500]Returns: the angle in degrees (0-360).[/color][/b]
 
@@ -130,7 +143,10 @@ self.speed = 2;[/code]`
     {
         name: 'normalizeAngle',
         threadTitle: 'normalizeAngle(angle)',
-        content: `[b]Description:[/b] Normalizes numbers like -90 or 450 to 0-360 direction.
+        content: `Normalizes numbers like -90 or 450 to 0-360 direction.
+
+[b]Arguments:[/b]
+angle - real - Angle in degrees to normalize to 0-360.
 
 [b][color=#ffa500]Returns:[/color][/b] the normalized angle as a number.
 [b]Example:[/b]
@@ -139,7 +155,11 @@ self.speed = 2;[/code]`
     {
         name: 'angleDifference',
         threadTitle: 'angleDifference(a, b)',
-        content: `[b]Description:[/b] Calculates the shortest angle difference between two angles in degrees.
+        content: `Calculates the shortest angle difference between two angles in degrees.
+
+[b]Arguments:[/b]
+a - real - First angle in degrees.
+b - real - Second angle in degrees.
 
 [b][color=#ffa500]Returns: the angle difference as a number (can be negative).[/color][/b]
 
@@ -149,7 +169,11 @@ self.speed = 2;[/code]`
     {
         name: 'getDistance',
         threadTitle: 'getDistance(x, y)',
-        content: `[b]Description:[/b] Calculates the distance from current position to target point.
+        content: `Calculates the distance from current position to target point.
+
+[b]Arguments:[/b]
+x - real - Target X position in world coordinates.
+y - real - Target Y position in world coordinates.
 
 [b][color=#ffa500]Returns: the distance as a number.[/color][/b]
 
@@ -159,7 +183,11 @@ self.speed = 2;[/code]`
     {
         name: 'lenDirX',
         threadTitle: 'lenDirX(len, dir)',
-        content: `[b]Description:[/b] Converts length and direction (angle in degrees) to X component.
+        content: `Converts length and direction (angle in degrees) to X component.
+
+[b]Arguments:[/b]
+len - real - Length/distance.
+dir - real - Direction angle in degrees.
 
 [b][color=#ffa500]Returns: the X component as a number.[/color][/b]
 
@@ -169,7 +197,11 @@ self.speed = 2;[/code]`
     {
         name: 'lenDirY',
         threadTitle: 'lenDirY(len, dir)',
-        content: `[b]Description:[/b] Converts length and direction (angle in degrees) to Y component.
+        content: `Converts length and direction (angle in degrees) to Y component.
+
+[b]Arguments:[/b]
+len - real - Length/distance.
+dir - real - Direction angle in degrees.
 
 [b][color=#ffa500]Returns: the Y component as a number.[/color][/b]
 
@@ -179,7 +211,11 @@ self.speed = 2;[/code]`
     {
         name: 'move',
         threadTitle: 'move(len, dir)',
-        content: `[b]Description:[/b] Moves the instance by the given length in the given direction (angle in degrees). Modifies X and Y positions directly.
+        content: `Moves the instance by the given length in the given direction (angle in degrees). Modifies X and Y positions directly.
+
+[b]Arguments:[/b]
+len - real - Distance to move in pixels.
+dir - real - Direction angle in degrees.
 
 [b]Example:[/b]
 [code]move(5, 90); // moves 5 pixels upward
@@ -188,7 +224,10 @@ move(10, 0); // moves 10 pixels to the right[/code]`
     {
         name: 'isUndef',
         threadTitle: 'isUndef(v)',
-        content: `[b]Description:[/b] Checks if a variable is undefined or not declared.
+        content: `Checks if a variable is undefined or not declared.
+
+[b]Arguments:[/b]
+v - any - Variable or expression to check.
 
 [b][color=#ffa500]Returns:[/color][/b] true if undefined, false otherwise.
 [b]Example:[/b]
@@ -197,7 +236,11 @@ move(10, 0); // moves 10 pixels to the right[/code]`
     {
         name: 'rand',
         threadTitle: 'rand(min, max)',
-        content: `[b]Description:[/b] Generates a random number between min and max.
+        content: `Generates a random number between min and max.
+
+[b]Arguments:[/b]
+min - real - Minimum value (inclusive).
+max - real - Maximum value (inclusive).
 
 [b][color=#ffa500]Returns: a random number.[/color][/b]
 
@@ -207,7 +250,7 @@ move(10, 0); // moves 10 pixels to the right[/code]`
     {
         name: 'isEnemy',
         threadTitle: 'isEnemy()',
-        content: `[b]Description:[/b] Marks the current object as an enemy. When called, the object will have isEnemy=true and will be added to the global enemyList.
+        content: `Marks the current object as an enemy. When called, the object will have isEnemy=true and will be added to the global enemyList.
 
 [b]Example:[/b]
 [code]isEnemy(); // mark this object as an enemy[/code]`
@@ -215,7 +258,7 @@ move(10, 0); // moves 10 pixels to the right[/code]`
     {
         name: 'enemyList',
         threadTitle: 'enemyList()',
-        content: `[b]Description:[/b] Provides a global array of all active objects marked as enemies.
+        content: `Provides a global array of all active objects marked as enemies.
 
 [b][color=#ffa500]Returns: a global array of all active objects marked as enemies.[/color][/b]
 
@@ -228,7 +271,7 @@ for(var i=0; i<enemies.length; i++) {
     },
     {
         name: 'init',
-        content: `[b]Description:[/b] Use to run code only once when the instance is created.
+        content: `Use to run code only once when the instance is created.
 
 [b][color=#ffa500]Returns: true on instance create and stays false forever.[/color][/b]
 
@@ -238,7 +281,11 @@ for(var i=0; i<enemies.length; i++) {
     {
         name: 'turnTowards',
         threadTitle: 'turnTowards(target, maxTurn)',
-        content: `[b]Description:[/b] Gradually turns the current direction towards target direction, limited by maxTurn degrees per frame.
+        content: `Gradually turns the current direction towards target direction, limited by maxTurn degrees per frame.
+
+[b]Arguments:[/b]
+target - real - Target direction angle in degrees.
+maxTurn - real - Maximum degrees to turn per frame.
 
 [b][color=#ffa500]Returns: true if speed is greater than 0, false otherwise.[/color][/b]
 
@@ -248,7 +295,10 @@ for(var i=0; i<enemies.length; i++) {
     {
         name: 'turnTowardsPlayer',
         threadTitle: 'turnTowardsPlayer(maxTurn)',
-        content: `[b]Description:[/b] Gradually turns the current direction towards the player, limited by maxTurn degrees per frame.
+        content: `Gradually turns the current direction towards the player, limited by maxTurn degrees per frame.
+
+[b]Arguments:[/b]
+maxTurn - real - Maximum degrees to turn per frame.
 
 [b][color=#ffa500]Returns: true if player exists and speed is greater than 0, false otherwise.[/color][/b]
 
@@ -258,7 +308,10 @@ for(var i=0; i<enemies.length; i++) {
     {
         name: 'waveStart',
         threadTitle: 'waveStart(id)',
-        content: `[b]Description:[/b] Selects a wave by its id/number (stage editor waves).
+        content: `Selects a wave by its id/number (stage editor waves).
+
+[b]Arguments:[/b]
+id - number - Wave id/number from the stage editor.
 
 [b][color=#ffa500]Returns: true if the wave exists and was selected, false otherwise.[/color][/b]
 
@@ -269,7 +322,7 @@ waveStart(2); // select Wave 2[/code]`
     {
         name: 'waveGetCurrent',
         threadTitle: 'waveGetCurrent()',
-        content: `[b]Description:[/b] Gets the current wave number (stage editor wave id).
+        content: `Gets the current wave number (stage editor wave id).
 
 [b][color=#ffa500]Returns: the current wave number.[/color][/b]
 
@@ -280,7 +333,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'waveStartNext',
         threadTitle: 'waveStartNext()',
-        content: `[b]Description:[/b] Selects the next wave in the stage editor.
+        content: `Selects the next wave in the stage editor.
 
 [b][color=#ffa500]Returns: true if it switched to the next wave, false otherwise.[/color][/b]
 
@@ -290,7 +343,14 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'drawCircle',
         threadTitle: 'drawCircle(x, y, r, outline, color)',
-        content: `[b]Description:[/b] Draws a circle at specified position with optional outline and color.
+        content: `Draws a circle at specified position with optional outline and color.
+
+[b]Arguments:[/b]
+x - real - X position (center).
+y - real - Y position (center).
+r - real - Radius.
+outline - number - Outline width (0 = filled). Optional.
+color - string or array - Hex color (e.g. "#ff0000") or RGBA array. Optional.
 
 [b]Example:[/b]
 [code]drawCircle(100, 200, 5); // filled white circle
@@ -300,7 +360,14 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'drawRectangle',
         threadTitle: 'drawRectangle(x, y, w, h, color)',
-        content: `[b]Description:[/b] Draws a rectangle at specified position with optional color. x, y: bottom-left corner position. w, h: width and height.
+        content: `Draws a rectangle at specified position with optional color. x, y: bottom-left corner position. w, h: width and height.
+
+[b]Arguments:[/b]
+x - real - Bottom-left corner X.
+y - real - Bottom-left corner Y.
+w - real - Width.
+h - real - Height.
+color - string or array - Hex color or RGBA array. Optional.
 
 [b]Example:[/b]
 [code]drawRectangle(10, 20, 50, 30); // white rectangle
@@ -310,7 +377,12 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'drawGround',
         threadTitle: 'drawGround(cellW, cellH, color)',
-        content: `[b]Description:[/b] Draws a grid of rectangles covering the whole world. cellWidth and cellHeight are the dimensions of each grid cell.
+        content: `Draws a grid of rectangles covering the whole world. cellWidth and cellHeight are the dimensions of each grid cell.
+
+[b]Arguments:[/b]
+cellW - real - Width of each grid cell. Optional.
+cellH - real - Height of each grid cell. Optional.
+color - string or array - Hex color or RGBA array. Optional.
 
 [b]Example:[/b]
 [code]drawGround(10, 10, [1.0, 0.0, 0.0, 1.0]); // red grid with 10x10 cells
@@ -320,7 +392,13 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'drawLight',
         threadTitle: 'drawLight(x, y, radius, power)',
-        content: `[b]Description:[/b] Adds a light source that makes ground squares lighter based on distance. Closer squares become lighter. x and y are the light position. radius is the effect radius (optional, default: 50). power is the light intensity 0-1 (optional, default: 1.0).
+        content: `Adds a light source that makes ground squares lighter based on distance. Closer squares become lighter. x and y are the light position. radius is the effect radius (optional, default: 50). power is the light intensity 0-1 (optional, default: 1.0).
+
+[b]Arguments:[/b]
+x - real - Light X position.
+y - real - Light Y position.
+radius - real - Effect radius. Optional, default 50.
+power - real - Light intensity 0-1. Optional, default 1.0.
 
 [b]Example:[/b]
 [code]drawLight(90, 160, 50, 1.0); // bright light at center
@@ -329,7 +407,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'clearLights',
         threadTitle: 'clearLights()',
-        content: `[b]Description:[/b] Clears all light sources. Call at the start of each frame to reset lighting.
+        content: `Clears all light sources. Call at the start of each frame to reset lighting.
 
 [b]Example:[/b]
 [code]clearLights(); // remove all lights[/code]`
@@ -337,7 +415,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'didTapped',
         threadTitle: 'didTapped()',
-        content: `[b]Description:[/b] Checks if screen was just touched.
+        content: `Checks if screen was just touched.
 
 [b][color=#ffa500]Returns: true if tapped this frame, false otherwise.[/color][/b]
 
@@ -347,7 +425,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'didReleased',
         threadTitle: 'didReleased()',
-        content: `[b]Description:[/b] Checks if touch on screen was just released.
+        content: `Checks if touch on screen was just released.
 
 [b][color=#ffa500]Returns: true if released this frame, false otherwise.[/color][/b]
 
@@ -357,7 +435,14 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'drawText',
         threadTitle: 'drawText(x, y, text, color, size)',
-        content: `[b]Description:[/b] Draws text at specified position with optional color and size.
+        content: `Draws text at specified position with optional color and size.
+
+[b]Arguments:[/b]
+x - real - X position.
+y - real - Y position.
+text - string - Text to draw.
+color - string or array - Hex color or RGB/RGBA array. Optional.
+size - number - Font size. Optional.
 
 [b]Example:[/b]
 [code]drawText(50, 100, "Hello", [255, 0, 0], 12);[/code]`
@@ -365,7 +450,12 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'soundPlay',
         threadTitle: 'soundPlay(sound, volume, pitch)',
-        content: `[b]Description:[/b] Plays an MP3 sound effect from the sfx folder. Sound: filename without .mp3 extension. Volume: 0.0 to 1.0 (default 1.0). Pitch: 1.0 = normal.
+        content: `Plays an MP3 sound effect from the sfx folder. Sound: filename without .mp3 extension. Volume: 0.0 to 1.0 (default 1.0). Pitch: 1.0 = normal.
+
+[b]Arguments:[/b]
+sound - string - Filename without .mp3 extension (from sfx folder).
+volume - real - Volume 0.0 to 1.0. Optional, default 1.0.
+pitch - real - Pitch multiplier, 1.0 = normal. Optional.
 
 [b]Example:[/b]
 [code]soundPlay("explosion", 1.0, 1.0);
@@ -374,7 +464,16 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'drawSprite',
         threadTitle: 'drawSprite(x, y, name, scaleX, scaleY, rotation, color)',
-        content: `[b]Description:[/b] Draws a sprite from the server. spriteName must start with @ and end with .gif or .png. xScale and yScale are scale factors. color: optional hex color string or RGBA array to tint/blend the sprite.
+        content: `Draws a sprite from the server. spriteName must start with @ and end with .gif or .png. xScale and yScale are scale factors. color: optional hex color string or RGBA array to tint/blend the sprite.
+
+[b]Arguments:[/b]
+x - real - X position.
+y - real - Y position.
+name - string - Sprite filename; must start with @ and end with .gif or .png.
+scaleX - real - Horizontal scale factor.
+scaleY - real - Vertical scale factor.
+rotation - real - Rotation in degrees. Optional.
+color - string or array - Hex color or RGBA array to tint. Optional.
 
 [b]Example:[/b]
 [code]drawSprite(90, 160, "@grassBlades.gif", 1, 1, 45); // GIF sprite, 1:1 scale, 45° rotation
@@ -384,7 +483,15 @@ drawSprite(90, 160, "@sprite.png", 1, 1, 0, "#FF0000"); // Red tinted sprite[/co
     {
         name: 'drawSheetSprite',
         threadTitle: 'drawSheetSprite(x, y, name, frame, maxCellsX, maxCellsY)',
-        content: `[b]Description:[/b] Draws a frame from a spritesheet. spriteName must start with @ and end with .gif or .png. frame: frame index (0-based). maxCellsX: number of cells horizontally. maxCellsY: number of cells vertically.
+        content: `Draws a frame from a spritesheet. spriteName must start with @ and end with .gif or .png. frame: frame index (0-based). maxCellsX: number of cells horizontally. maxCellsY: number of cells vertically.
+
+[b]Arguments:[/b]
+x - real - X position.
+y - real - Y position.
+name - string - Spritesheet filename; must start with @ and end with .gif or .png.
+frame - number - Frame index (0-based).
+maxCellsX - number - Number of cells horizontally in the sheet.
+maxCellsY - number - Number of cells vertically in the sheet.
 
 [b]Example:[/b]
 [code]drawSheetSprite(90, 160, "@spriteSheet.png", 0, 4, 3); // Draw first frame
@@ -393,7 +500,14 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     {
         name: 'youtubePlay',
         threadTitle: 'youtubePlay(x, y, w, h, url)',
-        content: `[b]Description:[/b] Embeds a YouTube video at specified world coordinates. x, y: world coordinates for top-left corner. w, h: width and height. url: YouTube URL or video ID.
+        content: `Embeds a YouTube video at specified world coordinates. x, y: world coordinates for top-left corner. w, h: width and height. url: YouTube URL or video ID.
+
+[b]Arguments:[/b]
+x - real - Top-left X in world coordinates.
+y - real - Top-left Y in world coordinates.
+w - real - Width.
+h - real - Height.
+url - string - YouTube URL or video ID.
 
 [b]Example:[/b]
 [code]youtubePlay(50, 200, 80, 60, "dQw4w9WgXcQ");[/code]`
@@ -401,7 +515,7 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     {
         name: 'youtubeStop',
         threadTitle: 'youtubeStop()',
-        content: `[b]Description:[/b] Stops and removes all YouTube video players.
+        content: `Stops and removes all YouTube video players.
 
 [b]Example:[/b]
 [code]youtubeStop(); // Stops all YouTube players[/code]`
@@ -409,7 +523,13 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     {
         name: 'createObject',
         threadTitle: 'createObject(x, y, name, type)',
-        content: `[b]Description:[/b] Creates a new instance of a coded object. If typeName is provided, calls the object's type function on creation.
+        content: `Creates a new instance of a coded object. If typeName is provided, calls the object's type function on creation.
+
+[b]Arguments:[/b]
+x - real - X position for the new instance.
+y - real - Y position for the new instance.
+name - string - Object name (codeChild name from the editor).
+type - string - Type function to call on creation. Optional.
 
 [b][color=#ffa500]Returns: the created object or null if failed.[/color][/b]
 
@@ -420,7 +540,7 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     {
         name: 'makeDraggable',
         threadTitle: 'makeDraggable()',
-        content: `[b]Description:[/b] Makes the current codeChild draggable (like the player). The object must call this function each frame to remain draggable.
+        content: `Makes the current codeChild draggable (like the player). The object must call this function each frame to remain draggable.
 
 [b]Example:[/b]
 [code]makeDraggable(); // Makes this object draggable[/code]`
@@ -428,7 +548,15 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     {
         name: 'createBullet',
         threadTitle: 'createBullet(x, y, speed, dir, size, ...)',
-        content: `[b]Description:[/b] Creates a bullet at specified position with given properties (x, y, speed, direction, size required).
+        content: `Creates a bullet at specified position with given properties (x, y, speed, direction, size required).
+
+[b]Arguments:[/b]
+x - real - X position.
+y - real - Y position.
+speed - real - Bullet speed.
+dir - real - Direction in degrees.
+size - real - Bullet size.
+... - optional - Further args: [R,G,B], Alpha, ScaleY, Rotation, Lifetime, Homing, Spin, Shape, GlowSize, GlowPower, [GlowR,GlowG,GlowB].
 
 [b][color=#ffa500]Returns: the bullet's unique ID.[/color][/b]
 
@@ -438,7 +566,16 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     {
         name: 'drawAnimated',
         threadTitle: 'drawAnimated(x, y, name, anim, bones, scaleX, scaleY)',
-        content: `[b]Description:[/b] Displays an animated character sprite at specified position.
+        content: `Displays an animated character sprite at specified position.
+
+[b]Arguments:[/b]
+x - real - X position.
+y - real - Y position.
+name - string - DragonBones armature name (asset name).
+anim - string - Animation name to play.
+bones - array - Array of bone names to hide. Optional.
+scaleX - real - Horizontal scale. Optional.
+scaleY - real - Vertical scale. Optional.
 
 [b][color=#ffa500]Returns: a handle object that allows control of the animation.[/color][/b]
 
@@ -451,7 +588,10 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     {
         name: 'destroy',
         threadTitle: 'destroy(id)',
-        content: `[b]Description:[/b] Removes the specified instance or self if no id provided.
+        content: `Removes the specified instance or self if no id provided.
+
+[b]Arguments:[/b]
+id - number - Instance/codeChild ID to remove. Omit to remove self.
 
 [b][color=#ffa500]Returns: true if removal was successful, false otherwise.[/color][/b]
 
@@ -462,7 +602,10 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     {
         name: 'debugMessage',
         threadTitle: 'debugMessage(msg)',
-        content: `[b]Description:[/b] Adds a debug message to the chat tab.
+        content: `Adds a debug message to the chat tab.
+
+[b]Arguments:[/b]
+msg - string - Message to show in the chat/debug tab.
 
 [b]Example:[/b]
 [code]debugMessage("Player HP: " + playerHp);[/code]`
@@ -470,7 +613,12 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     {
         name: 'objectOutScreen',
         threadTitle: 'objectOutScreen(x, y, margin)',
-        content: `[b]Description:[/b] Checks if the object at specified position is outside screen bounds.
+        content: `Checks if the object at specified position is outside screen bounds.
+
+[b]Arguments:[/b]
+x - real - X position to check.
+y - real - Y position to check.
+margin - real - Extra margin (0-1 or pixels) outside the visible area. Optional.
 
 [b][color=#ffa500]Returns: true if outside screen, false otherwise.[/color][/b]
 
@@ -480,7 +628,12 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     {
         name: 'collidePlayerBullet',
         threadTitle: 'collidePlayerBullet(x, y, radius)',
-        content: `[b]Description:[/b] Finds all player bullet IDs within radius of (x,y) this frame.
+        content: `Finds all player bullet IDs within radius of (x,y) this frame.
+
+[b]Arguments:[/b]
+x - real - Center X position.
+y - real - Center Y position.
+radius - real - Search radius.
 
 [b][color=#ffa500]Returns: an array of player bullet IDs; [] if none.[/color][/b]
 
@@ -492,7 +645,14 @@ inBullet(bids)
     {
         name: 'colideOtherObject',
         threadTitle: 'colideOtherObject(x, y, radius, tag, size)',
-        content: `[b]Description:[/b] Circle vs circle collision detection. Skips self.
+        content: `Circle vs circle collision detection. Skips self.
+
+[b]Arguments:[/b]
+x - real - Center X position.
+y - real - Center Y position.
+radius - real - Collision radius for this object.
+tag - string - Tag to filter objects by. Only objects with this tag are considered.
+size - real - Radius to use for the other objects (or their collision size).
 
 [b][color=#ffa500]Returns: the first colliding codeChild or null.[/color][/b]
 
@@ -503,7 +663,10 @@ if (other !== null) { other.hp -= 1; }[/code]`
     {
         name: 'background',
         threadTitle: 'background(name)',
-        content: `[b]Description:[/b] Creates a static background that is baked into a vertex buffer at compilation time.
+        content: `Creates a static background that is baked into a vertex buffer at compilation time.
+
+[b]Arguments:[/b]
+name - string - Buffer name. Use with drawBackground(x, y, "name") to draw it.
 
 [b]Example:[/b]
 [code]background("bg1")
@@ -514,7 +677,12 @@ drawBackground(0, 0, "bg1")[/code]`
     {
         name: 'drawBackground',
         threadTitle: 'drawBackground(x, y, name)',
-        content: `[b]Description:[/b] Draws a background buffer at specified position.
+        content: `Draws a background buffer at specified position.
+
+[b]Arguments:[/b]
+x - real - X position to draw at.
+y - real - Y position to draw at.
+name - string - Name of the background buffer (from background("name")).
 
 [b]Example:[/b]
 [code]background("myBg")
@@ -525,7 +693,12 @@ drawBackground(90, 160, "myBg")[/code]`
     {
         name: 'musicPlay',
         threadTitle: 'musicPlay(name, seq, vol)',
-        content: `[b]Description:[/b] Plays a soundtrack file from music/soundtracks/. songName must start with $.
+        content: `Plays a soundtrack file from music/soundtracks/. songName must start with $.
+
+[b]Arguments:[/b]
+name - string - Song filename; must start with $ (from music/soundtracks/).
+seq - number - Starting sequence/order number. Optional.
+vol - real - Volume 0-1. Optional.
 
 [b]Example:[/b]
 [code]musicPlay("$lethal-weapon-level-1.xm");
@@ -534,19 +707,22 @@ musicPlay("$song.xm", 2, 0.5);[/code]`
     {
         name: 'musicStop',
         threadTitle: 'musicStop()',
-        content: `[b]Description:[/b] Stops the currently playing soundtrack.`
+        content: `Stops the currently playing soundtrack.`
     },
     {
         name: 'musicGetSequence',
         threadTitle: 'musicGetSequence()',
-        content: `[b]Description:[/b] Gets the current sequence/order number of the currently played soundtrack.
+        content: `Gets the current sequence/order number of the currently played soundtrack.
 
 [b][color=#ffa500]Returns: the current sequence/order number.[/color][/b]`
     },
     {
         name: 'musicSetSequence',
         threadTitle: 'musicSetSequence(seq)',
-        content: `[b]Description:[/b] Instantly plays the current song from the specified sequence/order number.`
+        content: `Instantly plays the current song from the specified sequence/order number.
+
+[b]Arguments:[/b]
+seq - number - Sequence/order number to jump to.`
     }
 ];
 
@@ -563,14 +739,17 @@ ani.alpha = 0.9;
     },
     {
         name: 'ani.armature.getBone(name)',
-        content: `[b]Description:[/b] Finds a bone by name on the armature.
+        content: `Finds a bone by name on the armature.
+
+[b]Arguments:[/b]
+name - string - Bone name on the armature.
 
 [b][color=#ffa500]Returns: dragonBones.Bone or null if not found.[/color][/b]
 [code]var bone = ani.armature.getBone("arm");[/code]`
     },
     {
         name: 'bone.visible',
-        content: `[b]Description:[/b] Shows or hides a bone (and typically its attached slot visuals).
+        content: `Shows or hides a bone (and typically its attached slot visuals).
 
 [b][color=#ffa500]Type: boolean[/color][/b]
 [code]bone.visible = false; // hide
@@ -578,7 +757,7 @@ bone.visible = true;  // show[/code]`
     },
     {
         name: 'bone.origin',
-        content: `[b]Description:[/b] The bone’s original/default transform (from the skeleton data). Useful as a baseline.
+        content: `The bone’s original/default transform (from the skeleton data). Useful as a baseline.
 [b]Note:[/b] this is different from [color=#ffa500]bone.global[/color] (current pose) and [color=#ffa500]bone.offset[/color] (your override).
 
 [b]Example:[/b]
@@ -588,7 +767,7 @@ bone.visible = true;  // show[/code]`
     },
     {
         name: 'Example: animation',
-        content: `[b]Description:[/b] The animation handle (ani) provides display properties (Pixi) and animation controller properties (DragonBones).
+        content: `The animation handle (ani) provides display properties (Pixi) and animation controller properties (DragonBones).
 
 [b]Example:[/b]
 [code]var ani = drawAnimated(x, y, "ForestBee", "Idle");
@@ -625,100 +804,100 @@ export const javaScriptStuffHelp = [
 ];
 
 export const mathFunctionsHelp = [
-    { name: 'abs(x)', content: `[b]Description:[/b] Absolute value` },
-    { name: 'atan2(y, x)', content: `[b]Description:[/b] Arc tangent of y/x.
+    { name: 'abs(x)', content: `Absolute value` },
+    { name: 'atan2(y, x)', content: `Arc tangent of y/x.
 
 [b][color=#ffa500]Returns: angle in radians.[/color][/b]` },
-    { name: 'ceil(x)', content: `[b]Description:[/b] Round up` },
-    { name: 'cos(x)', content: `[b]Description:[/b] Cosine (radians)` },
-    { name: 'E', content: `[b]Description:[/b] Euler's number` },
-    { name: 'floor(x)', content: `[b]Description:[/b] Round down` },
-    { name: 'max(a, b, ...)', content: `[b]Description:[/b] Maximum value` },
-    { name: 'min(a, b, ...)', content: `[b]Description:[/b] Minimum value` },
-    { name: 'PI', content: `[b]Description:[/b] Pi constant (3.14159...)` },
-    { name: 'pow(x, y)', content: `[b]Description:[/b] x to power of y` },
-    { name: 'random()', content: `[b]Description:[/b] Random 0-1` },
-    { name: 'round(x)', content: `[b]Description:[/b] Round to nearest` },
-    { name: 'sin(x)', content: `[b]Description:[/b] Sine (radians)` },
-    { name: 'sqrt(x)', content: `[b]Description:[/b] Square root` },
-    { name: 'tan(x)', content: `[b]Description:[/b] Tangent (radians)` }
+    { name: 'ceil(x)', content: `Round up` },
+    { name: 'cos(x)', content: `Cosine (radians)` },
+    { name: 'E', content: `Euler's number` },
+    { name: 'floor(x)', content: `Round down` },
+    { name: 'max(a, b, ...)', content: `Maximum value` },
+    { name: 'min(a, b, ...)', content: `Minimum value` },
+    { name: 'PI', content: `Pi constant (3.14159...)` },
+    { name: 'pow(x, y)', content: `x to power of y` },
+    { name: 'random()', content: `Random 0-1` },
+    { name: 'round(x)', content: `Round to nearest` },
+    { name: 'sin(x)', content: `Sine (radians)` },
+    { name: 'sqrt(x)', content: `Square root` },
+    { name: 'tan(x)', content: `Tangent (radians)` }
 ];
 
 export const arrayMethodsHelp = [
-    { name: 'array.length', content: `[b]Description:[/b] Get array length` },
-    { name: 'array.push(item)', content: `[b]Description:[/b] Add item to end` },
-    { name: 'array.pop()', content: `[b]Description:[/b] Remove last item` },
-    { name: 'array.shift()', content: `[b]Description:[/b] Remove first item` },
-    { name: 'array.unshift(item)', content: `[b]Description:[/b] Add item to start` },
-    { name: 'array.indexOf(item)', content: `[b]Description:[/b] Find index of item` },
-    { name: 'array.includes(item)', content: `[b]Description:[/b] Check if contains item` },
-    { name: 'array.slice(start, end)', content: `[b]Description:[/b] Get sub-array` },
-    { name: 'array.splice(i, n, ...)', content: `[b]Description:[/b] Remove/insert items` },
-    { name: 'array.forEach(fn)', content: `[b]Description:[/b] Loop through items` },
-    { name: 'array.map(fn)', content: `[b]Description:[/b] Transform array` },
-    { name: 'array.filter(fn)', content: `[b]Description:[/b] Filter array` },
-    { name: 'array.find(fn)', content: `[b]Description:[/b] Find first match` },
-    { name: 'array.join(sep)', content: `[b]Description:[/b] Join to string` }
+    { name: 'array.length', content: `Get array length` },
+    { name: 'array.push(item)', content: `Add item to end` },
+    { name: 'array.pop()', content: `Remove last item` },
+    { name: 'array.shift()', content: `Remove first item` },
+    { name: 'array.unshift(item)', content: `Add item to start` },
+    { name: 'array.indexOf(item)', content: `Find index of item` },
+    { name: 'array.includes(item)', content: `Check if contains item` },
+    { name: 'array.slice(start, end)', content: `Get sub-array` },
+    { name: 'array.splice(i, n, ...)', content: `Remove/insert items` },
+    { name: 'array.forEach(fn)', content: `Loop through items` },
+    { name: 'array.map(fn)', content: `Transform array` },
+    { name: 'array.filter(fn)', content: `Filter array` },
+    { name: 'array.find(fn)', content: `Find first match` },
+    { name: 'array.join(sep)', content: `Join to string` }
 ];
 
 export const stringMethodsHelp = [
-    { name: 'string.length', content: `[b]Description:[/b] Get string length` },
-    { name: 'string.charAt(i)', content: `[b]Description:[/b] Get character at index` },
-    { name: 'string.indexOf(str)', content: `[b]Description:[/b] Find substring index` },
-    { name: 'string.includes(str)', content: `[b]Description:[/b] Check if contains` },
-    { name: 'string.substring(s, e)', content: `[b]Description:[/b] Get substring` },
-    { name: 'string.slice(s, e)', content: `[b]Description:[/b] Get substring` },
-    { name: 'string.split(sep)', content: `[b]Description:[/b] Split to array` },
-    { name: 'string.toLowerCase()', content: `[b]Description:[/b] Convert to lowercase` },
-    { name: 'string.toUpperCase()', content: `[b]Description:[/b] Convert to uppercase` },
-    { name: 'string.trim()', content: `[b]Description:[/b] Remove whitespace` },
-    { name: 'string.replace(a, b)', content: `[b]Description:[/b] Replace substring` }
+    { name: 'string.length', content: `Get string length` },
+    { name: 'string.charAt(i)', content: `Get character at index` },
+    { name: 'string.indexOf(str)', content: `Find substring index` },
+    { name: 'string.includes(str)', content: `Check if contains` },
+    { name: 'string.substring(s, e)', content: `Get substring` },
+    { name: 'string.slice(s, e)', content: `Get substring` },
+    { name: 'string.split(sep)', content: `Split to array` },
+    { name: 'string.toLowerCase()', content: `Convert to lowercase` },
+    { name: 'string.toUpperCase()', content: `Convert to uppercase` },
+    { name: 'string.trim()', content: `Remove whitespace` },
+    { name: 'string.replace(a, b)', content: `Replace substring` }
 ];
 
 export const numberMethodsHelp = [
-    { name: 'Number.parseInt(str)', content: `[b]Description:[/b] Parse integer` },
-    { name: 'Number.parseFloat(str)', content: `[b]Description:[/b] Parse float` },
-    { name: 'num.toFixed(n)', content: `[b]Description:[/b] Format to n decimals` },
-    { name: 'num.toString()', content: `[b]Description:[/b] Convert to string` },
-    { name: 'isNaN(x)', content: `[b]Description:[/b] Check if not a number` },
-    { name: 'isFinite(x)', content: `[b]Description:[/b] Check if finite number` }
+    { name: 'Number.parseInt(str)', content: `Parse integer` },
+    { name: 'Number.parseFloat(str)', content: `Parse float` },
+    { name: 'num.toFixed(n)', content: `Format to n decimals` },
+    { name: 'num.toString()', content: `Convert to string` },
+    { name: 'isNaN(x)', content: `Check if not a number` },
+    { name: 'isFinite(x)', content: `Check if finite number` }
 ];
 
 export const globalFunctionsHelp = [
-    { name: 'Object.keys(obj)', content: `[b]Description:[/b] Get object keys as array` },
-    { name: 'Object.values(obj)', content: `[b]Description:[/b] Get object values as array` },
-    { name: 'Object.assign(target, src)', content: `[b]Description:[/b] Copy properties to target` },
-    { name: 'Object.entries(obj)', content: `[b]Description:[/b] Get [key, value] pairs` },
-    { name: 'Object.hasOwnProperty(key)', content: `[b]Description:[/b] Check if property exists` },
-    { name: 'Date.now()', content: `[b]Description:[/b] Current timestamp (milliseconds)` },
-    { name: 'new Date()', content: `[b]Description:[/b] Create date object` },
-    { name: 'new Date(timestamp)', content: `[b]Description:[/b] Create date from timestamp` },
-    { name: 'parseInt(str)', content: `[b]Description:[/b] Parse string to integer` },
-    { name: 'parseFloat(str)', content: `[b]Description:[/b] Parse string to float` },
-    { name: 'isNaN(x)', content: `[b]Description:[/b] Check if not a number` },
-    { name: 'isFinite(x)', content: `[b]Description:[/b] Check if finite number` },
-    { name: 'encodeURIComponent(str)', content: `[b]Description:[/b] Encode URI component` },
-    { name: 'decodeURIComponent(str)', content: `[b]Description:[/b] Decode URI component` },
-    { name: 'String(x)', content: `[b]Description:[/b] Convert to string` },
-    { name: 'Number(x)', content: `[b]Description:[/b] Convert to number` },
-    { name: 'Boolean(x)', content: `[b]Description:[/b] Convert to boolean` },
-    { name: 'Array.isArray(x)', content: `[b]Description:[/b] Check if is array` }
+    { name: 'Object.keys(obj)', content: `Get object keys as array` },
+    { name: 'Object.values(obj)', content: `Get object values as array` },
+    { name: 'Object.assign(target, src)', content: `Copy properties to target` },
+    { name: 'Object.entries(obj)', content: `Get [key, value] pairs` },
+    { name: 'Object.hasOwnProperty(key)', content: `Check if property exists` },
+    { name: 'Date.now()', content: `Current timestamp (milliseconds)` },
+    { name: 'new Date()', content: `Create date object` },
+    { name: 'new Date(timestamp)', content: `Create date from timestamp` },
+    { name: 'parseInt(str)', content: `Parse string to integer` },
+    { name: 'parseFloat(str)', content: `Parse string to float` },
+    { name: 'isNaN(x)', content: `Check if not a number` },
+    { name: 'isFinite(x)', content: `Check if finite number` },
+    { name: 'encodeURIComponent(str)', content: `Encode URI component` },
+    { name: 'decodeURIComponent(str)', content: `Decode URI component` },
+    { name: 'String(x)', content: `Convert to string` },
+    { name: 'Number(x)', content: `Convert to number` },
+    { name: 'Boolean(x)', content: `Convert to boolean` },
+    { name: 'Array.isArray(x)', content: `Check if is array` }
 ];
 
 export const arrayConstructorHelp = [
-    { name: 'new Array()', content: `[b]Description:[/b] Create empty array` },
-    { name: 'new Array(n)', content: `[b]Description:[/b] Create array with n elements` },
-    { name: 'new Array(a, b, c)', content: `[b]Description:[/b] Create array with elements` },
-    { name: '[1, 2, 3]', content: `[b]Description:[/b] Array literal syntax` },
-    { name: 'Array.from(obj)', content: `[b]Description:[/b] Create array from iterable` },
-    { name: 'Array.of(...args)', content: `[b]Description:[/b] Create array from arguments` }
+    { name: 'new Array()', content: `Create empty array` },
+    { name: 'new Array(n)', content: `Create array with n elements` },
+    { name: 'new Array(a, b, c)', content: `Create array with elements` },
+    { name: '[1, 2, 3]', content: `Array literal syntax` },
+    { name: 'Array.from(obj)', content: `Create array from iterable` },
+    { name: 'Array.of(...args)', content: `Create array from arguments` }
 ];
 
 export const stringNumberConstructorsHelp = [
-    { name: 'new String(str)', content: `[b]Description:[/b] Create string object` },
-    { name: '"text" or \'text\'', content: `[b]Description:[/b] String literal` },
-    { name: 'template literal', content: `[b]Description:[/b] Template literal syntax using backticks` },
-    { name: 'new Number(n)', content: `[b]Description:[/b] Create number object` },
-    { name: '123 or 12.34', content: `[b]Description:[/b] Number literal` },
-    { name: '0x123', content: `[b]Description:[/b] Hexadecimal literal` }
+    { name: 'new String(str)', content: `Create string object` },
+    { name: '"text" or \'text\'', content: `String literal` },
+    { name: 'template literal', content: `Template literal syntax using backticks` },
+    { name: 'new Number(n)', content: `Create number object` },
+    { name: '123 or 12.34', content: `Number literal` },
+    { name: '0x123', content: `Hexadecimal literal` }
 ];
