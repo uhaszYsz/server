@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import * as helpContent from './help-content.js';
 
 // Password hashing configuration
 const BCRYPT_ROUNDS = 10;
@@ -882,7 +883,14 @@ function initForumCategories() {
                                             { name: 'Built-in Variables', parent_id: manualsId, description: 'Manual for built-in variables', order: 2 },
                                             { name: 'Danmaku Helpers', parent_id: manualsId, description: 'Manual for danmaku helpers', order: 3 },
                                             { name: 'DragonBones', parent_id: manualsId, description: 'Manual for DragonBones', order: 4 },
-                                            { name: 'JavaScript Stuff', parent_id: manualsId, description: 'Manual for JavaScript stuff', order: 5 }
+                                            { name: 'JavaScript Stuff', parent_id: manualsId, description: 'Manual for JavaScript stuff', order: 5 },
+                                            { name: 'Math Functions', parent_id: manualsId, description: 'Manual for math functions', order: 6 },
+                                            { name: 'Array Methods', parent_id: manualsId, description: 'Manual for array methods', order: 7 },
+                                            { name: 'String Methods', parent_id: manualsId, description: 'Manual for string methods', order: 8 },
+                                            { name: 'Number Methods', parent_id: manualsId, description: 'Manual for number methods', order: 9 },
+                                            { name: 'Global Functions', parent_id: manualsId, description: 'Manual for global functions', order: 10 },
+                                            { name: 'Array Constructor', parent_id: manualsId, description: 'Manual for array constructor', order: 11 },
+                                            { name: 'String & Number Constructors', parent_id: manualsId, description: 'Manual for string & number constructors', order: 12 }
                                         ];
                                     
                                     let processed = 0;
@@ -905,24 +913,45 @@ function initForumCategories() {
                                             }
                                             
                                             if (row) {
+                                                const categoryId = row.id;
                                                 // Update existing category
                                                 db.run('UPDATE forum_categories SET description = ?, display_order = ? WHERE id = ?',
-                                                    [cat.description, cat.order, row.id], (err) => {
+                                                    [cat.description, cat.order, categoryId], (err) => {
                                                     if (err) {
                                                         console.error('Error updating category:', err);
                                                     }
-                                                    processed++;
-                                                    if (processed === total) resolve();
+                                                    
+                                                    // Initialize help threads for this category
+                                                    initHelpThreads(cat.name, categoryId).then(() => {
+                                                        processed++;
+                                                        if (processed === total) resolve();
+                                                    }).catch(err => {
+                                                        console.error(`Error initializing help threads for ${cat.name}:`, err);
+                                                        processed++;
+                                                        if (processed === total) resolve();
+                                                    });
                                                 });
                                             } else {
                                                 // Insert new category
                                                 db.run('INSERT INTO forum_categories (name, parent_id, description, display_order) VALUES (?, ?, ?, ?)', 
-                                                    [cat.name, cat.parent_id, cat.description, cat.order], (err) => {
+                                                    [cat.name, cat.parent_id, cat.description, cat.order], function(err) {
                                                     if (err) {
                                                         console.error('Error inserting subcategory:', err);
+                                                        processed++;
+                                                        if (processed === total) resolve();
+                                                        return;
                                                     }
-                                                    processed++;
-                                                    if (processed === total) resolve();
+                                                    
+                                                    const categoryId = this.lastID;
+                                                    // Initialize help threads for this category
+                                                    initHelpThreads(cat.name, categoryId).then(() => {
+                                                        processed++;
+                                                        if (processed === total) resolve();
+                                                    }).catch(err => {
+                                                        console.error(`Error initializing help threads for ${cat.name}:`, err);
+                                                        processed++;
+                                                        if (processed === total) resolve();
+                                                    });
                                                 });
                                             }
                                         });
@@ -935,6 +964,65 @@ function initForumCategories() {
             }
         });
     });
+}
+
+// Helper to initialize help threads for a category
+async function initHelpThreads(categoryName, categoryId) {
+    const helpMap = {
+        'Special Keywords': helpContent.specialKeywordsHelp,
+        'Built-in Variables': helpContent.builtInVariablesHelp,
+        'Danmaku Helpers': helpContent.danmakuHelpersHelp,
+        'DragonBones': helpContent.dragonBonesHelp,
+        'JavaScript Stuff': helpContent.javaScriptStuffHelp,
+        'Math Functions': helpContent.mathFunctionsHelp,
+        'Array Methods': helpContent.arrayMethodsHelp,
+        'String Methods': helpContent.stringMethodsHelp,
+        'Number Methods': helpContent.numberMethodsHelp,
+        'Global Functions': helpContent.globalFunctionsHelp,
+        'Array Constructor': helpContent.arrayConstructorHelp,
+        'String & Number Constructors': helpContent.stringNumberConstructorsHelp
+    };
+
+    const items = helpMap[categoryName];
+    if (!items) return;
+
+    for (const item of items) {
+        await new Promise((resolve, reject) => {
+            // Check if thread already exists
+            db.get('SELECT id FROM forum_threads WHERE category_id = ? AND title = ?', [categoryId, item.name], (err, thread) => {
+                if (err) return reject(err);
+                
+                if (thread) {
+                    // Thread exists, check if post exists
+                    db.get('SELECT id FROM forum_posts WHERE thread_id = ?', [thread.id], (err, post) => {
+                        if (err) return reject(err);
+                        if (!post) {
+                            // Create post if missing
+                            db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)',
+                                [thread.id, 'system', item.content], (err) => {
+                                    if (err) reject(err);
+                                    else resolve();
+                                });
+                        } else {
+                            resolve();
+                        }
+                    });
+                } else {
+                    // Create thread and post
+                    db.run('INSERT INTO forum_threads (category_id, title, author) VALUES (?, ?, ?)',
+                        [categoryId, item.name, 'system'], function(err) {
+                            if (err) return reject(err);
+                            const threadId = this.lastID;
+                            db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)',
+                                [threadId, 'system', item.content], (err) => {
+                                    if (err) reject(err);
+                                    else resolve();
+                                });
+                        });
+                }
+            });
+        });
+    }
 }
 
 // Forum functions
