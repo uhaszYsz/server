@@ -1,17 +1,10 @@
 // server/help-content.js
 // Export help content as BBCode for forum initialization
 
-function formatReturns(text) {
-    if (!text) return text;
-    // Find "Returns: ..." or "Returns ..." and format it
-    // Use [b][color=#ffa500]Returns:[/color][/b] on a new line
-    return text.replace(/\.?\s*Returns:?\s*(.*)/gi, '\n[b][color=#ffa500]Returns:[/color][/b] $1');
-}
-
 export const specialKeywordsHelp = [
     {
         name: 'background',
-        content: formatReturns(`[b]Description:[/b] Bakes all draws to a vertex buffer we store under name provided as argument. Use drawBackground(x, y, "name") to use baked backgrounds. Happens once at compilation.
+        content: `[b]Description:[/b] Bakes all draws to a vertex buffer we store under name provided as argument. Use drawBackground(x, y, "name") to use baked backgrounds. Happens once at compilation.
 [b]Example:[/b]
 [code]background("bg1")
 #drawCircle(90, 160, 4, 0, "#FF0000")
@@ -19,46 +12,46 @@ export const specialKeywordsHelp = [
 
 // Later in code:
 drawBackground(0, 0, "bg1")[/code]
-[i]Creates a background with a red circle and white text, then draws it at position (0, 0).[/i]`)
+[i]Creates a background with a red circle and white text, then draws it at position (0, 0).[/i]`
     },
     {
         name: 'def',
-        content: formatReturns(`[b]Description:[/b] Define a variable with initial value. Variable persists across frames.
+        content: `[b]Description:[/b] Define a variable with initial value. Variable persists across frames.
 [b]Example:[/b]
 [code]def myVar = 10;
 def myString = "hello";[/code]
-[i]Defines two variables that persist across frames.[/i]`)
+[i]Defines two variables that persist across frames.[/i]`
     },
     {
         name: 'globalvar',
-        content: formatReturns(`[b]Description:[/b] Define a global variable with initial value. Initialized only once, shared across ALL codeChildren (all objects).
+        content: `[b]Description:[/b] Define a global variable with initial value. Initialized only once, shared across ALL codeChildren (all objects).
 [b]Example:[/b]
 [code]globalvar score = 0;
 
 // In any object:
 score += 1;[/code]
-[i]Creates a shared score counter accessible from every object.[/i]`)
+[i]Creates a shared score counter accessible from every object.[/i]`
     },
     {
         name: 'inBullet',
-        content: formatReturns(`[b]Description:[/b] Allows you to manipulate bullet parameters. Accepts a single bullet ID or an array of IDs.
+        content: `[b]Description:[/b] Allows you to manipulate bullet parameters. Accepts a single bullet ID or an array of IDs.
 [b]Example:[/b]
 [code]var Id = createBullet(X, Y, 5, direction, 2)
 inBullet(Id)
 #Alpha = 0.2[/code]
-[i]Sets Alpha for one bullet by its Id.[/i]`)
+[i]Sets Alpha for one bullet by its Id.[/i]`
     },
     {
         name: 'repeat',
-        content: formatReturns(`[b]Description:[/b] Repeat a block of code n times. Use indentation (#) to define the block.
+        content: `[b]Description:[/b] Repeat a block of code n times. Use indentation (#) to define the block.
 [b]Example:[/b]
 [code]var i = 0
 repeat(5)
 #createBullet(x,y,5,direction-15*i)
 #i++[/code]
-[i]Creates 5 bullets in a spread pattern using a counter variable.[/i]`)
+[i]Creates 5 bullets in a spread pattern using a counter variable.[/i]`
     }
-].map(item => ({ ...item, content: formatReturns(item.content) }));
+];
 
 export const builtInVariablesHelp = [
     {
@@ -103,12 +96,13 @@ export const builtInVariablesHelp = [
         name: 'Id',
         content: `[b]Description:[/b] Unique ID of this codeChild`
     }
-].map(item => ({ ...item, content: formatReturns(item.content) }));
+];
 
 export const danmakuHelpersHelp = [
     {
         name: 'getSelf',
         content: `[b]Description:[/b] Returns a reference to the current running object (codeChild). This is NOT a copy. You can read/write properties on it (e.g. getSelf().x = 0).
+\n[b][color=#ffa500]Returns:[/color][/b] a reference to the current running object.
 [b]Example:[/b]
 [code]var self = getSelf();
 self.x = 0;
@@ -116,37 +110,43 @@ self.speed = 2;[/code]`
     },
     {
         name: 'getDirection',
-        content: `[b]Description:[/b] Calculates the direction angle in degrees from current position to target point. Returns the angle in degrees (0-360).
+        content: `[b]Description:[/b] Calculates the direction angle in degrees from current position to target point. 
+\n[b][color=#ffa500]Returns:[/color][/b] the angle in degrees (0-360).
 [b]Example:[/b]
 [code]var dir = getDirection(100, 200);[/code]`
     },
     {
         name: 'normalizeAngle',
-        content: `[b]Description:[/b] Normalizes numbers like -90 or 450 to 0-360 direction. Returns the normalized angle as a number.
+        content: `[b]Description:[/b] Normalizes numbers like -90 or 450 to 0-360 direction. 
+\n[b][color=#ffa500]Returns:[/color][/b] the normalized angle as a number.
 [b]Example:[/b]
 [code]direction = normalizeAngle(450); // returns 90[/code]`
     },
     {
         name: 'angleDifference',
-        content: `[b]Description:[/b] Calculates the shortest angle difference between two angles in degrees. Returns the angle difference as a number (can be negative).
+        content: `[b]Description:[/b] Calculates the shortest angle difference between two angles in degrees. 
+\n[b][color=#ffa500]Returns:[/color][/b] the angle difference as a number (can be negative).
 [b]Example:[/b]
 [code]var diff = angleDifference(0, 270); // returns -90[/code]`
     },
     {
         name: 'getDistance',
-        content: `[b]Description:[/b] Calculates the distance from current position to target point. Returns the distance as a number.
+        content: `[b]Description:[/b] Calculates the distance from current position to target point. 
+\n[b][color=#ffa500]Returns:[/color][/b] the distance as a number.
 [b]Example:[/b]
 [code]var dist = getDistance(100, 200);[/code]`
     },
     {
         name: 'lenDirX',
-        content: `[b]Description:[/b] Converts length and direction (angle in degrees) to X component. Returns the X component as a number.
+        content: `[b]Description:[/b] Converts length and direction (angle in degrees) to X component. 
+\n[b][color=#ffa500]Returns:[/color][/b] the X component as a number.
 [b]Example:[/b]
 [code]var offsetX = lenDirX(10, 90); // returns 0 (straight up)[/code]`
     },
     {
         name: 'lenDirY',
-        content: `[b]Description:[/b] Converts length and direction (angle in degrees) to Y component. Returns the Y component as a number.
+        content: `[b]Description:[/b] Converts length and direction (angle in degrees) to Y component. 
+\n[b][color=#ffa500]Returns:[/color][/b] the Y component as a number.
 [b]Example:[/b]
 [code]var offsetY = lenDirY(10, 90); // returns 10 (straight up)[/code]`
     },
@@ -159,13 +159,15 @@ move(10, 0); // moves 10 pixels to the right[/code]`
     },
     {
         name: 'isUndef',
-        content: `[b]Description:[/b] Checks if a variable is undefined or not declared. Returns true if undefined, false otherwise.
+        content: `[b]Description:[/b] Checks if a variable is undefined or not declared. 
+\n[b][color=#ffa500]Returns:[/color][/b] true if undefined, false otherwise.
 [b]Example:[/b]
 [code]if (isUndef(myVar)) { /* variable is undefined or not declared */ }[/code]`
     },
     {
         name: 'rand',
-        content: `[b]Description:[/b] Generates random number between min and max. Returns a random number.
+        content: `[b]Description:[/b] Generates random number between min and max. 
+\n[b][color=#ffa500]Returns:[/color][/b] a random number.
 [b]Example:[/b]
 [code]var value = rand(-100, 100); // random number between -100 and 100[/code]`
     },
@@ -178,6 +180,7 @@ move(10, 0); // moves 10 pixels to the right[/code]`
     {
         name: 'enemyList',
         content: `[b]Description:[/b] Returns a global array of all active objects marked as enemies.
+\n[b][color=#ffa500]Returns:[/color][/b] a global array of all active objects marked as enemies.
 [b]Example:[/b]
 [code]var enemies = enemyList();
 for(var i=0; i<enemies.length; i++) {
@@ -187,25 +190,29 @@ for(var i=0; i<enemies.length; i++) {
     },
     {
         name: 'init',
-        content: `[b]Description:[/b] Returns true only once at initialization. Returns true on instance create and stays false forever.
+        content: `[b]Description:[/b] Returns true only once at initialization. 
+\n[b][color=#ffa500]Returns:[/color][/b] true on instance create and stays false forever.
 [b]Example:[/b]
 [code]if (init()) { /* danmakuINIT is undefined */ }[/code]`
     },
     {
         name: 'turnTowards',
-        content: `[b]Description:[/b] Gradually turns the current direction towards target direction, limited by maxTurn degrees per frame. Returns true if speed is greater than 0, false otherwise.
+        content: `[b]Description:[/b] Gradually turns the current direction towards target direction, limited by maxTurn degrees per frame. 
+\n[b][color=#ffa500]Returns:[/color][/b] true if speed is greater than 0, false otherwise.
 [b]Example:[/b]
 [code]turnTowards(90, 5); // turns up to 5 degrees towards 90[/code]`
     },
     {
         name: 'turnTowardsPlayer',
-        content: `[b]Description:[/b] Gradually turns the current direction towards the player, limited by maxTurn degrees per frame. Returns true if player exists and speed is greater than 0, false otherwise.
+        content: `[b]Description:[/b] Gradually turns the current direction towards the player, limited by maxTurn degrees per frame. 
+\n[b][color=#ffa500]Returns:[/color][/b] true if player exists and speed is greater than 0, false otherwise.
 [b]Example:[/b]
 [code]turnTowardsPlayer(3);[/code]`
     },
     {
         name: 'waveStart',
-        content: `[b]Description:[/b] Selects a wave by its id/number (stage editor waves). Returns true if the wave exists and was selected, false otherwise.
+        content: `[b]Description:[/b] Selects a wave by its id/number (stage editor waves). 
+\n[b][color=#ffa500]Returns:[/color][/b] true if the wave exists and was selected, false otherwise.
 [b]Example:[/b]
 [code]waveStart(1); // select Wave 1
 waveStart(2); // select Wave 2[/code]`
@@ -213,13 +220,15 @@ waveStart(2); // select Wave 2[/code]`
     {
         name: 'waveGetCurrent',
         content: `[b]Description:[/b] Returns the current wave number (stage editor wave id).
+\n[b][color=#ffa500]Returns:[/color][/b] the current wave number.
 [b]Example:[/b]
 [code]var w = waveGetCurrent();
 drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
         name: 'waveStartNext',
-        content: `[b]Description:[/b] Selects the next wave in the stage editor. Returns true if it switched to the next wave, false otherwise.
+        content: `[b]Description:[/b] Selects the next wave in the stage editor. 
+\n[b][color=#ffa500]Returns:[/color][/b] true if it switched to the next wave, false otherwise.
 [b]Example:[/b]
 [code]waveStartNext();[/code]`
     },
@@ -262,13 +271,15 @@ drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
         name: 'didTapped',
-        content: `[b]Description:[/b] Checks if screen was just touched. Returns true if tapped this frame, false otherwise.
+        content: `[b]Description:[/b] Checks if screen was just touched. 
+\n[b][color=#ffa500]Returns:[/color][/b] true if tapped this frame, false otherwise.
 [b]Example:[/b]
 [code]if (didTapped()) { /* handle tap */ }[/code]`
     },
     {
         name: 'didReleased',
-        content: `[b]Description:[/b] Checks if touch on screen was just released. Returns true if released this frame, false otherwise.
+        content: `[b]Description:[/b] Checks if touch on screen was just released. 
+\n[b][color=#ffa500]Returns:[/color][/b] true if released this frame, false otherwise.
 [b]Example:[/b]
 [code]if (didReleased()) { /* handle release */ }[/code]`
     },
@@ -314,7 +325,8 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     },
     {
         name: 'createObject',
-        content: `[b]Description:[/b] Creates new instance of coded object. If typeName is provided, calls the object's type function on creation. Returns the created object or null if failed.
+        content: `[b]Description:[/b] Creates new instance of coded object. If typeName is provided, calls the object's type function on creation. 
+\n[b][color=#ffa500]Returns:[/color][/b] the created object or null if failed.
 [b]Example:[/b]
 [code]createObject(90, 160, "myObject");
 // or createObject(90, 160, "myObject", "myType"); // with type[/code]`
@@ -327,13 +339,15 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     },
     {
         name: 'createBullet',
-        content: `[b]Description:[/b] Creates a bullet at specified position with given properties (x, y, speed, direction, size required). Returns the bullet's unique ID.
+        content: `[b]Description:[/b] Creates a bullet at specified position with given properties (x, y, speed, direction, size required). 
+\n[b][color=#ffa500]Returns:[/color][/b] the bullet's unique ID.
 [b]Example:[/b]
 [code]var bulletId = createBullet(x, y, 5, 90, 2, [255, 0, 0], 1, 1.0, 0, 2.0, 0.3);[/code]`
     },
     {
         name: 'drawAnimated',
-        content: `[b]Description:[/b] Displays an animated character sprite at specified position. Returns a handle object that allows control of the animation.
+        content: `[b]Description:[/b] Displays an animated character sprite at specified position. 
+\n[b][color=#ffa500]Returns:[/color][/b] a handle object that allows control of the animation.
 [b]Example:[/b]
 [code]var animX = 90;
 var animY = 160;
@@ -342,7 +356,8 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     },
     {
         name: 'destroy',
-        content: `[b]Description:[/b] Removes specified instance or self if no id provided. Returns true if removal was successful, false otherwise.
+        content: `[b]Description:[/b] Removes specified instance or self if no id provided. 
+\n[b][color=#ffa500]Returns:[/color][/b] true if removal was successful, false otherwise.
 [b]Example:[/b]
 [code]destroy(); // removes self
 // or destroy(123); // removes codeChild with id 123[/code]`
@@ -355,13 +370,15 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     },
     {
         name: 'objectOutScreen',
-        content: `[b]Description:[/b] Checks if the object at specified position is outside screen bounds. Returns true if outside screen, false otherwise.
+        content: `[b]Description:[/b] Checks if the object at specified position is outside screen bounds. 
+\n[b][color=#ffa500]Returns:[/color][/b] true if outside screen, false otherwise.
 [b]Example:[/b]
 [code]if (objectOutScreen(x, y, 0.1)) { dead = true; }[/code]`
     },
     {
         name: 'collidePlayerBullet',
         content: `[b]Description:[/b] Returns an array of all player bullet IDs within radius of (x,y) this frame. [] if none.
+\n[b][color=#ffa500]Returns:[/color][/b] an array of all player bullet IDs within radius of (x,y) this frame. [] if none.
 [b]Example:[/b]
 [code]var bids = collidePlayerBullet(x, y, 8);
 inBullet(bids)
@@ -369,7 +386,8 @@ inBullet(bids)
     },
     {
         name: 'colideOtherObject',
-        content: `[b]Description:[/b] Circle vs circle collision detection. Returns the first colliding codeChild or null. Skips self.
+        content: `[b]Description:[/b] Circle vs circle collision detection. Skips self.
+\n[b][color=#ffa500]Returns:[/color][/b] the first colliding codeChild or null.
 [b]Example:[/b]
 [code]var other = colideOtherObject(x, y, 8, "enemy", 6);
 if (other !== null) { other.hp -= 1; }[/code]`
@@ -405,13 +423,14 @@ musicPlay("$song.xm", 2, 0.5);[/code]`
     },
     {
         name: 'musicGetSequence',
-        content: `[b]Description:[/b] Gets the current sequence/order number of the currently played soundtrack.`
+        content: `[b]Description:[/b] Gets the current sequence/order number of the currently played soundtrack.
+\n[b][color=#ffa500]Returns:[/color][/b] the current sequence/order number.`
     },
     {
         name: 'musicSetSequence',
         content: `[b]Description:[/b] Instantly plays the current song from the specified sequence/order number.`
     }
-].map(item => ({ ...item, content: formatReturns(item.content) }));
+];
 
 export const dragonBonesHelp = [
     {
@@ -426,13 +445,13 @@ ani.alpha = 0.9;
     {
         name: 'ani.armature.getBone(name)',
         content: `[b]Description:[/b] Finds a bone by name on the armature.
-[b]Returns:[/b] [color=#ffa500]dragonBones.Bone[/color] or [color=#ffa500]null[/color] if not found.
+\n[b][color=#ffa500]Returns:[/color][/b] [color=#ffa500]dragonBones.Bone[/color] or [color=#ffa500]null[/color] if not found.
 [code]var bone = ani.armature.getBone("arm");[/code]`
     },
     {
         name: 'bone.visible',
         content: `[b]Description:[/b] Shows/hides a bone (and typically its attached slot visuals).
-[b]Type:[/b] [color=#ffa500]boolean[/color]
+\n[b][color=#ffa500]Type:[/color][/b] [color=#ffa500]boolean[/color]
 [code]bone.visible = false; // hide
 bone.visible = true;  // show[/code]`
     },
@@ -467,7 +486,7 @@ if (ani.ready) {
   bone.invalidUpdate();
 }[/code]`
     }
-].map(item => ({ ...item, content: formatReturns(item.content) }));
+];
 
 export const javaScriptStuffHelp = [
     {
@@ -475,7 +494,7 @@ export const javaScriptStuffHelp = [
         content: `[b]JavaScript Keywords:[/b]
 [code]function, var, let, const, def, if, else, for, while, switch, case, break, continue, return, true, false, null, undefined, inBullet[/code]`
     }
-].map(item => ({ ...item, content: formatReturns(item.content) }));
+];
 
 export const mathFunctionsHelp = [
     { name: 'abs(x)', content: `[b]Description:[/b] Absolute value` },
@@ -493,7 +512,7 @@ export const mathFunctionsHelp = [
     { name: 'sin(x)', content: `[b]Description:[/b] Sine (radians)` },
     { name: 'sqrt(x)', content: `[b]Description:[/b] Square root` },
     { name: 'tan(x)', content: `[b]Description:[/b] Tangent (radians)` }
-].map(item => ({ ...item, content: formatReturns(item.content) }));
+];
 
 export const arrayMethodsHelp = [
     { name: 'array.length', content: `[b]Description:[/b] Get array length` },
@@ -510,7 +529,7 @@ export const arrayMethodsHelp = [
     { name: 'array.filter(fn)', content: `[b]Description:[/b] Filter array` },
     { name: 'array.find(fn)', content: `[b]Description:[/b] Find first match` },
     { name: 'array.join(sep)', content: `[b]Description:[/b] Join to string` }
-].map(item => ({ ...item, content: formatReturns(item.content) }));
+];
 
 export const stringMethodsHelp = [
     { name: 'string.length', content: `[b]Description:[/b] Get string length` },
@@ -524,7 +543,7 @@ export const stringMethodsHelp = [
     { name: 'string.toUpperCase()', content: `[b]Description:[/b] Convert to uppercase` },
     { name: 'string.trim()', content: `[b]Description:[/b] Remove whitespace` },
     { name: 'string.replace(a, b)', content: `[b]Description:[/b] Replace substring` }
-].map(item => ({ ...item, content: formatReturns(item.content) }));
+];
 
 export const numberMethodsHelp = [
     { name: 'Number.parseInt(str)', content: `[b]Description:[/b] Parse integer` },
@@ -533,7 +552,7 @@ export const numberMethodsHelp = [
     { name: 'num.toString()', content: `[b]Description:[/b] Convert to string` },
     { name: 'isNaN(x)', content: `[b]Description:[/b] Check if not a number` },
     { name: 'isFinite(x)', content: `[b]Description:[/b] Check if finite number` }
-].map(item => ({ ...item, content: formatReturns(item.content) }));
+];
 
 export const globalFunctionsHelp = [
     { name: 'Object.keys(obj)', content: `[b]Description:[/b] Get object keys as array` },
@@ -554,7 +573,7 @@ export const globalFunctionsHelp = [
     { name: 'Number(x)', content: `[b]Description:[/b] Convert to number` },
     { name: 'Boolean(x)', content: `[b]Description:[/b] Convert to boolean` },
     { name: 'Array.isArray(x)', content: `[b]Description:[/b] Check if is array` }
-].map(item => ({ ...item, content: formatReturns(item.content) }));
+];
 
 export const arrayConstructorHelp = [
     { name: 'new Array()', content: `[b]Description:[/b] Create empty array` },
@@ -563,7 +582,7 @@ export const arrayConstructorHelp = [
     { name: '[1, 2, 3]', content: `[b]Description:[/b] Array literal syntax` },
     { name: 'Array.from(obj)', content: `[b]Description:[/b] Create array from iterable` },
     { name: 'Array.of(...args)', content: `[b]Description:[/b] Create array from arguments` }
-].map(item => ({ ...item, content: formatReturns(item.content) }));
+];
 
 export const stringNumberConstructorsHelp = [
     { name: 'new String(str)', content: `[b]Description:[/b] Create string object` },
@@ -572,4 +591,4 @@ export const stringNumberConstructorsHelp = [
     { name: 'new Number(n)', content: `[b]Description:[/b] Create number object` },
     { name: '123 or 12.34', content: `[b]Description:[/b] Number literal` },
     { name: '0x123', content: `[b]Description:[/b] Hexadecimal literal` }
-].map(item => ({ ...item, content: formatReturns(item.content) }));
+];
