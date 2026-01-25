@@ -289,7 +289,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
         name: 'drawCircle',
-        threadTitle: 'drawCircle(x, y, r, outline?, color?)',
+        threadTitle: 'drawCircle(x, y, r, outline, color)',
         content: `[b]Description:[/b] Draws a circle at specified position with optional outline and color.
 
 [b]Example:[/b]
@@ -299,7 +299,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
         name: 'drawRectangle',
-        threadTitle: 'drawRectangle(x, y, w, h, color?)',
+        threadTitle: 'drawRectangle(x, y, w, h, color)',
         content: `[b]Description:[/b] Draws a rectangle at specified position with optional color. x, y: bottom-left corner position. w, h: width and height.
 
 [b]Example:[/b]
@@ -309,7 +309,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
         name: 'drawGround',
-        threadTitle: 'drawGround(cellW?, cellH?, color?)',
+        threadTitle: 'drawGround(cellW, cellH, color)',
         content: `[b]Description:[/b] Draws a grid of rectangles covering the whole world. cellWidth and cellHeight are the dimensions of each grid cell.
 
 [b]Example:[/b]
@@ -319,7 +319,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
         name: 'drawLight',
-        threadTitle: 'drawLight(x, y, radius?, power?)',
+        threadTitle: 'drawLight(x, y, radius, power)',
         content: `[b]Description:[/b] Adds a light source that makes ground squares lighter based on distance. Closer squares become lighter. x and y are the light position. radius is the effect radius (optional, default: 50). power is the light intensity 0-1 (optional, default: 1.0).
 
 [b]Example:[/b]
@@ -356,7 +356,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
         name: 'drawText',
-        threadTitle: 'drawText(x, y, text, color?, size?)',
+        threadTitle: 'drawText(x, y, text, color, size)',
         content: `[b]Description:[/b] Draws text at specified position with optional color and size.
 
 [b]Example:[/b]
@@ -364,7 +364,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
         name: 'soundPlay',
-        threadTitle: 'soundPlay(sound, volume?, pitch?)',
+        threadTitle: 'soundPlay(sound, volume, pitch)',
         content: `[b]Description:[/b] Plays an MP3 sound effect from the sfx folder. Sound: filename without .mp3 extension. Volume: 0.0 to 1.0 (default 1.0). Pitch: 1.0 = normal.
 
 [b]Example:[/b]
@@ -373,7 +373,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
         name: 'drawSprite',
-        threadTitle: 'drawSprite(x, y, name, scaleX, scaleY, rotation?, color?)',
+        threadTitle: 'drawSprite(x, y, name, scaleX, scaleY, rotation, color)',
         content: `[b]Description:[/b] Draws a sprite from the server. spriteName must start with @ and end with .gif or .png. xScale and yScale are scale factors. color: optional hex color string or RGBA array to tint/blend the sprite.
 
 [b]Example:[/b]
@@ -408,7 +408,7 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     },
     {
         name: 'createObject',
-        threadTitle: 'createObject(x, y, name, type?)',
+        threadTitle: 'createObject(x, y, name, type)',
         content: `[b]Description:[/b] Creates a new instance of a coded object. If typeName is provided, calls the object's type function on creation.
 
 [b][color=#ffa500]Returns: the created object or null if failed.[/color][/b]
@@ -437,7 +437,7 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     },
     {
         name: 'drawAnimated',
-        threadTitle: 'drawAnimated(x, y, name, anim, bones?, scaleX, scaleY)',
+        threadTitle: 'drawAnimated(x, y, name, anim, bones, scaleX, scaleY)',
         content: `[b]Description:[/b] Displays an animated character sprite at specified position.
 
 [b][color=#ffa500]Returns: a handle object that allows control of the animation.[/color][/b]
@@ -450,7 +450,7 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     },
     {
         name: 'destroy',
-        threadTitle: 'destroy(id?)',
+        threadTitle: 'destroy(id)',
         content: `[b]Description:[/b] Removes the specified instance or self if no id provided.
 
 [b][color=#ffa500]Returns: true if removal was successful, false otherwise.[/color][/b]
@@ -469,7 +469,7 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     },
     {
         name: 'objectOutScreen',
-        threadTitle: 'objectOutScreen(x, y, margin?)',
+        threadTitle: 'objectOutScreen(x, y, margin)',
         content: `[b]Description:[/b] Checks if the object at specified position is outside screen bounds.
 
 [b][color=#ffa500]Returns: true if outside screen, false otherwise.[/color][/b]
@@ -491,7 +491,7 @@ inBullet(bids)
     },
     {
         name: 'colideOtherObject',
-        threadTitle: 'colideOtherObject(x, y, radius, tag?, size?)',
+        threadTitle: 'colideOtherObject(x, y, radius, tag, size)',
         content: `[b]Description:[/b] Circle vs circle collision detection. Skips self.
 
 [b][color=#ffa500]Returns: the first colliding codeChild or null.[/color][/b]
@@ -524,7 +524,7 @@ drawBackground(90, 160, "myBg")[/code]`
     },
     {
         name: 'musicPlay',
-        threadTitle: 'musicPlay(name, seq?, vol?)',
+        threadTitle: 'musicPlay(name, seq, vol)',
         content: `[b]Description:[/b] Plays a soundtrack file from music/soundtracks/. songName must start with $.
 
 [b]Example:[/b]
