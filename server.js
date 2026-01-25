@@ -14,6 +14,7 @@ import * as spritesDb from './spritesDatabase.js';
 import OpenAI from 'openai';
 import express from 'express';
 import https from 'https';
+import { fork } from 'child_process';
 
 // Password hashing configuration
 const BCRYPT_ROUNDS = 10; // Number of salt rounds (higher = more secure but slower)
@@ -1087,6 +1088,22 @@ if (sslOptions) {
     wssHttpsServer = https.createServer(sslOptions);
     wssHttpsServer.listen(WS_PORT, '0.0.0.0', () => {
         console.log(`✅ HTTPS server for WSS running on port ${WS_PORT}`);
+        
+        // Start the Database Admin Server as a background process
+        const adminServerPath = path.join(__dirname, 'admin-server.js');
+        const adminServer = fork(adminServerPath);
+        
+        adminServer.on('error', (err) => {
+            console.error('❌ Failed to start Database Admin Server:', err);
+        });
+        
+        adminServer.on('exit', (code) => {
+            if (code !== 0) {
+                console.error(`❌ Database Admin Server exited with code ${code}`);
+            }
+        });
+        
+        console.log('🚀 Database Admin Server started automatically');
     });
     
     // Create WSS (WebSocket Secure) server
