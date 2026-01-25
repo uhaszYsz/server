@@ -4,7 +4,7 @@
 export const specialKeywordsHelp = [
     {
         name: 'background',
-        content: `[b]Description:[/b] Bakes all draws to a vertex buffer we store under name provided as argument. Use drawBackground(x, y, "name") to use baked backgrounds. Happens once at compilation.
+        content: `[b]Description:[/b] Bakes all draws into a vertex buffer stored under the name given as argument. Use drawBackground(x, y, "name") to draw it. Runs once at compilation.
 [b]Example:[/b]
 [code]background("bg1")
 #drawCircle(90, 160, 4, 0, "#FF0000")
@@ -16,7 +16,7 @@ drawBackground(0, 0, "bg1")[/code]
     },
     {
         name: 'def',
-        content: `[b]Description:[/b] Define a variable with initial value. Variable persists across frames.
+        content: `[b]Description:[/b] Defines a variable with an initial value. The variable persists across frames.
 [b]Example:[/b]
 [code]def myVar = 10;
 def myString = "hello";[/code]
@@ -34,7 +34,7 @@ score += 1;[/code]
     },
     {
         name: 'inBullet',
-        content: `[b]Description:[/b] Allows you to manipulate bullet parameters. Accepts a single bullet ID or an array of IDs.
+        content: `[b]Description:[/b] Lets you change bullet parameters. Accepts a single bullet ID or an array of IDs.
 [b]Example:[/b]
 [code]var Id = createBullet(X, Y, 5, direction, 2)
 inBullet(Id)
@@ -43,7 +43,7 @@ inBullet(Id)
     },
     {
         name: 'repeat',
-        content: `[b]Description:[/b] Repeat a block of code n times. Use indentation (#) to define the block.
+        content: `[b]Description:[/b] Repeats a block of code n times. Use indentation (#) to define the block.
 [b]Example:[/b]
 [code]var i = 0
 repeat(5)
@@ -61,7 +61,7 @@ export const builtInVariablesHelp = [
     },
     {
         name: 'bulletData',
-        content: `[b]Description:[/b] List (array) of all existing bullets and their parameters. Use inBullet() to iterate. 
+        content: `[b]Description:[/b] Array of all existing bullets and their parameters. Use inBullet() to iterate.
 [b]Properties:[/b] [color=#ffa500]Id[/color], [color=#ffa500]X[/color], [color=#ffa500]Y[/color], [color=#ffa500]R[/color], [color=#ffa500]G[/color], [color=#ffa500]B[/color], [color=#ffa500]Alpha[/color], [color=#ffa500]Size[/color], [color=#ffa500]ScaleY[/color], [color=#ffa500]Rotation[/color], [color=#ffa500]Lifetime[/color], [color=#ffa500]Homing[/color], [color=#ffa500]Spin[/color], [color=#ffa500]Shape[/color], [color=#ffa500]GlowSize[/color], [color=#ffa500]GlowPower[/color], [color=#ffa500]GlowR[/color], [color=#ffa500]GlowG[/color], [color=#ffa500]GlowB[/color]`
     },
     {
@@ -101,8 +101,9 @@ export const builtInVariablesHelp = [
 export const danmakuHelpersHelp = [
     {
         name: 'getSelf',
-        content: `[b]Description:[/b] Returns a reference to the current running object (codeChild). This is NOT a copy. You can read/write properties on it (e.g. getSelf().x = 0).
-\n[b][color=#ffa500]Returns:[/color][/b] a reference to the current running object.
+        content: `[b]Description:[/b] Gives a reference to the current running object (codeChild). This is NOT a copy. You can read/write properties on it (e.g. getSelf().x = 0).
+
+[b][color=#ffa500]Returns:[/color][/b] a reference to the current running object.
 [b]Example:[/b]
 [code]var self = getSelf();
 self.x = 0;
@@ -110,43 +111,49 @@ self.speed = 2;[/code]`
     },
     {
         name: 'getDirection',
-        content: `[b]Description:[/b] Calculates the direction angle in degrees from current position to target point. 
-\n[b][color=#ffa500]Returns:[/color][/b] the angle in degrees (0-360).
+        content: `[b]Description:[/b] Calculates the direction angle in degrees from current position to target point.
+
+[b][color=#ffa500]Returns:[/color][/b] the angle in degrees (0-360).
 [b]Example:[/b]
 [code]var dir = getDirection(100, 200);[/code]`
     },
     {
         name: 'normalizeAngle',
-        content: `[b]Description:[/b] Normalizes numbers like -90 or 450 to 0-360 direction. 
-\n[b][color=#ffa500]Returns:[/color][/b] the normalized angle as a number.
+        content: `[b]Description:[/b] Normalizes numbers like -90 or 450 to 0-360 direction.
+
+[b][color=#ffa500]Returns:[/color][/b] the normalized angle as a number.
 [b]Example:[/b]
 [code]direction = normalizeAngle(450); // returns 90[/code]`
     },
     {
         name: 'angleDifference',
-        content: `[b]Description:[/b] Calculates the shortest angle difference between two angles in degrees. 
-\n[b][color=#ffa500]Returns:[/color][/b] the angle difference as a number (can be negative).
+        content: `[b]Description:[/b] Calculates the shortest angle difference between two angles in degrees.
+
+[b][color=#ffa500]Returns:[/color][/b] the angle difference as a number (can be negative).
 [b]Example:[/b]
 [code]var diff = angleDifference(0, 270); // returns -90[/code]`
     },
     {
         name: 'getDistance',
-        content: `[b]Description:[/b] Calculates the distance from current position to target point. 
-\n[b][color=#ffa500]Returns:[/color][/b] the distance as a number.
+        content: `[b]Description:[/b] Calculates the distance from current position to target point.
+
+[b][color=#ffa500]Returns:[/color][/b] the distance as a number.
 [b]Example:[/b]
 [code]var dist = getDistance(100, 200);[/code]`
     },
     {
         name: 'lenDirX',
-        content: `[b]Description:[/b] Converts length and direction (angle in degrees) to X component. 
-\n[b][color=#ffa500]Returns:[/color][/b] the X component as a number.
+        content: `[b]Description:[/b] Converts length and direction (angle in degrees) to X component.
+
+[b][color=#ffa500]Returns:[/color][/b] the X component as a number.
 [b]Example:[/b]
 [code]var offsetX = lenDirX(10, 90); // returns 0 (straight up)[/code]`
     },
     {
         name: 'lenDirY',
-        content: `[b]Description:[/b] Converts length and direction (angle in degrees) to Y component. 
-\n[b][color=#ffa500]Returns:[/color][/b] the Y component as a number.
+        content: `[b]Description:[/b] Converts length and direction (angle in degrees) to Y component.
+
+[b][color=#ffa500]Returns:[/color][/b] the Y component as a number.
 [b]Example:[/b]
 [code]var offsetY = lenDirY(10, 90); // returns 10 (straight up)[/code]`
     },
@@ -159,15 +166,17 @@ move(10, 0); // moves 10 pixels to the right[/code]`
     },
     {
         name: 'isUndef',
-        content: `[b]Description:[/b] Checks if a variable is undefined or not declared. 
-\n[b][color=#ffa500]Returns:[/color][/b] true if undefined, false otherwise.
+        content: `[b]Description:[/b] Checks if a variable is undefined or not declared.
+
+[b][color=#ffa500]Returns:[/color][/b] true if undefined, false otherwise.
 [b]Example:[/b]
 [code]if (isUndef(myVar)) { /* variable is undefined or not declared */ }[/code]`
     },
     {
         name: 'rand',
-        content: `[b]Description:[/b] Generates random number between min and max. 
-\n[b][color=#ffa500]Returns:[/color][/b] a random number.
+        content: `[b]Description:[/b] Generates a random number between min and max.
+
+[b][color=#ffa500]Returns:[/color][/b] a random number.
 [b]Example:[/b]
 [code]var value = rand(-100, 100); // random number between -100 and 100[/code]`
     },
@@ -179,8 +188,9 @@ move(10, 0); // moves 10 pixels to the right[/code]`
     },
     {
         name: 'enemyList',
-        content: `[b]Description:[/b] Returns a global array of all active objects marked as enemies.
-\n[b][color=#ffa500]Returns:[/color][/b] a global array of all active objects marked as enemies.
+        content: `[b]Description:[/b] Provides a global array of all active objects marked as enemies.
+
+[b][color=#ffa500]Returns:[/color][/b] a global array of all active objects marked as enemies.
 [b]Example:[/b]
 [code]var enemies = enemyList();
 for(var i=0; i<enemies.length; i++) {
@@ -190,45 +200,51 @@ for(var i=0; i<enemies.length; i++) {
     },
     {
         name: 'init',
-        content: `[b]Description:[/b] Returns true only once at initialization. 
-\n[b][color=#ffa500]Returns:[/color][/b] true on instance create and stays false forever.
+        content: `[b]Description:[/b] Use to run code only once when the instance is created.
+
+[b][color=#ffa500]Returns:[/color][/b] true on instance create and stays false forever.
 [b]Example:[/b]
 [code]if (init()) { /* danmakuINIT is undefined */ }[/code]`
     },
     {
         name: 'turnTowards',
-        content: `[b]Description:[/b] Gradually turns the current direction towards target direction, limited by maxTurn degrees per frame. 
-\n[b][color=#ffa500]Returns:[/color][/b] true if speed is greater than 0, false otherwise.
+        content: `[b]Description:[/b] Gradually turns the current direction towards target direction, limited by maxTurn degrees per frame.
+
+[b][color=#ffa500]Returns:[/color][/b] true if speed is greater than 0, false otherwise.
 [b]Example:[/b]
 [code]turnTowards(90, 5); // turns up to 5 degrees towards 90[/code]`
     },
     {
         name: 'turnTowardsPlayer',
-        content: `[b]Description:[/b] Gradually turns the current direction towards the player, limited by maxTurn degrees per frame. 
-\n[b][color=#ffa500]Returns:[/color][/b] true if player exists and speed is greater than 0, false otherwise.
+        content: `[b]Description:[/b] Gradually turns the current direction towards the player, limited by maxTurn degrees per frame.
+
+[b][color=#ffa500]Returns:[/color][/b] true if player exists and speed is greater than 0, false otherwise.
 [b]Example:[/b]
 [code]turnTowardsPlayer(3);[/code]`
     },
     {
         name: 'waveStart',
-        content: `[b]Description:[/b] Selects a wave by its id/number (stage editor waves). 
-\n[b][color=#ffa500]Returns:[/color][/b] true if the wave exists and was selected, false otherwise.
+        content: `[b]Description:[/b] Selects a wave by its id/number (stage editor waves).
+
+[b][color=#ffa500]Returns:[/color][/b] true if the wave exists and was selected, false otherwise.
 [b]Example:[/b]
 [code]waveStart(1); // select Wave 1
 waveStart(2); // select Wave 2[/code]`
     },
     {
         name: 'waveGetCurrent',
-        content: `[b]Description:[/b] Returns the current wave number (stage editor wave id).
-\n[b][color=#ffa500]Returns:[/color][/b] the current wave number.
+        content: `[b]Description:[/b] Gets the current wave number (stage editor wave id).
+
+[b][color=#ffa500]Returns:[/color][/b] the current wave number.
 [b]Example:[/b]
 [code]var w = waveGetCurrent();
 drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
         name: 'waveStartNext',
-        content: `[b]Description:[/b] Selects the next wave in the stage editor. 
-\n[b][color=#ffa500]Returns:[/color][/b] true if it switched to the next wave, false otherwise.
+        content: `[b]Description:[/b] Selects the next wave in the stage editor.
+
+[b][color=#ffa500]Returns:[/color][/b] true if it switched to the next wave, false otherwise.
 [b]Example:[/b]
 [code]waveStartNext();[/code]`
     },
@@ -271,15 +287,17 @@ drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
         name: 'didTapped',
-        content: `[b]Description:[/b] Checks if screen was just touched. 
-\n[b][color=#ffa500]Returns:[/color][/b] true if tapped this frame, false otherwise.
+        content: `[b]Description:[/b] Checks if screen was just touched.
+
+[b][color=#ffa500]Returns:[/color][/b] true if tapped this frame, false otherwise.
 [b]Example:[/b]
 [code]if (didTapped()) { /* handle tap */ }[/code]`
     },
     {
         name: 'didReleased',
-        content: `[b]Description:[/b] Checks if touch on screen was just released. 
-\n[b][color=#ffa500]Returns:[/color][/b] true if released this frame, false otherwise.
+        content: `[b]Description:[/b] Checks if touch on screen was just released.
+
+[b][color=#ffa500]Returns:[/color][/b] true if released this frame, false otherwise.
 [b]Example:[/b]
 [code]if (didReleased()) { /* handle release */ }[/code]`
     },
@@ -325,8 +343,9 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     },
     {
         name: 'createObject',
-        content: `[b]Description:[/b] Creates new instance of coded object. If typeName is provided, calls the object's type function on creation. 
-\n[b][color=#ffa500]Returns:[/color][/b] the created object or null if failed.
+        content: `[b]Description:[/b] Creates a new instance of a coded object. If typeName is provided, calls the object's type function on creation.
+
+[b][color=#ffa500]Returns:[/color][/b] the created object or null if failed.
 [b]Example:[/b]
 [code]createObject(90, 160, "myObject");
 // or createObject(90, 160, "myObject", "myType"); // with type[/code]`
@@ -339,15 +358,17 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     },
     {
         name: 'createBullet',
-        content: `[b]Description:[/b] Creates a bullet at specified position with given properties (x, y, speed, direction, size required). 
-\n[b][color=#ffa500]Returns:[/color][/b] the bullet's unique ID.
+        content: `[b]Description:[/b] Creates a bullet at specified position with given properties (x, y, speed, direction, size required).
+
+[b][color=#ffa500]Returns:[/color][/b] the bullet's unique ID.
 [b]Example:[/b]
 [code]var bulletId = createBullet(x, y, 5, 90, 2, [255, 0, 0], 1, 1.0, 0, 2.0, 0.3);[/code]`
     },
     {
         name: 'drawAnimated',
-        content: `[b]Description:[/b] Displays an animated character sprite at specified position. 
-\n[b][color=#ffa500]Returns:[/color][/b] a handle object that allows control of the animation.
+        content: `[b]Description:[/b] Displays an animated character sprite at specified position.
+
+[b][color=#ffa500]Returns:[/color][/b] a handle object that allows control of the animation.
 [b]Example:[/b]
 [code]var animX = 90;
 var animY = 160;
@@ -356,8 +377,9 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     },
     {
         name: 'destroy',
-        content: `[b]Description:[/b] Removes specified instance or self if no id provided. 
-\n[b][color=#ffa500]Returns:[/color][/b] true if removal was successful, false otherwise.
+        content: `[b]Description:[/b] Removes the specified instance or self if no id provided.
+
+[b][color=#ffa500]Returns:[/color][/b] true if removal was successful, false otherwise.
 [b]Example:[/b]
 [code]destroy(); // removes self
 // or destroy(123); // removes codeChild with id 123[/code]`
@@ -370,15 +392,17 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     },
     {
         name: 'objectOutScreen',
-        content: `[b]Description:[/b] Checks if the object at specified position is outside screen bounds. 
-\n[b][color=#ffa500]Returns:[/color][/b] true if outside screen, false otherwise.
+        content: `[b]Description:[/b] Checks if the object at specified position is outside screen bounds.
+
+[b][color=#ffa500]Returns:[/color][/b] true if outside screen, false otherwise.
 [b]Example:[/b]
 [code]if (objectOutScreen(x, y, 0.1)) { dead = true; }[/code]`
     },
     {
         name: 'collidePlayerBullet',
-        content: `[b]Description:[/b] Returns an array of all player bullet IDs within radius of (x,y) this frame. [] if none.
-\n[b][color=#ffa500]Returns:[/color][/b] an array of all player bullet IDs within radius of (x,y) this frame. [] if none.
+        content: `[b]Description:[/b] Finds all player bullet IDs within radius of (x,y) this frame.
+
+[b][color=#ffa500]Returns:[/color][/b] an array of player bullet IDs; [] if none.
 [b]Example:[/b]
 [code]var bids = collidePlayerBullet(x, y, 8);
 inBullet(bids)
@@ -387,7 +411,8 @@ inBullet(bids)
     {
         name: 'colideOtherObject',
         content: `[b]Description:[/b] Circle vs circle collision detection. Skips self.
-\n[b][color=#ffa500]Returns:[/color][/b] the first colliding codeChild or null.
+
+[b][color=#ffa500]Returns:[/color][/b] the first colliding codeChild or null.
 [b]Example:[/b]
 [code]var other = colideOtherObject(x, y, 8, "enemy", 6);
 if (other !== null) { other.hp -= 1; }[/code]`
@@ -424,7 +449,8 @@ musicPlay("$song.xm", 2, 0.5);[/code]`
     {
         name: 'musicGetSequence',
         content: `[b]Description:[/b] Gets the current sequence/order number of the currently played soundtrack.
-\n[b][color=#ffa500]Returns:[/color][/b] the current sequence/order number.`
+
+[b][color=#ffa500]Returns:[/color][/b] the current sequence/order number.`
     },
     {
         name: 'musicSetSequence',
@@ -445,13 +471,15 @@ ani.alpha = 0.9;
     {
         name: 'ani.armature.getBone(name)',
         content: `[b]Description:[/b] Finds a bone by name on the armature.
-\n[b][color=#ffa500]Returns:[/color][/b] [color=#ffa500]dragonBones.Bone[/color] or [color=#ffa500]null[/color] if not found.
+
+[b][color=#ffa500]Returns:[/color][/b] [color=#ffa500]dragonBones.Bone[/color] or [color=#ffa500]null[/color] if not found.
 [code]var bone = ani.armature.getBone("arm");[/code]`
     },
     {
         name: 'bone.visible',
-        content: `[b]Description:[/b] Shows/hides a bone (and typically its attached slot visuals).
-\n[b][color=#ffa500]Type:[/color][/b] [color=#ffa500]boolean[/color]
+        content: `[b]Description:[/b] Shows or hides a bone (and typically its attached slot visuals).
+
+[b][color=#ffa500]Type:[/color][/b] [color=#ffa500]boolean[/color]
 [code]bone.visible = false; // hide
 bone.visible = true;  // show[/code]`
     },
@@ -498,7 +526,9 @@ export const javaScriptStuffHelp = [
 
 export const mathFunctionsHelp = [
     { name: 'abs(x)', content: `[b]Description:[/b] Absolute value` },
-    { name: 'atan2(y, x)', content: `[b]Description:[/b] Arc tangent (returns radians)` },
+    { name: 'atan2(y, x)', content: `[b]Description:[/b] Arc tangent of y/x.
+
+[b][color=#ffa500]Returns:[/color][/b] angle in radians.` },
     { name: 'ceil(x)', content: `[b]Description:[/b] Round up` },
     { name: 'cos(x)', content: `[b]Description:[/b] Cosine (radians)` },
     { name: 'E', content: `[b]Description:[/b] Euler's number` },
