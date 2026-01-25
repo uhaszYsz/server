@@ -234,7 +234,11 @@ export function initDatabase() {
                                 // Initialize default categories
                                 initForumCategories().then(() => {
                                     resolve();
-                                }).catch(reject);
+                                }).catch(err => {
+                                    console.error('❌ Error during initForumCategories:', err);
+                                    // Don't reject, just resolve so the server can start
+                                    resolve();
+                                });
                             });
                         });
                     });
@@ -889,7 +893,12 @@ function initForumCategories() {
                                         // Delete old granular JavaScript categories if they exist
                                         const oldCategories = ['Math Functions', 'Array Methods', 'String Methods', 'Number Methods', 'Global Functions', 'Array Constructor', 'String & Number Constructors'];
                                         for (const oldCat of oldCategories) {
-                                            db.run('DELETE FROM forum_categories WHERE name = ? AND parent_id = ?', [oldCat, manualsId]);
+                                            db.run('DELETE FROM forum_categories WHERE name = ? AND parent_id = ?', [oldCat, manualsId], (err) => {
+                                                if (err && err.message.includes('FOREIGN KEY')) {
+                                                    // If we can't delete it due to FK, just ignore it
+                                                    console.warn(`[init] Could not delete old category ${oldCat} due to foreign key constraint`);
+                                                }
+                                            });
                                         }
                                     
                                     let processed = 0;
