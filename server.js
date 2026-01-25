@@ -1686,7 +1686,7 @@ function handleWebSocketConnection(ws, req) {
         }
         
         // Authorization check: user can only equip items for themselves
-        if (user.googleId !== ws.googleId) {
+        if (db.hashGoogleId(ws.googleId) !== user.googleIdHash) {
             ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
             return;
         }
@@ -1806,7 +1806,7 @@ function handleWebSocketConnection(ws, req) {
         }
         
         // Authorization check: user can only reroll items for themselves
-        if (user.googleId !== ws.googleId) {
+        if (db.hashGoogleId(ws.googleId) !== user.googleIdHash) {
             ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
             return;
         }
@@ -3521,9 +3521,9 @@ function handleWebSocketConnection(ws, req) {
             if (data.filterUsername && typeof data.filterUsername === 'string' && data.filterUsername.trim()) {
                 const raw = data.filterUsername.trim();
                 const user = await db.getUserByName(raw);
-                const keys = [raw, user && (user.googleId || user.username || user.name)].filter(Boolean);
+                const keys = [raw, user && (user.googleIdHash || user.username || user.name)].filter(Boolean);
                 // Also include any other common identifier fields if present
-                if (user && user.googleId) keys.push(user.googleId);
+                if (user && user.googleIdHash) keys.push(user.googleIdHash);
                 if (user && user.username) keys.push(user.username);
                 if (user && user.name) keys.push(user.name);
                 filterAuthorKeys = [...new Set(keys)];
@@ -3558,7 +3558,7 @@ function handleWebSocketConnection(ws, req) {
                 const raw = data.filterUsername.trim();
                 const user = await db.getUserByName(raw);
                 const keys = [raw];
-                if (user && user.googleId) keys.push(user.googleId);
+                if (user && user.googleIdHash) keys.push(user.googleIdHash);
                 if (user && user.username) keys.push(user.username);
                 if (user && user.name) keys.push(user.name);
                 authorKeys = [...new Set(keys)];
@@ -3916,7 +3916,7 @@ function handleWebSocketConnection(ws, req) {
             }
             
             // Get user data
-            const user = await db.getUserByGoogleId(sessionValidation.user.googleId);
+            const user = await db.getUserByGoogleIdHash(sessionValidation.user.googleId);
             if (!user) {
                 ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
@@ -3931,7 +3931,7 @@ function handleWebSocketConnection(ws, req) {
                 sessionId: data.sessionId
             }));
             
-            console.log(`✅ Session restored: ${user.name} (${sessionValidation.user.googleId})`);
+            console.log(`✅ Session restored: ${user.name} (${user.googleIdHash})`);
         } catch (error) {
             console.error('Session restore error:', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to restore session' }));
@@ -4565,15 +4565,15 @@ rl.on('line', async (input) => {
         return;
       }
 
-      // Update user rank by googleId
-      const updated = await db.setUserRank(user.googleId, rank);
+      // Update user rank by googleIdHash
+      const updated = await db.setUserRankByHash(user.googleIdHash, rank);
       if (updated) {
-        console.log(`✅ Set rank of "${name}" (${user.googleId}) to "${rank}".`);
+        console.log(`✅ Set rank of "${name}" to "${rank}".`);
 
         // Update rank for all connected clients with this googleId
         let updatedCount = 0;
         for (const client of clients.values()) {
-          if (client.googleId === user.googleId) {
+          if (client.googleId && db.hashGoogleId(client.googleId) === user.googleIdHash) {
             client.rank = rank;
             client.isAdmin = (rank === 'admin');
             updatedCount++;

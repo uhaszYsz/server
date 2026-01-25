@@ -361,6 +361,7 @@ export function getUserByName(name) {
             // Parse JSON fields
             const user = {
                 id: row.id,
+                googleIdHash: row.googleIdHash,
                 name: row.name || null,
                 stats: JSON.parse(row.stats),
                 inventory: JSON.parse(row.inventory),
@@ -391,6 +392,7 @@ export function getUserById(id) {
             // Parse JSON fields
             const user = {
                 id: row.id,
+                googleIdHash: row.googleIdHash,
                 name: row.name || null,
                 stats: JSON.parse(row.stats),
                 inventory: JSON.parse(row.inventory),
@@ -406,11 +408,15 @@ export function getUserById(id) {
 
 // Get user by Google ID (lookup by hashed Google ID)
 export function getUserByGoogleId(googleId) {
+    // Hash the Google ID for lookup (deterministic hash)
+    const googleIdHash = hashGoogleId(googleId);
+    return getUserByGoogleIdHash(googleIdHash);
+}
+
+// Get user by Google ID Hash
+export function getUserByGoogleIdHash(googleIdHash) {
     return new Promise((resolve, reject) => {
         try {
-            // Hash the Google ID for lookup (deterministic hash)
-            const googleIdHash = hashGoogleId(googleId);
-            
             db.get('SELECT * FROM users WHERE googleIdHash = ?', [googleIdHash], (err, row) => {
                 if (err) {
                     reject(err);
@@ -425,6 +431,7 @@ export function getUserByGoogleId(googleId) {
                 // Parse JSON fields
                 const user = {
                     id: row.id,
+                    googleIdHash: row.googleIdHash,
                     name: row.name || null,
                     stats: JSON.parse(row.stats),
                     inventory: JSON.parse(row.inventory),
@@ -568,6 +575,12 @@ export function nameExists(name) {
 
 // Set user rank by googleId (uses hashed Google ID for lookup)
 export function setUserRank(googleId, rank) {
+    const googleIdHash = hashGoogleId(googleId);
+    return setUserRankByHash(googleIdHash, rank);
+}
+
+// Set user rank by hashed googleId
+export function setUserRankByHash(googleIdHash, rank) {
     return new Promise(async (resolve, reject) => {
         try {
             // Validate rank
@@ -576,9 +589,6 @@ export function setUserRank(googleId, rank) {
                 reject(new Error(`Invalid rank. Must be one of: ${validRanks.join(', ')}`));
                 return;
             }
-            
-            // Hash Google ID for lookup (deterministic hash)
-            const googleIdHash = hashGoogleId(googleId);
             
             db.run('UPDATE users SET rank = ? WHERE googleIdHash = ?', [rank.toLowerCase(), googleIdHash], function(err) {
                 if (err) {
