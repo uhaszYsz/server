@@ -116,13 +116,11 @@ const authMiddleware = (req, res, next) => {
 
     // Check if password is required
     if (existsSync(DB_PASS_FILE)) {
-        // In a real app, we'd use sessions. For simplicity, we'll check a header or query param
-        // or just redirect to login if not authenticated.
-        // For this implementation, we'll use a simple token-based approach in headers
-        const authToken = req.headers['x-admin-password'];
-        const correctPassword = readFileSync(DB_PASS_FILE, 'utf8').trim();
+        const authHeader = req.headers['x-admin-auth'];
+        const fileContent = readFileSync(DB_PASS_FILE, 'utf8').trim();
+        const [correctLogin, correctPassword] = fileContent.split(/\s+/);
 
-        if (authToken === correctPassword) {
+        if (authHeader === `${correctLogin}:${correctPassword}`) {
             return next();
         } else {
             return res.status(401).json({ error: 'Unauthorized. Please login.' });
@@ -143,7 +141,7 @@ app.get('/', (req, res) => {
 
 // Login API
 app.post('/api/login', (req, res) => {
-    const { password } = req.body;
+    const { username, password } = req.body;
     const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     
     if (!existsSync(DB_PASS_FILE)) {
@@ -158,13 +156,15 @@ app.post('/api/login', (req, res) => {
     }
 
     try {
-        const correctPassword = readFileSync(DB_PASS_FILE, 'utf8').trim();
-        if (password === correctPassword) {
+        const fileContent = readFileSync(DB_PASS_FILE, 'utf8').trim();
+        const [correctLogin, correctPassword] = fileContent.split(/\s+/);
+
+        if (username === correctLogin && password === correctPassword) {
             recordAttempt(ip, true);
             res.json({ success: true });
         } else {
             recordAttempt(ip, false);
-            res.status(401).json({ error: 'Invalid password' });
+            res.status(401).json({ error: 'Invalid login or password' });
         }
     } catch (error) {
         res.status(500).json({ error: 'Error reading password file' });

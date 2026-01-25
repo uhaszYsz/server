@@ -359,7 +359,8 @@
     <div id="login-overlay" style="display: none;">
         <div class="login-card">
             <h2>🔐 Admin Login</h2>
-            <p style="margin-bottom: 20px; color: #666;">Enter database manager password</p>
+            <p style="margin-bottom: 20px; color: #666;">Enter database manager credentials</p>
+            <input type="text" id="admin-username" placeholder="Username" onkeyup="if(event.key==='Enter') login()">
             <input type="password" id="admin-password" placeholder="Password" onkeyup="if(event.key==='Enter') login()">
             <button class="btn btn-primary" onclick="login()">Login</button>
             <div id="login-error" style="color: #e74c3c; margin-top: 15px; display: none;"></div>
@@ -421,9 +422,11 @@
         let tables = [];
         let currentPrimaryKey = null;
         let selectedRows = new Set();
+        let adminUsername = localStorage.getItem('db_admin_username') || '';
         let adminPassword = localStorage.getItem('db_admin_password') || '';
 
         async function login() {
+            const username = document.getElementById('admin-username').value;
             const password = document.getElementById('admin-password').value;
             const errorEl = document.getElementById('login-error');
             
@@ -431,18 +434,20 @@
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
+                    body: JSON.stringify({ username, password })
                 });
                 
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
+                    adminUsername = username;
                     adminPassword = password;
+                    localStorage.setItem('db_admin_username', username);
                     localStorage.setItem('db_admin_password', password);
                     document.getElementById('login-overlay').style.display = 'none';
                     loadTables();
                 } else {
-                    errorEl.textContent = data.error || 'Invalid password';
+                    errorEl.textContent = data.error || 'Invalid login or password';
                     errorEl.style.display = 'block';
                 }
             } catch (error) {
@@ -454,14 +459,16 @@
         async function authenticatedFetch(url, options = {}) {
             options.headers = {
                 ...options.headers,
-                'x-admin-password': adminPassword
+                'x-admin-auth': `${adminUsername}:${adminPassword}`
             };
             
             const response = await fetch(url, options);
             
             if (response.status === 401) {
                 document.getElementById('login-overlay').style.display = 'flex';
+                document.getElementById('admin-username').value = '';
                 document.getElementById('admin-password').value = '';
+                localStorage.removeItem('db_admin_username');
                 localStorage.removeItem('db_admin_password');
                 throw new Error('Unauthorized');
             }
@@ -829,7 +836,7 @@
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: adminPassword })
+                    body: JSON.stringify({ username: adminUsername, password: adminPassword })
                 });
                 const data = await response.json();
                 
