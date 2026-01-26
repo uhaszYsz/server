@@ -7,7 +7,7 @@ export const specialKeywordsHelp = [
         content: `Bakes all draws into a vertex buffer stored under the name given as argument. Use drawBackground(x, y, "name") to draw it. Runs once at compilation.
 
 [b]Arguments:[/b]
-[color=#90ee90]name[/color] - [i]Buffer name to store draws under. Use with drawBackground(x, y, "name").[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Buffer name to store draws under. Use with drawBackground(x, y, "name").[/i]
 
 [b]Example:[/b]
 [code]background("bg1")
@@ -44,7 +44,7 @@ score += 1;[/code]
         content: `Lets you change bullet parameters. Accepts a single bullet ID or an array of IDs.
 
 [b]Arguments:[/b]
-[color=#90ee90]id[/color] - [i]Bullet ID or array of bullet IDs to modify.[/i]
+[b][color=#90ee90]id[/color][/b] - [i]Bullet ID or array of bullet IDs to modify.[/i]
 
 [b]Example:[/b]
 [code]var Id = createBullet(X, Y, 5, direction, 2)
@@ -57,7 +57,7 @@ inBullet(Id)
         content: `Repeats a block of code n times. Use indentation (#) to define the block.
 
 [b]Arguments:[/b]
-[color=#90ee90]n[/color] - [i]Number of times to repeat the block.[/i]
+[b][color=#90ee90]n[/color][/b] - [i]Number of times to repeat the block.[/i]
 
 [b]Example:[/b]
 [code]var i = 0
@@ -132,8 +132,8 @@ self.speed = 2;[/code]`
         content: `Calculates the direction angle in degrees from current position to target point.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]Target X position in world coordinates.[/i]
-[color=#90ee90]y[/color] - [i]Target Y position in world coordinates.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Target X position in world coordinates.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Target Y position in world coordinates.[/i]
 
 [b][color=#ffa500]Returns: the angle in degrees (0-360).[/color][/b]
 
@@ -146,7 +146,7 @@ self.speed = 2;[/code]`
         content: `Normalizes numbers like -90 or 450 to 0-360 direction.
 
 [b]Arguments:[/b]
-[color=#90ee90]angle[/color] - [i]Angle in degrees to normalize to 0-360.[/i]
+[b][color=#90ee90]angle[/color][/b] - [i]Angle in degrees to normalize to 0-360.[/i]
 
 [b][color=#ffa500]Returns:[/color][/b] the normalized angle as a number.
 [b]Example:[/b]
@@ -158,8 +158,8 @@ self.speed = 2;[/code]`
         content: `Calculates the shortest angle difference between two angles in degrees.
 
 [b]Arguments:[/b]
-[color=#90ee90]a[/color] - [i]First angle in degrees.[/i]
-[color=#90ee90]b[/color] - [i]Second angle in degrees.[/i]
+[b][color=#90ee90]a[/color][/b] - [i]First angle in degrees.[/i]
+[b][color=#90ee90]b[/color][/b] - [i]Second angle in degrees.[/i]
 
 [b][color=#ffa500]Returns: the angle difference as a number (can be negative).[/color][/b]
 
@@ -172,8 +172,8 @@ self.speed = 2;[/code]`
         content: `Calculates the distance from current position to target point.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]Target X position in world coordinates.[/i]
-[color=#90ee90]y[/color] - [i]Target Y position in world coordinates.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Target X position in world coordinates.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Target Y position in world coordinates.[/i]
 
 [b][color=#ffa500]Returns: the distance as a number.[/color][/b]
 
@@ -186,8 +186,8 @@ self.speed = 2;[/code]`
         content: `Converts length and direction (angle in degrees) to X component.
 
 [b]Arguments:[/b]
-[color=#90ee90]len[/color] - [i]Length/distance.[/i]
-[color=#90ee90]dir[/color] - [i]Direction angle in degrees.[/i]
+[b][color=#90ee90]len[/color][/b] - [i]Length/distance.[/i]
+[b][color=#90ee90]dir[/color][/b] - [i]Direction angle in degrees.[/i]
 
 [b][color=#ffa500]Returns: the X component as a number.[/color][/b]
 
@@ -200,8 +200,8 @@ self.speed = 2;[/code]`
         content: `Converts length and direction (angle in degrees) to Y component.
 
 [b]Arguments:[/b]
-[color=#90ee90]len[/color] - [i]Length/distance.[/i]
-[color=#90ee90]dir[/color] - [i]Direction angle in degrees.[/i]
+[b][color=#90ee90]len[/color][/b] - [i]Length/distance.[/i]
+[b][color=#90ee90]dir[/color][/b] - [i]Direction angle in degrees.[/i]
 
 [b][color=#ffa500]Returns: the Y component as a number.[/color][/b]
 
@@ -214,8 +214,8 @@ self.speed = 2;[/code]`
         content: `Moves the instance by the given length in the given direction (angle in degrees). Modifies X and Y positions directly.
 
 [b]Arguments:[/b]
-[color=#90ee90]len[/color] - [i]Distance to move in pixels.[/i]
-[color=#90ee90]dir[/color] - [i]Direction angle in degrees.[/i]
+[b][color=#90ee90]len[/color][/b] - [i]Distance to move in pixels.[/i]
+[b][color=#90ee90]dir[/color][/b] - [i]Direction angle in degrees.[/i]
 
 [b]Example:[/b]
 [code]move(5, 90); // moves 5 pixels upward
@@ -227,7 +227,7 @@ move(10, 0); // moves 10 pixels to the right[/code]`
         content: `Checks if a variable is undefined or not declared.
 
 [b]Arguments:[/b]
-[color=#90ee90]v[/color] - [i]Variable or expression to check.[/i]
+[b][color=#90ee90]v[/color][/b] - [i]Variable or expression to check.[/i]
 
 [b][color=#ffa500]Returns:[/color][/b] true if undefined, false otherwise.
 [b]Example:[/b]
@@ -239,8 +239,8 @@ move(10, 0); // moves 10 pixels to the right[/code]`
         content: `Generates a random number between min and max.
 
 [b]Arguments:[/b]
-[color=#90ee90]min[/color] - [i]Minimum value (inclusive).[/i]
-[color=#90ee90]max[/color] - [i]Maximum value (inclusive).[/i]
+[b][color=#90ee90]min[/color][/b] - [i]Minimum value (inclusive).[/i]
+[b][color=#90ee90]max[/color][/b] - [i]Maximum value (inclusive).[/i]
 
 [b][color=#ffa500]Returns: a random number.[/color][/b]
 
@@ -284,8 +284,8 @@ for(var i=0; i<enemies.length; i++) {
         content: `Gradually turns the current direction towards target direction, limited by maxTurn degrees per frame.
 
 [b]Arguments:[/b]
-[color=#90ee90]target[/color] - [i]Target direction angle in degrees.[/i]
-[color=#90ee90]maxTurn[/color] - [i]Maximum degrees to turn per frame.[/i]
+[b][color=#90ee90]target[/color][/b] - [i]Target direction angle in degrees.[/i]
+[b][color=#90ee90]maxTurn[/color][/b] - [i]Maximum degrees to turn per frame.[/i]
 
 [b][color=#ffa500]Returns: true if speed is greater than 0, false otherwise.[/color][/b]
 
@@ -298,7 +298,7 @@ for(var i=0; i<enemies.length; i++) {
         content: `Gradually turns the current direction towards the player, limited by maxTurn degrees per frame.
 
 [b]Arguments:[/b]
-[color=#90ee90]maxTurn[/color] - [i]Maximum degrees to turn per frame.[/i]
+[b][color=#90ee90]maxTurn[/color][/b] - [i]Maximum degrees to turn per frame.[/i]
 
 [b][color=#ffa500]Returns: true if player exists and speed is greater than 0, false otherwise.[/color][/b]
 
@@ -311,7 +311,7 @@ for(var i=0; i<enemies.length; i++) {
         content: `Selects a wave by its id/number (stage editor waves).
 
 [b]Arguments:[/b]
-[color=#90ee90]id[/color] - [i]Wave id/number from the stage editor.[/i]
+[b][color=#90ee90]id[/color][/b] - [i]Wave id/number from the stage editor.[/i]
 
 [b][color=#ffa500]Returns: true if the wave exists and was selected, false otherwise.[/color][/b]
 
@@ -346,11 +346,11 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Draws a circle at specified position with optional outline and color.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]X position (center).[/i]
-[color=#90ee90]y[/color] - [i]Y position (center).[/i]
-[color=#90ee90]r[/color] - [i]Radius.[/i]
-[color=#90ee90]outline[/color] - [i]Outline width (0 = filled). Optional.[/i]
-[color=#90ee90]color[/color] - [i]Hex color (e.g. "#ff0000") or RGBA array. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]X position (center).[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Y position (center).[/i]
+[b][color=#90ee90]r[/color][/b] - [i]Radius.[/i]
+[color=#9acd32]outline[/color] - [i]Outline width (0 = filled). Optional.[/i]
+[color=#9acd32]color[/color] - [i]Hex color (e.g. "#ff0000") or RGBA array. Optional.[/i]
 
 [b]Example:[/b]
 [code]drawCircle(100, 200, 5); // filled white circle
@@ -363,11 +363,11 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Draws a rectangle at specified position with optional color. x, y: bottom-left corner position. w, h: width and height.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]Bottom-left corner X.[/i]
-[color=#90ee90]y[/color] - [i]Bottom-left corner Y.[/i]
-[color=#90ee90]w[/color] - [i]Width.[/i]
-[color=#90ee90]h[/color] - [i]Height.[/i]
-[color=#90ee90]color[/color] - [i]Hex color or RGBA array. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Bottom-left corner X.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Bottom-left corner Y.[/i]
+[b][color=#90ee90]w[/color][/b] - [i]Width.[/i]
+[b][color=#90ee90]h[/color][/b] - [i]Height.[/i]
+[color=#9acd32]color[/color] - [i]Hex color or RGBA array. Optional.[/i]
 
 [b]Example:[/b]
 [code]drawRectangle(10, 20, 50, 30); // white rectangle
@@ -380,9 +380,9 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Draws a grid of rectangles covering the whole world. cellWidth and cellHeight are the dimensions of each grid cell.
 
 [b]Arguments:[/b]
-[color=#90ee90]cellW[/color] - [i]Width of each grid cell. Optional.[/i]
-[color=#90ee90]cellH[/color] - [i]Height of each grid cell. Optional.[/i]
-[color=#90ee90]color[/color] - [i]Hex color or RGBA array. Optional.[/i]
+[color=#9acd32]cellW[/color] - [i]Width of each grid cell. Optional.[/i]
+[color=#9acd32]cellH[/color] - [i]Height of each grid cell. Optional.[/i]
+[color=#9acd32]color[/color] - [i]Hex color or RGBA array. Optional.[/i]
 
 [b]Example:[/b]
 [code]drawGround(10, 10, [1.0, 0.0, 0.0, 1.0]); // red grid with 10x10 cells
@@ -395,10 +395,10 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Adds a light source that makes ground squares lighter based on distance. Closer squares become lighter. x and y are the light position. radius is the effect radius (optional, default: 50). power is the light intensity 0-1 (optional, default: 1.0).
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]Light X position.[/i]
-[color=#90ee90]y[/color] - [i]Light Y position.[/i]
-[color=#90ee90]radius[/color] - [i]Effect radius. Optional, default 50.[/i]
-[color=#90ee90]power[/color] - [i]Light intensity 0-1. Optional, default 1.0.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Light X position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Light Y position.[/i]
+[color=#9acd32]radius[/color] - [i]Effect radius. Optional, default 50.[/i]
+[color=#9acd32]power[/color] - [i]Light intensity 0-1. Optional, default 1.0.[/i]
 
 [b]Example:[/b]
 [code]drawLight(90, 160, 50, 1.0); // bright light at center
@@ -438,11 +438,11 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Draws text at specified position with optional color and size.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]X position.[/i]
-[color=#90ee90]y[/color] - [i]Y position.[/i]
-[color=#90ee90]text[/color] - [i]Text to draw.[/i]
-[color=#90ee90]color[/color] - [i]Hex color or RGB/RGBA array. Optional.[/i]
-[color=#90ee90]size[/color] - [i]Font size. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]X position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Y position.[/i]
+[b][color=#90ee90]text[/color][/b] - [i]Text to draw.[/i]
+[color=#9acd32]color[/color] - [i]Hex color or RGB/RGBA array. Optional.[/i]
+[color=#9acd32]size[/color] - [i]Font size. Optional.[/i]
 
 [b]Example:[/b]
 [code]drawText(50, 100, "Hello", [255, 0, 0], 12);[/code]`
@@ -453,9 +453,9 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Plays an MP3 sound effect from the sfx folder. Sound: filename without .mp3 extension. Volume: 0.0 to 1.0 (default 1.0). Pitch: 1.0 = normal.
 
 [b]Arguments:[/b]
-[color=#90ee90]sound[/color] - [i]Filename without .mp3 extension (from sfx folder).[/i]
-[color=#90ee90]volume[/color] - [i]Volume 0.0 to 1.0. Optional, default 1.0.[/i]
-[color=#90ee90]pitch[/color] - [i]Pitch multiplier, 1.0 = normal. Optional.[/i]
+[b][color=#90ee90]sound[/color][/b] - [i]Filename without .mp3 extension (from sfx folder).[/i]
+[color=#9acd32]volume[/color] - [i]Volume 0.0 to 1.0. Optional, default 1.0.[/i]
+[color=#9acd32]pitch[/color] - [i]Pitch multiplier, 1.0 = normal. Optional.[/i]
 
 [b]Example:[/b]
 [code]soundPlay("explosion", 1.0, 1.0);
@@ -467,13 +467,13 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Draws a sprite from the server. spriteName must start with @ and end with .gif or .png. xScale and yScale are scale factors. color: optional hex color string or RGBA array to tint/blend the sprite.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]X position.[/i]
-[color=#90ee90]y[/color] - [i]Y position.[/i]
-[color=#90ee90]name[/color] - [i]Sprite filename; must start with @ and end with .gif or .png.[/i]
-[color=#90ee90]scaleX[/color] - [i]Horizontal scale factor.[/i]
-[color=#90ee90]scaleY[/color] - [i]Vertical scale factor.[/i]
-[color=#90ee90]rotation[/color] - [i]Rotation in degrees. Optional.[/i]
-[color=#90ee90]color[/color] - [i]Hex color or RGBA array to tint. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]X position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Y position.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Sprite filename; must start with @ and end with .gif or .png.[/i]
+[b][color=#90ee90]scaleX[/color][/b] - [i]Horizontal scale factor.[/i]
+[b][color=#90ee90]scaleY[/color][/b] - [i]Vertical scale factor.[/i]
+[color=#9acd32]rotation[/color] - [i]Rotation in degrees. Optional.[/i]
+[color=#9acd32]color[/color] - [i]Hex color or RGBA array to tint. Optional.[/i]
 
 [b]Example:[/b]
 [code]drawSprite(90, 160, "@grassBlades.gif", 1, 1, 45); // GIF sprite, 1:1 scale, 45° rotation
@@ -486,12 +486,12 @@ drawSprite(90, 160, "@sprite.png", 1, 1, 0, "#FF0000"); // Red tinted sprite[/co
         content: `Draws a frame from a spritesheet. spriteName must start with @ and end with .gif or .png. frame: frame index (0-based). maxCellsX: number of cells horizontally. maxCellsY: number of cells vertically.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]X position.[/i]
-[color=#90ee90]y[/color] - [i]Y position.[/i]
-[color=#90ee90]name[/color] - [i]Spritesheet filename; must start with @ and end with .gif or .png.[/i]
-[color=#90ee90]frame[/color] - [i]Frame index (0-based).[/i]
-[color=#90ee90]maxCellsX[/color] - [i]Number of cells horizontally in the sheet.[/i]
-[color=#90ee90]maxCellsY[/color] - [i]Number of cells vertically in the sheet.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]X position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Y position.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Spritesheet filename; must start with @ and end with .gif or .png.[/i]
+[b][color=#90ee90]frame[/color][/b] - [i]Frame index (0-based).[/i]
+[b][color=#90ee90]maxCellsX[/color][/b] - [i]Number of cells horizontally in the sheet.[/i]
+[b][color=#90ee90]maxCellsY[/color][/b] - [i]Number of cells vertically in the sheet.[/i]
 
 [b]Example:[/b]
 [code]drawSheetSprite(90, 160, "@spriteSheet.png", 0, 4, 3); // Draw first frame
@@ -503,11 +503,11 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
         content: `Embeds a YouTube video at specified world coordinates. x, y: world coordinates for top-left corner. w, h: width and height. url: YouTube URL or video ID.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]Top-left X in world coordinates.[/i]
-[color=#90ee90]y[/color] - [i]Top-left Y in world coordinates.[/i]
-[color=#90ee90]w[/color] - [i]Width.[/i]
-[color=#90ee90]h[/color] - [i]Height.[/i]
-[color=#90ee90]url[/color] - [i]YouTube URL or video ID.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Top-left X in world coordinates.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Top-left Y in world coordinates.[/i]
+[b][color=#90ee90]w[/color][/b] - [i]Width.[/i]
+[b][color=#90ee90]h[/color][/b] - [i]Height.[/i]
+[b][color=#90ee90]url[/color][/b] - [i]YouTube URL or video ID.[/i]
 
 [b]Example:[/b]
 [code]youtubePlay(50, 200, 80, 60, "dQw4w9WgXcQ");[/code]`
@@ -526,10 +526,10 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
         content: `Creates a new instance of a coded object. If typeName is provided, calls the object's type function on creation.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]X position for the new instance.[/i]
-[color=#90ee90]y[/color] - [i]Y position for the new instance.[/i]
-[color=#90ee90]name[/color] - [i]Object name (codeChild name from the editor).[/i]
-[color=#90ee90]type[/color] - [i]Type function to call on creation. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]X position for the new instance.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Y position for the new instance.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Object name (codeChild name from the editor).[/i]
+[color=#9acd32]type[/color] - [i]Type function to call on creation. Optional.[/i]
 
 [b][color=#ffa500]Returns: the created object or null if failed.[/color][/b]
 
@@ -551,12 +551,12 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
         content: `Creates a bullet at specified position with given properties (x, y, speed, direction, size required).
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]X position.[/i]
-[color=#90ee90]y[/color] - [i]Y position.[/i]
-[color=#90ee90]speed[/color] - [i]Bullet speed.[/i]
-[color=#90ee90]dir[/color] - [i]Direction in degrees.[/i]
-[color=#90ee90]size[/color] - [i]Bullet size.[/i]
-[color=#90ee90]...[/color] - [i]Optional: [R,G,B], Alpha, ScaleY, Rotation, Lifetime, Homing, Spin, Shape, GlowSize, GlowPower, [GlowR,GlowG,GlowB].[/i]
+[b][color=#90ee90]x[/color][/b] - [i]X position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Y position.[/i]
+[b][color=#90ee90]speed[/color][/b] - [i]Bullet speed.[/i]
+[b][color=#90ee90]dir[/color][/b] - [i]Direction in degrees.[/i]
+[b][color=#90ee90]size[/color][/b] - [i]Bullet size.[/i]
+[color=#9acd32]...[/color] - [i]Optional: [R,G,B], Alpha, ScaleY, Rotation, Lifetime, Homing, Spin, Shape, GlowSize, GlowPower, [GlowR,GlowG,GlowB].[/i]
 
 [b][color=#ffa500]Returns: the bullet's unique ID.[/color][/b]
 
@@ -569,13 +569,13 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
         content: `Displays an animated character sprite at specified position.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]X position.[/i]
-[color=#90ee90]y[/color] - [i]Y position.[/i]
-[color=#90ee90]name[/color] - [i]DragonBones armature name (asset name).[/i]
-[color=#90ee90]anim[/color] - [i]Animation name to play.[/i]
-[color=#90ee90]bones[/color] - [i]Array of bone names to hide. Optional.[/i]
-[color=#90ee90]scaleX[/color] - [i]Horizontal scale. Optional.[/i]
-[color=#90ee90]scaleY[/color] - [i]Vertical scale. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]X position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Y position.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]DragonBones armature name (asset name).[/i]
+[b][color=#90ee90]anim[/color][/b] - [i]Animation name to play.[/i]
+[color=#9acd32]bones[/color] - [i]Array of bone names to hide. Optional.[/i]
+[color=#9acd32]scaleX[/color] - [i]Horizontal scale. Optional.[/i]
+[color=#9acd32]scaleY[/color] - [i]Vertical scale. Optional.[/i]
 
 [b][color=#ffa500]Returns: a handle object that allows control of the animation.[/color][/b]
 
@@ -591,7 +591,7 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
         content: `Removes the specified instance or self if no id provided.
 
 [b]Arguments:[/b]
-[color=#90ee90]id[/color] - [i]Instance/codeChild ID to remove. Omit to remove self.[/i]
+[color=#9acd32]id[/color] - [i]Instance/codeChild ID to remove. Omit to remove self.[/i]
 
 [b][color=#ffa500]Returns: true if removal was successful, false otherwise.[/color][/b]
 
@@ -605,7 +605,7 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
         content: `Adds a debug message to the chat tab.
 
 [b]Arguments:[/b]
-[color=#90ee90]msg[/color] - [i]Message to show in the chat/debug tab.[/i]
+[b][color=#90ee90]msg[/color][/b] - [i]Message to show in the chat/debug tab.[/i]
 
 [b]Example:[/b]
 [code]debugMessage("Player HP: " + playerHp);[/code]`
@@ -616,9 +616,9 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
         content: `Checks if the object at specified position is outside screen bounds.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]X position to check.[/i]
-[color=#90ee90]y[/color] - [i]Y position to check.[/i]
-[color=#90ee90]margin[/color] - [i]Extra margin (0-1 or pixels) outside the visible area. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]X position to check.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Y position to check.[/i]
+[color=#9acd32]margin[/color] - [i]Extra margin (0-1 or pixels) outside the visible area. Optional.[/i]
 
 [b][color=#ffa500]Returns: true if outside screen, false otherwise.[/color][/b]
 
@@ -631,9 +631,9 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
         content: `Finds all player bullet IDs within radius of (x,y) this frame.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]Center X position.[/i]
-[color=#90ee90]y[/color] - [i]Center Y position.[/i]
-[color=#90ee90]radius[/color] - [i]Search radius.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Center X position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Center Y position.[/i]
+[b][color=#90ee90]radius[/color][/b] - [i]Search radius.[/i]
 
 [b][color=#ffa500]Returns: an array of player bullet IDs; [] if none.[/color][/b]
 
@@ -648,11 +648,11 @@ inBullet(bids)
         content: `Circle vs circle collision detection. Skips self.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]Center X position.[/i]
-[color=#90ee90]y[/color] - [i]Center Y position.[/i]
-[color=#90ee90]radius[/color] - [i]Collision radius for this object.[/i]
-[color=#90ee90]tag[/color] - [i]Tag to filter objects by. Only objects with this tag are considered.[/i]
-[color=#90ee90]size[/color] - [i]Radius to use for the other objects (or their collision size).[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Center X position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Center Y position.[/i]
+[b][color=#90ee90]radius[/color][/b] - [i]Collision radius for this object.[/i]
+[b][color=#90ee90]tag[/color][/b] - [i]Tag to filter objects by. Only objects with this tag are considered.[/i]
+[b][color=#90ee90]size[/color][/b] - [i]Radius to use for the other objects (or their collision size).[/i]
 
 [b][color=#ffa500]Returns: the first colliding codeChild or null.[/color][/b]
 
@@ -666,7 +666,7 @@ if (other !== null) { other.hp -= 1; }[/code]`
         content: `Creates a static background that is baked into a vertex buffer at compilation time.
 
 [b]Arguments:[/b]
-[color=#90ee90]name[/color] - [i]Buffer name. Use with drawBackground(x, y, "name") to draw it.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Buffer name. Use with drawBackground(x, y, "name") to draw it.[/i]
 
 [b]Example:[/b]
 [code]background("bg1")
@@ -680,9 +680,9 @@ drawBackground(0, 0, "bg1")[/code]`
         content: `Draws a background buffer at specified position.
 
 [b]Arguments:[/b]
-[color=#90ee90]x[/color] - [i]X position to draw at.[/i]
-[color=#90ee90]y[/color] - [i]Y position to draw at.[/i]
-[color=#90ee90]name[/color] - [i]Name of the background buffer (from background("name")).[/i]
+[b][color=#90ee90]x[/color][/b] - [i]X position to draw at.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Y position to draw at.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Name of the background buffer (from background("name")).[/i]
 
 [b]Example:[/b]
 [code]background("myBg")
@@ -696,9 +696,9 @@ drawBackground(90, 160, "myBg")[/code]`
         content: `Plays a soundtrack file from music/soundtracks/. songName must start with $.
 
 [b]Arguments:[/b]
-[color=#90ee90]name[/color] - [i]Song filename; must start with $ (from music/soundtracks/).[/i]
-[color=#90ee90]seq[/color] - [i]Starting sequence/order number. Optional.[/i]
-[color=#90ee90]vol[/color] - [i]Volume 0-1. Optional.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Song filename; must start with $ (from music/soundtracks/).[/i]
+[color=#9acd32]seq[/color] - [i]Starting sequence/order number. Optional.[/i]
+[color=#9acd32]vol[/color] - [i]Volume 0-1. Optional.[/i]
 
 [b]Example:[/b]
 [code]musicPlay("$lethal-weapon-level-1.xm");
@@ -722,7 +722,7 @@ musicPlay("$song.xm", 2, 0.5);[/code]`
         content: `Instantly plays the current song from the specified sequence/order number.
 
 [b]Arguments:[/b]
-[color=#90ee90]seq[/color] - [i]Sequence/order number to jump to.[/i]
+[b][color=#90ee90]seq[/color][/b] - [i]Sequence/order number to jump to.[/i]
 `
     }
 ];
@@ -743,7 +743,7 @@ ani.alpha = 0.9;
         content: `Finds a bone by name on the armature.
 
 [b]Arguments:[/b]
-[color=#90ee90]name[/color] - [i]Bone name on the armature.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Bone name on the armature.[/i]
 
 [b][color=#ffa500]Returns: dragonBones.Bone or null if not found.[/color][/b]
 [code]var bone = ani.armature.getBone("arm");[/code]`
