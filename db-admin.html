@@ -422,8 +422,7 @@
         let tables = [];
         let currentPrimaryKey = null;
         let selectedRows = new Set();
-        let adminUsername = localStorage.getItem('db_admin_username') || '';
-        let adminPassword = localStorage.getItem('db_admin_password') || '';
+        let sessionToken = localStorage.getItem('db_admin_session') || '';
 
         async function login() {
             const username = document.getElementById('admin-username').value;
@@ -440,10 +439,14 @@
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
-                    adminUsername = username;
-                    adminPassword = password;
-                    localStorage.setItem('db_admin_username', username);
-                    localStorage.setItem('db_admin_password', password);
+                    // Store session token instead of credentials
+                    sessionToken = data.sessionToken || '';
+                    if (sessionToken) {
+                        localStorage.setItem('db_admin_session', sessionToken);
+                        // Remove old credential storage if it exists
+                        localStorage.removeItem('db_admin_username');
+                        localStorage.removeItem('db_admin_password');
+                    }
                     document.getElementById('login-overlay').style.display = 'none';
                     loadTables();
                 } else {
@@ -457,19 +460,35 @@
         }
 
         async function authenticatedFetch(url, options = {}) {
-            options.headers = {
-                ...options.headers,
-                'x-admin-auth': `${adminUsername}:${adminPassword}`
-            };
+            // Use session token if available, otherwise fall back to legacy auth
+            if (sessionToken) {
+                options.headers = {
+                    ...options.headers,
+                    'x-admin-session': sessionToken
+                };
+            } else {
+                // Legacy fallback (for backward compatibility)
+                const adminUsername = localStorage.getItem('db_admin_username') || '';
+                const adminPassword = localStorage.getItem('db_admin_password') || '';
+                if (adminUsername && adminPassword) {
+                    options.headers = {
+                        ...options.headers,
+                        'x-admin-auth': `${adminUsername}:${adminPassword}`
+                    };
+                }
+            }
             
             const response = await fetch(url, options);
             
             if (response.status === 401) {
+                // Clear session on unauthorized
+                sessionToken = '';
+                localStorage.removeItem('db_admin_session');
+                localStorage.removeItem('db_admin_username');
+                localStorage.removeItem('db_admin_password');
                 document.getElementById('login-overlay').style.display = 'flex';
                 document.getElementById('admin-username').value = '';
                 document.getElementById('admin-password').value = '';
-                localStorage.removeItem('db_admin_username');
-                localStorage.removeItem('db_admin_password');
                 throw new Error('Unauthorized');
             }
             
@@ -831,22 +850,53 @@
 
         // Load tables on page load
         window.addEventListener('load', async () => {
-            // Check if login is required
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: adminUsername, password: adminPassword })
-                });
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    loadTables();
-                } else {
-                    document.getElementById('login-overlay').style.display = 'flex';
+            // Check if we have a valid session token
+            if (sessionToken) {
+                // Try to use existing session
+                try {
+                    const response = await authenticatedFetch('/api/db/users/tables');
+                    if (response.ok) {
+                        // Session is valid, hide login and load tables
+                        document.getElementById('login-overlay').style.display = 'none';
+                        loadTables();
+                        return;
+                    }
+                } catch (error) {
+                    // Session invalid, clear it and show login
+                    sessionToken = '';
+                    localStorage.removeItem('db_admin_session');
                 }
-            } catch (e) {
-                document.getElementById('login-overlay').style.display = 'flex';
+            }
+            
+            // No valid session, show login overlay
+            document.getElementById('login-overlay').style.display = 'flex';
+            
+            // Legacy: Try auto-login with stored credentials (for backward compatibility)
+            const adminUsername = localStorage.getItem('db_admin_username') || '';
+            const adminPassword = localStorage.getItem('db_admin_password') || '';
+            if (adminUsername && adminPassword) {
+                try {
+                    const response = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: adminUsername, password: adminPassword })
+                    });
+                    const data = await response.json();
+                    
+                    if (response.ok && data.success) {
+                        // Store new session token
+                        if (data.sessionToken) {
+                            sessionToken = data.sessionToken;
+                            localStorage.setItem('db_admin_session', sessionToken);
+                            localStorage.removeItem('db_admin_username');
+                            localStorage.removeItem('db_admin_password');
+                        }
+                        document.getElementById('login-overlay').style.display = 'none';
+                        loadTables();
+                    }
+                } catch (e) {
+                    // Auto-login failed, show login overlay
+                }
             }
         });
     </script>

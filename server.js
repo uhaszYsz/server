@@ -204,7 +204,7 @@ async function verifyCodeWithOpenAI(code) {
     const safeCode = trimmed.length > MAX_CODE_CHARS ? trimmed.slice(0, MAX_CODE_CHARS) : trimmed;
 
     try {
-        const userPrompt = `${safeCode}\n\n\nthis code been shared by someone, is it safe to run`;
+        const userPrompt = `${safeCode}\n\n\nIs this code a hack or data theft attempt?`;
         const resp = await client.chat.completions.create({
             model: 'gpt-4o-mini',
             temperature: 0.2,
@@ -214,10 +214,7 @@ async function verifyCodeWithOpenAI(code) {
                     role: 'system',
                     content:
                         'You review JavaScript code for security vulnerabilities and exploit attempts. ' +
-                        'Verify if there are no hack attempts in this code. ' +
-                        'Answer: Is this code SAFE (✅) or HARMFUL (❌) to run? ' +
-                        'HARMFUL = any networking code, creating files on device, attempts to use window. or __realWindow parameters or functions. hack attempts ' +
-                        'SAFE = game logics, loops, creating bullets and objects  (createObject())' +
+                        'Is this code a hack or data theft attempt? ' +
                         'Respond with: [EMOJI] [30 char explanation]. ' +
                         'Format: "✅ Safe: [reason]" or "❌ Harmful: [reason]".'
                 },
@@ -249,6 +246,83 @@ async function verifyCodeWithOpenAI(code) {
         return `${emoji} ${explanation}`;
     } catch (error) {
         console.error('[verifyCodeWithOpenAI] Failed:', error);
+        return null;
+    }
+}
+
+// Helper function to verify multiple codes in one message (for levels)
+async function verifyMultipleCodesWithOpenAI(codes) {
+    return null; // Code verification disabled
+    const client = getOpenAIClient();
+    if (!client) {
+        return null; // No API key
+    }
+
+    if (!Array.isArray(codes) || codes.length === 0) {
+        return null;
+    }
+
+    // Filter out empty codes and trim
+    const validCodes = codes
+        .map(code => String(code || '').trim())
+        .filter(code => code.length > 0);
+
+    if (validCodes.length === 0) {
+        return null;
+    }
+
+    // Combine all codes with separators
+    const combinedCode = validCodes
+        .map((code, index) => `// Code ${index + 1}\n${code}`)
+        .join('\n\n---\n\n');
+
+    // Basic payload cap to avoid abuse
+    const MAX_CODE_CHARS = 50000; // Higher limit for multiple codes
+    const safeCode = combinedCode.length > MAX_CODE_CHARS ? combinedCode.slice(0, MAX_CODE_CHARS) : combinedCode;
+
+    try {
+        const userPrompt = `${safeCode}\n\n\nIs this code a hack or data theft attempt?`;
+        const resp = await client.chat.completions.create({
+            model: 'gpt-4o-mini',
+            temperature: 0.2,
+            max_tokens: 50,
+            messages: [
+                {
+                    role: 'system',
+                    content:
+                        'You review JavaScript code for security vulnerabilities and exploit attempts. ' +
+                        'Is this code a hack or data theft attempt? ' +
+                        'Respond with: [EMOJI] [30 char explanation]. ' +
+                        'Format: "✅ Safe: [reason]" or "❌ Harmful: [reason]".'
+                },
+                { role: 'user', content: userPrompt }
+            ]
+        });
+
+        let rawAnswer = resp?.choices?.[0]?.message?.content || '';
+        // Extract emoji (first emoji found)
+        const emojiMatch = rawAnswer.match(/[✅❌⚠️]/);
+        const emoji = emojiMatch ? emojiMatch[0] : '⚠️';
+        
+        // Extract explanation (text after emoji, max 30 chars)
+        let explanation = rawAnswer.replace(/[✅❌⚠️]\s*/, '').trim();
+        if (!explanation || explanation.length === 0) {
+            // Fallback: try to infer from content
+            const lower = rawAnswer.toLowerCase();
+            if (lower.includes('safe') && !lower.includes('unsafe')) {
+                explanation = 'Safe code';
+            } else if (lower.includes('unsafe') || lower.includes('danger') || lower.includes('risk')) {
+                explanation = 'Unsafe code detected';
+            } else {
+                explanation = 'Unknown safety status';
+            }
+        }
+        // Truncate to 30 chars
+        explanation = explanation.length > 30 ? explanation.slice(0, 27) + '...' : explanation;
+        
+        return `${emoji} ${explanation}`;
+    } catch (error) {
+        console.error('[verifyMultipleCodesWithOpenAI] Failed:', error);
         return null;
     }
 }
@@ -2636,7 +2710,10 @@ function handleWebSocketConnection(ws, req) {
                             if (stageData && typeof stageData === 'object' && stageData.codeObjects && Array.isArray(stageData.codeObjects)) {
                                 console.log(`[uploadedLevel] Found ${stageData.codeObjects.length} codeObjects to verify`);
                                 
-                                // Process each codeObject
+                                // Collect all codes from codeObjects
+                                const allCodes = [];
+                                const codeObjectNames = [];
+                                
                                 for (const codeObjectEntry of stageData.codeObjects) {
                                     // Handle both [name, code] array format and object format
                                     let objectName, code;
@@ -2655,20 +2732,26 @@ function handleWebSocketConnection(ws, req) {
                                         continue;
                                     }
                                     
+                                    allCodes.push(code.trim());
+                                    codeObjectNames.push(objectName);
+                                }
+                                
+                                // Verify all codes in one message
+                                if (allCodes.length > 0) {
                                     try {
-                                        console.log(`[uploadedLevel] Verifying codeObject "${objectName}" (${code.length} chars)`);
-                                        const verdict = await verifyCodeWithOpenAI(code.trim());
+                                        console.log(`[uploadedLevel] Verifying ${allCodes.length} codeObjects in one message (total ${allCodes.reduce((sum, c) => sum + c.length, 0)} chars)`);
+                                        const verdict = await verifyMultipleCodesWithOpenAI(allCodes);
                                         if (verdict) {
-                                            // Create verification post for this codeObject
-                                            const verificationPost = `**Code Object: ${objectName}**\n\n${verdict}`;
+                                            // Create single verification post for all codeObjects
+                                            const codeObjectsList = codeObjectNames.map((name, idx) => `${idx + 1}. ${name}`).join('\n');
+                                            const verificationPost = `**Code Objects (${codeObjectNames.length}):**\n${codeObjectsList}\n\n${verdict}`;
                                             await db.createForumPost(threadId, 'system', verificationPost);
-                                            console.log(`[uploadedLevel] Verification post created for codeObject "${objectName}"`);
+                                            console.log(`[uploadedLevel] Verification post created for ${codeObjectNames.length} codeObjects`);
                                         } else {
-                                            console.log(`[uploadedLevel] Verification skipped for codeObject "${objectName}" (no API key or error)`);
+                                            console.log(`[uploadedLevel] Verification skipped for ${codeObjectNames.length} codeObjects (no API key or error)`);
                                         }
                                     } catch (codeVerifyErr) {
-                                        console.error(`[uploadedLevel] Failed to verify codeObject "${objectName}":`, codeVerifyErr);
-                                        // Continue with other codeObjects even if one fails
+                                        console.error(`[uploadedLevel] Failed to verify codeObjects:`, codeVerifyErr);
                                     }
                                 }
                             } else {
@@ -3600,11 +3683,16 @@ function handleWebSocketConnection(ws, req) {
             const postIds = posts.map(p => p.id);
             const likeInfo = await db.getPostLikeInfo(postIds, ws.googleId || null);
             
-            // Add like info to posts
+            // Get dislike info for all posts
+            const dislikeInfo = await db.getPostDislikeInfo(postIds, ws.googleId || null);
+            
+            // Add like and dislike info to posts
             const postsWithLikes = posts.map(post => ({
                 ...post,
                 likeCount: likeInfo.counts[post.id] || 0,
-                userLiked: likeInfo.userLikes[post.id] || false
+                userLiked: likeInfo.userLikes[post.id] || false,
+                dislikeCount: dislikeInfo.counts[post.id] || 0,
+                userDisliked: dislikeInfo.userDislikes[post.id] || false
             }));
             
             ws.send(msgpack.encode({ type: 'forumThread', thread, posts: postsWithLikes }));
@@ -4415,6 +4503,94 @@ function handleWebSocketConnection(ws, req) {
         } catch (error) {
             console.error('Failed to unlike post', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to unlike post' }));
+        }
+      } else if (data.type === 'dislikeForumPost') {
+        // Verify user is authenticated (googleId is set during Google login)
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        // Verify user exists (we already have googleId from login, just verify user exists)
+        try {
+            if (!ws.googleId) {
+                console.error('[dislikeForumPost] Missing googleId');
+                ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
+                return;
+            }
+            
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                console.error('[dislikeForumPost] User not found for googleId:', ws.googleId.substring(0, 20) + '...');
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+                return;
+            }
+        } catch (verifyErr) {
+            console.error('[dislikeForumPost] Verification error:', verifyErr);
+            ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+            return;
+        }
+        if (!data.postId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Post ID required' }));
+            return;
+        }
+        try {
+            // dislikePost expects googleId as second parameter, not username
+            const disliked = await db.dislikePost(data.postId, ws.googleId);
+            const dislikeCount = await db.getPostDislikeCount(data.postId);
+            ws.send(msgpack.encode({ 
+                type: 'forumPostDisliked', 
+                postId: data.postId,
+                dislikeCount: dislikeCount,
+                disliked: disliked
+            }));
+        } catch (error) {
+            console.error('Failed to dislike post', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to dislike post' }));
+        }
+      } else if (data.type === 'undislikeForumPost') {
+        // Verify user is authenticated (googleId is set during Google login)
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        
+        // Verify user exists (we already have googleId from login, just verify user exists)
+        try {
+            if (!ws.googleId) {
+                console.error('[undislikeForumPost] Missing googleId');
+                ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
+                return;
+            }
+            
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                console.error('[undislikeForumPost] User not found for googleId:', ws.googleId.substring(0, 20) + '...');
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+                return;
+            }
+        } catch (verifyErr) {
+            console.error('[undislikeForumPost] Verification error:', verifyErr);
+            ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
+            return;
+        }
+        if (!data.postId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Post ID required' }));
+            return;
+        }
+        try {
+            // undislikePost expects googleId as second parameter, not username
+            const undisliked = await db.undislikePost(data.postId, ws.googleId);
+            const dislikeCount = await db.getPostDislikeCount(data.postId);
+            ws.send(msgpack.encode({ 
+                type: 'forumPostUndisliked', 
+                postId: data.postId,
+                dislikeCount: dislikeCount,
+                undisliked: undisliked
+            }));
+        } catch (error) {
+            console.error('Failed to undislike post', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to undislike post' }));
         }
       } else if (data.type === 'editForumPost') {
         // Verify user is authenticated

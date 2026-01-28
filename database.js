@@ -176,6 +176,25 @@ export function initDatabase() {
                             }
                         });
                         
+                        // Create post_dislikes table to track which users disliked which posts
+                        // No foreign key to users table to avoid constraint issues when users table structure changes
+                        db.run(`
+                            CREATE TABLE IF NOT EXISTS forum_post_dislikes (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                post_id INTEGER NOT NULL,
+                                googleId TEXT NOT NULL,
+                                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                FOREIGN KEY (post_id) REFERENCES forum_posts(id),
+                                UNIQUE(post_id, googleId)
+                            )
+                        `, (err) => {
+                            if (err) {
+                                console.error('Error creating forum_post_dislikes table:', err);
+                            } else {
+                                console.log('✅ Forum post dislikes table initialized');
+                            }
+                        });
+                        
                         // Create stages table for user-uploaded levels
                         // Remove foreign key constraint to avoid issues when users table structure changes
                         db.run(`
@@ -1006,6 +1025,57 @@ async function initHelpThreads(categoryName, categoryId) {
     const items = helpMap[categoryName];
     if (!items) return;
 
+    // Special case: Create "Keywords" thread for JavaScript Stuff category
+    if (categoryName === 'JavaScript Stuff') {
+        const keywords = ['function', 'var', 'let', 'const', 'def', 'if', 'else', 'for', 'while', 'switch', 'case', 'break', 'continue', 'return', 'true', 'false', 'null', 'undefined', 'inBullet'];
+        const keywordsContent = `[b]JavaScript Keywords:[/b]
+
+${keywords.map(kw => `[b][color=#f59e0b]${kw}[/color][/b]`).join(', ')}`;
+        
+        const keywordsItem = {
+            name: 'Keywords',
+            threadTitle: 'Keywords',
+            content: keywordsContent
+        };
+        
+        await new Promise((resolve, reject) => {
+            db.get('SELECT id, title FROM forum_threads WHERE category_id = ? AND title = ?', [categoryId, 'Keywords'], (err, thread) => {
+                if (err) return reject(err);
+
+                if (thread) {
+                    // Update existing Keywords thread content
+                    db.get('SELECT id FROM forum_posts WHERE thread_id = ?', [thread.id], (err, post) => {
+                        if (err) return reject(err);
+                        if (!post) {
+                            db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)',
+                                [thread.id, 'system', keywordsItem.content], (err) => {
+                                    if (err) reject(err);
+                                    else resolve();
+                                });
+                        } else {
+                            db.run('UPDATE forum_posts SET content = ? WHERE id = ?', [keywordsItem.content, post.id], (err) => {
+                                if (err) reject(err);
+                                else resolve();
+                            });
+                        }
+                    });
+                } else {
+                    // Create new Keywords thread
+                    db.run('INSERT INTO forum_threads (category_id, title, author) VALUES (?, ?, ?)',
+                        [categoryId, 'Keywords', 'system'], function(err) {
+                            if (err) return reject(err);
+                            const threadId = this.lastID;
+                            db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)',
+                                [threadId, 'system', keywordsItem.content], (err) => {
+                                    if (err) reject(err);
+                                    else resolve();
+                                });
+                        });
+                }
+            });
+        });
+    }
+
     for (const item of items) {
         await new Promise((resolve, reject) => {
             const titleToUse = item.threadTitle || item.name;
@@ -1386,7 +1456,14 @@ export function deleteForumThread(threadId) {
             if (err) {
                 console.error('Error deleting thread post likes:', err);
             }
-            // Then delete all posts in the thread
+        });
+        // Also delete all dislikes for all posts in this thread
+        db.run(`DELETE FROM forum_post_dislikes WHERE post_id IN (SELECT id FROM forum_posts WHERE thread_id = ?)`, [threadId], (err) => {
+            if (err) {
+                console.error('Error deleting thread post dislikes:', err);
+            }
+        });
+        // Then delete all posts in the thread
             db.run('DELETE FROM forum_posts WHERE thread_id = ?', [threadId], (err) => {
                 if (err) {
                     reject(err);
@@ -1413,14 +1490,20 @@ export function deleteForumPost(postId) {
             if (err) {
                 console.error('Error deleting post likes:', err);
             }
-            // Then delete the post
-            db.run('DELETE FROM forum_posts WHERE id = ?', [postId], function(err) {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(this.changes > 0);
-                }
-            });
+        });
+        // Also delete all dislikes for this post
+        db.run('DELETE FROM forum_post_dislikes WHERE post_id = ?', [postId], (err) => {
+            if (err) {
+                console.error('Error deleting post dislikes:', err);
+            }
+        });
+        // Then delete the post
+        db.run('DELETE FROM forum_posts WHERE id = ?', [postId], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
+            }
         });
     });
 }
@@ -1539,6 +1622,105 @@ export function getPostLikeInfo(postIds, googleId) {
                 const userLikes = {};
                 postIds.forEach(id => userLikes[id] = false);
                 resolve({ counts, userLikes });
+            }
+        });
+    });
+}
+
+// Get dislike count for a post
+export function getPostDislikeCount(postId) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT COUNT(*) as count FROM forum_post_dislikes WHERE post_id = ?', [postId], (err, row) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(row ? row.count : 0);
+            }
+        });
+    });
+}
+
+// Check if user has disliked a post
+export function hasUserDislikedPost(postId, googleId) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT * FROM forum_post_dislikes WHERE post_id = ? AND googleId = ?', [postId, googleId], (err, row) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(!!row);
+            }
+        });
+    });
+}
+
+// Dislike a post
+export function dislikePost(postId, googleId) {
+    return new Promise((resolve, reject) => {
+        db.run('INSERT OR IGNORE INTO forum_post_dislikes (post_id, googleId) VALUES (?, ?)', [postId, googleId], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
+// Undislike a post
+export function undislikePost(postId, googleId) {
+    return new Promise((resolve, reject) => {
+        db.run('DELETE FROM forum_post_dislikes WHERE post_id = ? AND googleId = ?', [postId, googleId], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
+// Get dislike counts and user dislikes for multiple posts
+export function getPostDislikeInfo(postIds, googleId) {
+    return new Promise((resolve, reject) => {
+        if (!postIds || postIds.length === 0) {
+            resolve({ counts: {}, userDislikes: {} });
+            return;
+        }
+        const placeholders = postIds.map(() => '?').join(',');
+        
+        // Get dislike counts
+        db.all(`SELECT post_id, COUNT(*) as count FROM forum_post_dislikes WHERE post_id IN (${placeholders}) GROUP BY post_id`, postIds, (err, countRows) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            
+            const counts = {};
+            postIds.forEach(id => counts[id] = 0);
+            countRows.forEach(row => {
+                counts[row.post_id] = row.count;
+            });
+            
+            // Get user dislikes if googleId provided
+            if (googleId) {
+                db.all(`SELECT post_id FROM forum_post_dislikes WHERE post_id IN (${placeholders}) AND googleId = ?`, [...postIds, googleId], (err, dislikeRows) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    
+                    const userDislikes = {};
+                    postIds.forEach(id => userDislikes[id] = false);
+                    dislikeRows.forEach(row => {
+                        userDislikes[row.post_id] = true;
+                    });
+                    
+                    resolve({ counts, userDislikes });
+                });
+            } else {
+                const userDislikes = {};
+                postIds.forEach(id => userDislikes[id] = false);
+                resolve({ counts, userDislikes });
             }
         });
     });

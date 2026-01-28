@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import sqlite3 from 'sqlite3';
 import { readFileSync, existsSync } from 'fs';
 import fs from 'fs/promises';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,6 +68,22 @@ performBackup();
 // In a production app, you might use Redis or a database
 const loginAttempts = new Map();
 
+// Session management (in-memory store)
+// In production, use Redis or a database for distributed systems
+const sessions = new Map(); // sessionToken -> { username, expiresAt }
+const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_CLEANUP_INTERVAL = 60 * 60 * 1000; // Clean up expired sessions every hour
+
+// Clean up expired sessions periodically
+setInterval(() => {
+    const now = Date.now();
+    for (const [token, session] of sessions.entries()) {
+        if (session.expiresAt < now) {
+            sessions.delete(token);
+        }
+    }
+}, SESSION_CLEANUP_INTERVAL);
+
 const checkRateLimit = (ip) => {
     const now = Date.now();
     const oneHour = 60 * 60 * 1000;
@@ -110,21 +127,40 @@ app.use(express.json());
 // Auth Middleware
 const authMiddleware = (req, res, next) => {
     // Skip auth for the login page and its assets if any
-    if (req.path === '/' || req.path === '/login' || req.path === '/api/login') {
+    if (req.path === '/' || req.path === '/login' || req.path === '/api/login' || req.path === '/api/logout') {
         return next();
     }
 
     // Check if password is required
     if (existsSync(DB_PASS_FILE)) {
-        const authHeader = req.headers['x-admin-auth'];
-        const fileContent = readFileSync(DB_PASS_FILE, 'utf8').trim();
-        const [correctLogin, correctPassword] = fileContent.split(/\s+/);
-
-        if (authHeader === `${correctLogin}:${correctPassword}`) {
-            return next();
-        } else {
-            return res.status(401).json({ error: 'Unauthorized. Please login.' });
+        // Check for session token first (preferred method)
+        const sessionToken = req.headers['x-admin-session'] || req.cookies?.adminSession;
+        
+        if (sessionToken) {
+            const session = sessions.get(sessionToken);
+            if (session && session.expiresAt > Date.now()) {
+                // Valid session - extend expiration
+                session.expiresAt = Date.now() + SESSION_DURATION;
+                return next();
+            } else if (session) {
+                // Expired session - remove it
+                sessions.delete(sessionToken);
+            }
         }
+        
+        // Fallback to legacy credential-based auth (for backward compatibility)
+        const authHeader = req.headers['x-admin-auth'];
+        if (authHeader) {
+            const fileContent = readFileSync(DB_PASS_FILE, 'utf8').trim();
+            const [correctLogin, correctPassword] = fileContent.split(/\s+/);
+            
+            if (authHeader === `${correctLogin}:${correctPassword}`) {
+                return next();
+            }
+        }
+        
+        // No valid session or credentials
+        return res.status(401).json({ error: 'Unauthorized. Please login.' });
     }
     
     // If dbpass.txt doesn't exist, allow access (as per current state)
@@ -161,7 +197,22 @@ app.post('/api/login', (req, res) => {
 
         if (username === correctLogin && password === correctPassword) {
             recordAttempt(ip, true);
-            res.json({ success: true });
+            
+            // Generate session token
+            const sessionToken = crypto.randomBytes(32).toString('hex');
+            const expiresAt = Date.now() + SESSION_DURATION;
+            
+            sessions.set(sessionToken, {
+                username: username,
+                expiresAt: expiresAt
+            });
+            
+            // Return session token instead of success flag
+            res.json({ 
+                success: true, 
+                sessionToken: sessionToken,
+                expiresAt: expiresAt
+            });
         } else {
             recordAttempt(ip, false);
             res.status(401).json({ error: 'Invalid login or password' });
@@ -169,6 +220,17 @@ app.post('/api/login', (req, res) => {
     } catch (error) {
         res.status(500).json({ error: 'Error reading password file' });
     }
+});
+
+// Logout API
+app.post('/api/logout', (req, res) => {
+    const sessionToken = req.headers['x-admin-session'] || req.cookies?.adminSession;
+    
+    if (sessionToken && sessions.has(sessionToken)) {
+        sessions.delete(sessionToken);
+    }
+    
+    res.json({ success: true });
 });
 
 // Get list of tables for a database
