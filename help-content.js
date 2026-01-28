@@ -795,13 +795,7 @@ if (ani.ready) {
 ];
 
 export const javaScriptStuffHelp = [
-    {
-        name: 'Keywords',
-        content: `[b]JavaScript Keywords:[/b]
-
-[b]Example:[/b]
-[code]function, var, let, const, def, if, else, for, while, switch, case, break, continue, return, true, false, null, undefined, inBullet[/code]`
-    }
+    // Keywords are now handled in a separate "Keywords" subcategory under "JavaScript Stuff"
 ];
 
 export const mathFunctionsHelp = [

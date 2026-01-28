@@ -921,7 +921,7 @@ function initForumCategories() {
                                             { name: 'Levels', parent_id: sharedId, description: 'Share levels', order: 1 },
                                             { name: 'Objects', parent_id: sharedId, description: 'Share objects', order: 2 },
                                             { name: 'functions', parent_id: sharedId, description: 'Share functions', order: 3 },
-                                            { name: 'Special Keywords', parent_id: manualsId, description: 'Manual for special keywords', order: 1 },
+                                            { name: 'Keywords', parent_id: manualsId, description: 'JavaScript keywords reference', order: 1 },
                                             { name: 'Built-in Variables', parent_id: manualsId, description: 'Manual for built-in variables', order: 2 },
                                             { name: 'Danmaku Helpers', parent_id: manualsId, description: 'Manual for danmaku helpers', order: 3 },
                                             { name: 'DragonBones', parent_id: manualsId, description: 'Manual for DragonBones', order: 4 },
@@ -954,7 +954,9 @@ function initForumCategories() {
                                             if (err) {
                                                 console.error('Error checking category:', err);
                                                 processed++;
-                                                if (processed === total) resolve();
+                                                if (processed === total) {
+                                                    resolve();
+                                                }
                                                 return;
                                             }
                                             
@@ -970,11 +972,15 @@ function initForumCategories() {
                                                     // Initialize help threads for this category
                                                     initHelpThreads(cat.name, categoryId).then(() => {
                                                         processed++;
-                                                        if (processed === total) resolve();
+                                                        if (processed === total) {
+                                                            resolve();
+                                                        }
                                                     }).catch(err => {
                                                         console.error(`Error initializing help threads for ${cat.name}:`, err);
                                                         processed++;
-                                                        if (processed === total) resolve();
+                                                        if (processed === total) {
+                                                            resolve();
+                                                        }
                                                     });
                                                 });
                                             } else {
@@ -984,7 +990,9 @@ function initForumCategories() {
                                                     if (err) {
                                                         console.error('Error inserting subcategory:', err);
                                                         processed++;
-                                                        if (processed === total) resolve();
+                                                        if (processed === total) {
+                                                            resolve();
+                                                        }
                                                         return;
                                                     }
                                                     
@@ -992,11 +1000,15 @@ function initForumCategories() {
                                                     // Initialize help threads for this category
                                                     initHelpThreads(cat.name, categoryId).then(() => {
                                                         processed++;
-                                                        if (processed === total) resolve();
+                                                        if (processed === total) {
+                                                            resolve();
+                                                        }
                                                     }).catch(err => {
                                                         console.error(`Error initializing help threads for ${cat.name}:`, err);
                                                         processed++;
-                                                        if (processed === total) resolve();
+                                                        if (processed === total) {
+                                                            resolve();
+                                                        }
                                                     });
                                                 });
                                             }
@@ -1015,7 +1027,7 @@ function initForumCategories() {
 // Helper to initialize help threads for a category
 async function initHelpThreads(categoryName, categoryId) {
     const helpMap = {
-        'Special Keywords': helpContent.specialKeywordsHelp,
+        'Keywords': helpContent.specialKeywordsHelp, // Special keywords (background, def, etc.) + will add JavaScript keywords thread below
         'Built-in Variables': helpContent.builtInVariablesHelp,
         'Danmaku Helpers': helpContent.danmakuHelpersHelp,
         'DragonBones': helpContent.dragonBonesHelp,
@@ -1031,43 +1043,21 @@ async function initHelpThreads(categoryName, categoryId) {
         ]
     };
 
-    const items = helpMap[categoryName];
-    if (!items) return;
-
-    // Special case: Create "Keywords" thread for JavaScript Stuff category
-    if (categoryName === 'JavaScript Stuff') {
+    // Special case: Create "Keywords" thread for Keywords subcategory (in addition to special keywords)
+    if (categoryName === 'Keywords') {
         const keywords = ['function', 'var', 'let', 'const', 'def', 'if', 'else', 'for', 'while', 'switch', 'case', 'break', 'continue', 'return', 'true', 'false', 'null', 'undefined', 'inBullet'];
         const keywordsContent = `[b]JavaScript Keywords:[/b]
 
 ${keywords.map(kw => `[b][color=#f59e0b]${kw}[/color][/b]`).join(', ')}`;
         
-        const keywordsItem = {
-            name: 'Keywords',
-            threadTitle: 'Keywords',
-            content: keywordsContent
-        };
-        
         await new Promise((resolve, reject) => {
-            db.get('SELECT id, title FROM forum_threads WHERE category_id = ? AND title = ?', [categoryId, 'Keywords'], (err, thread) => {
+            // Check if thread already exists
+            db.get('SELECT id FROM forum_threads WHERE category_id = ? AND title = ?', [categoryId, 'Keywords'], (err, thread) => {
                 if (err) return reject(err);
 
                 if (thread) {
-                    // Update existing Keywords thread content
-                    db.get('SELECT id FROM forum_posts WHERE thread_id = ?', [thread.id], (err, post) => {
-                        if (err) return reject(err);
-                        if (!post) {
-                            db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)',
-                                [thread.id, 'system', keywordsItem.content], (err) => {
-                                    if (err) reject(err);
-                                    else resolve();
-                                });
-                        } else {
-                            db.run('UPDATE forum_posts SET content = ? WHERE id = ?', [keywordsItem.content, post.id], (err) => {
-                                if (err) reject(err);
-                                else resolve();
-                            });
-                        }
-                    });
+                    // Thread already exists, skip
+                    resolve();
                 } else {
                     // Create new Keywords thread
                     db.run('INSERT INTO forum_threads (category_id, title, author) VALUES (?, ?, ?)',
@@ -1075,7 +1065,7 @@ ${keywords.map(kw => `[b][color=#f59e0b]${kw}[/color][/b]`).join(', ')}`;
                             if (err) return reject(err);
                             const threadId = this.lastID;
                             db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)',
-                                [threadId, 'system', keywordsItem.content], (err) => {
+                                [threadId, 'system', keywordsContent], (err) => {
                                     if (err) reject(err);
                                     else resolve();
                                 });
@@ -1083,7 +1073,11 @@ ${keywords.map(kw => `[b][color=#f59e0b]${kw}[/color][/b]`).join(', ')}`;
                 }
             });
         });
+        // Continue to process special keywords help items below
     }
+
+    const items = helpMap[categoryName];
+    if (!items) return;
 
     for (const item of items) {
         await new Promise((resolve, reject) => {
