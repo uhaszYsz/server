@@ -4339,6 +4339,74 @@ function handleWebSocketConnection(ws, req) {
             console.error('Failed to delete forum thread', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete forum thread' }));
         }
+      } else if (data.type === 'pinForumThread') {
+        // Only admins can pin threads
+        if (!ws.isAdmin) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Only administrators can pin threads' }));
+            return;
+        }
+        
+        if (!data.threadId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Thread ID required' }));
+            return;
+        }
+        
+        try {
+            const pinned = await db.pinForumThread(data.threadId);
+            if (pinned) {
+                ws.send(msgpack.encode({ type: 'forumThreadPinned', threadId: data.threadId }));
+                // Reload threads for the category
+                const thread = await db.getForumThread(data.threadId);
+                if (thread) {
+                    // Notify all clients to reload threads for this category
+                    const categoryId = thread.category_id;
+                    clients.forEach(client => {
+                        if (client.readyState === client.OPEN) {
+                            client.send(msgpack.encode({ type: 'forumThreadsReload', categoryId }));
+                        }
+                    });
+                }
+            } else {
+                ws.send(msgpack.encode({ type: 'error', message: 'Thread not found or could not be pinned' }));
+            }
+        } catch (error) {
+            console.error('[pinForumThread] Error:', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to pin thread: ' + error.message }));
+        }
+      } else if (data.type === 'unpinForumThread') {
+        // Only admins can unpin threads
+        if (!ws.isAdmin) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Only administrators can unpin threads' }));
+            return;
+        }
+        
+        if (!data.threadId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Thread ID required' }));
+            return;
+        }
+        
+        try {
+            const unpinned = await db.unpinForumThread(data.threadId);
+            if (unpinned) {
+                ws.send(msgpack.encode({ type: 'forumThreadUnpinned', threadId: data.threadId }));
+                // Reload threads for the category
+                const thread = await db.getForumThread(data.threadId);
+                if (thread) {
+                    // Notify all clients to reload threads for this category
+                    const categoryId = thread.category_id;
+                    clients.forEach(client => {
+                        if (client.readyState === client.OPEN) {
+                            client.send(msgpack.encode({ type: 'forumThreadsReload', categoryId }));
+                        }
+                    });
+                }
+            } else {
+                ws.send(msgpack.encode({ type: 'error', message: 'Thread not found or could not be unpinned' }));
+            }
+        } catch (error) {
+            console.error('[unpinForumThread] Error:', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to unpin thread: ' + error.message }));
+        }
       } else if (data.type === 'deleteForumPost') {
         // Verify user is authenticated (googleId is set during Google login)
         if (!ws.googleId) {

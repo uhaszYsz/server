@@ -132,6 +132,7 @@ export function initDatabase() {
                         author TEXT NOT NULL,
                         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        pinned INTEGER DEFAULT 0,
                         FOREIGN KEY (category_id) REFERENCES forum_categories(id)
                     )
                 `, (err) => {
@@ -140,6 +141,14 @@ export function initDatabase() {
                         return;
                     }
                     console.log('✅ Forum threads table initialized');
+                    
+                    // Add pinned column if it doesn't exist (migration for existing databases)
+                    db.run(`ALTER TABLE forum_threads ADD COLUMN pinned INTEGER DEFAULT 0`, (err) => {
+                        // Ignore error if column already exists
+                        if (err && !err.message.includes('duplicate column name')) {
+                            console.warn('Warning: Could not add pinned column:', err.message);
+                        }
+                    });
                     
                     db.run(`
                         CREATE TABLE IF NOT EXISTS forum_posts (
@@ -1186,7 +1195,7 @@ export function getForumThreads(categoryId, authorKeys = null) {
                 FROM forum_threads t
                 WHERE t.category_id = ?
                 ${authorClause}
-                ORDER BY t.updated_at DESC
+                ORDER BY t.pinned DESC, t.updated_at DESC
             `, params, async (err, rows) => {
                 if (err) {
                     reject(err);
@@ -1573,6 +1582,32 @@ export function updateForumPost(postId, content) {
                         db.run('UPDATE forum_threads SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [row.thread_id], () => {});
                     }
                 });
+                resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
+// Pin a forum thread
+export function pinForumThread(threadId) {
+    return new Promise((resolve, reject) => {
+        db.run('UPDATE forum_threads SET pinned = 1 WHERE id = ?', [threadId], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
+// Unpin a forum thread
+export function unpinForumThread(threadId) {
+    return new Promise((resolve, reject) => {
+        db.run('UPDATE forum_threads SET pinned = 0 WHERE id = ?', [threadId], function(err) {
+            if (err) {
+                reject(err);
+            } else {
                 resolve(this.changes > 0);
             }
         });
