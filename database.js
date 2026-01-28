@@ -1464,19 +1464,18 @@ export function deleteForumThread(threadId) {
             }
         });
         // Then delete all posts in the thread
-            db.run('DELETE FROM forum_posts WHERE thread_id = ?', [threadId], (err) => {
+        db.run('DELETE FROM forum_posts WHERE thread_id = ?', [threadId], (err) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            // Then delete the thread
+            db.run('DELETE FROM forum_threads WHERE id = ?', [threadId], function(err) {
                 if (err) {
                     reject(err);
-                    return;
+                } else {
+                    resolve(this.changes > 0);
                 }
-                // Then delete the thread
-                db.run('DELETE FROM forum_threads WHERE id = ?', [threadId], function(err) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(this.changes > 0);
-                    }
-                });
             });
         });
     });
