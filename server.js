@@ -3042,6 +3042,42 @@ function handleWebSocketConnection(ws, req) {
         } catch (error) {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to list sprites' }));
         }
+      } else if (data.type === 'deleteSprite') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        try {
+            const { filename, folderPath } = data;
+            if (!filename || typeof filename !== 'string') {
+                ws.send(msgpack.encode({ type: 'error', message: 'Filename is required' }));
+                return;
+            }
+            const normalizedFolderPath = (folderPath != null && folderPath !== undefined) ? String(folderPath) : '';
+            const sprite = await spritesDb.getSpriteByFilename(filename, normalizedFolderPath);
+            if (!sprite) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Sprite not found' }));
+                return;
+            }
+            // Only the uploader can delete their own sprite (admins/mods could be allowed later)
+            if (sprite.uploaded_by !== ws.username) {
+                ws.send(msgpack.encode({ type: 'error', message: 'You can only delete your own sprites' }));
+                return;
+            }
+            const deleted = await spritesDb.deleteSprite(filename, normalizedFolderPath);
+            if (!deleted) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete sprite' }));
+                return;
+            }
+            ws.send(msgpack.encode({
+                type: 'deleteSpriteSuccess',
+                filename,
+                folderPath: normalizedFolderPath
+            }));
+        } catch (error) {
+            console.error('[deleteSprite] Error:', error);
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to delete sprite' }));
+        }
       } else if (data.type === 'listSpriteFolders') {
         if (!ws.username) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));

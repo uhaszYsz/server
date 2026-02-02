@@ -205,10 +205,10 @@ export function getSubfolders(parentPath = '') {
     });
 }
 
-// Delete sprite
-export function deleteSprite(filename) {
+// Delete sprite by filename and folder path
+export function deleteSprite(filename, folderPath = '') {
     return new Promise((resolve, reject) => {
-        spritesDb.run('DELETE FROM sprites WHERE filename = ?', [filename], function(err) {
+        spritesDb.run('DELETE FROM sprites WHERE filename = ? AND folder_path = ?', [filename, folderPath || ''], function(err) {
             if (err) {
                 reject(err);
             } else {
