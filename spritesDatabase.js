@@ -205,6 +205,19 @@ export function getSubfolders(parentPath = '') {
     });
 }
 
+// Rename sprite (update filename in same folder)
+export function updateSpriteFilename(oldFilename, folderPath, newFilename) {
+    return new Promise((resolve, reject) => {
+        spritesDb.run('UPDATE sprites SET filename = ? WHERE filename = ? AND folder_path = ?', [newFilename, oldFilename, folderPath || ''], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
 // Delete sprite by filename and folder path
 export function deleteSprite(filename, folderPath = '') {
     return new Promise((resolve, reject) => {

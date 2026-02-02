@@ -3059,8 +3059,9 @@ function handleWebSocketConnection(ws, req) {
                 ws.send(msgpack.encode({ type: 'error', message: 'Sprite not found' }));
                 return;
             }
-            // Only the uploader can delete their own sprite (admins/mods could be allowed later)
-            if (sprite.uploaded_by !== ws.username) {
+            // Uploader can delete their own sprite; admin/moderator can delete any sprite
+            const isAdminOrModerator = ws.rank === 'admin' || ws.rank === 'moderator';
+            if (sprite.uploaded_by !== ws.username && !isAdminOrModerator) {
                 ws.send(msgpack.encode({ type: 'error', message: 'You can only delete your own sprites' }));
                 return;
             }
@@ -3077,6 +3078,51 @@ function handleWebSocketConnection(ws, req) {
         } catch (error) {
             console.error('[deleteSprite] Error:', error);
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to delete sprite' }));
+        }
+      } else if (data.type === 'renameSprite') {
+        if (!ws.username) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        if (ws.rank !== 'admin') {
+            ws.send(msgpack.encode({ type: 'error', message: 'Only admins can rename sprites' }));
+            return;
+        }
+        try {
+            const { filename, folderPath, newFilename } = data;
+            if (!filename || typeof filename !== 'string' || !newFilename || typeof newFilename !== 'string') {
+                ws.send(msgpack.encode({ type: 'error', message: 'Filename and newFilename are required' }));
+                return;
+            }
+            const normalizedFolderPath = (folderPath != null && folderPath !== undefined) ? String(folderPath) : '';
+            if (!/^[a-zA-Z0-9_.-]+\.(gif|png)$/i.test(newFilename)) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Invalid new filename. Use only letters, numbers, underscore, hyphen; must end with .png or .gif' }));
+                return;
+            }
+            const sprite = await spritesDb.getSpriteByFilename(filename, normalizedFolderPath);
+            if (!sprite) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Sprite not found' }));
+                return;
+            }
+            const existing = await spritesDb.getSpriteByFilename(newFilename, normalizedFolderPath);
+            if (existing) {
+                ws.send(msgpack.encode({ type: 'error', message: 'A sprite with that name already exists in this folder' }));
+                return;
+            }
+            const updated = await spritesDb.updateSpriteFilename(filename, normalizedFolderPath, newFilename);
+            if (!updated) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Failed to rename sprite' }));
+                return;
+            }
+            ws.send(msgpack.encode({
+                type: 'renameSpriteSuccess',
+                filename,
+                newFilename,
+                folderPath: normalizedFolderPath
+            }));
+        } catch (error) {
+            console.error('[renameSprite] Error:', error);
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to rename sprite' }));
         }
       } else if (data.type === 'listSpriteFolders') {
         if (!ws.username) {
