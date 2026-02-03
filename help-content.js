@@ -47,7 +47,7 @@ score += 1;[/code]
 [b][color=#90ee90]id[/color][/b] - [i]Bullet ID or array of bullet IDs to modify.[/i]
 
 [b]Example:[/b]
-[code]var Id = createBullet(X, Y, 5, direction, 2)
+[code]var Id = createBullet(x, y, 5, direction, 2)
 inBullet(Id)
 #Alpha = 0.2[/code]
 [i]Sets Alpha for one bullet by its Id.[/i]`
@@ -72,7 +72,7 @@ export const builtInVariablesHelp = [
     {
         name: 'player',
         content: `Player object. 
-[b]Properties:[/b] [color=#ffa500]X[/color], [color=#ffa500]Y[/color], [color=#ffa500]hp[/color], [color=#ffa500]knockbackTime[/color], [color=#ffa500]knockbackPower[/color], [color=#ffa500]knockbackDirection[/color]`
+[b]Properties:[/b] [color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]hp[/color], [color=#ffa500]knockbackTime[/color], [color=#ffa500]knockbackPower[/color], [color=#ffa500]knockbackDirection[/color]`
     },
     {
         name: 'bulletData',
@@ -85,19 +85,19 @@ export const builtInVariablesHelp = [
     },
     {
         name: 'tapX',
-        content: `Mouse/tap X position in world coordinates`
+        content: `Mouse/tap x position in world coordinates`
     },
     {
         name: 'tapY',
-        content: `Mouse/tap Y position in world coordinates`
+        content: `Mouse/tap y position in world coordinates`
     },
     {
-        name: 'X',
-        content: `X position of the current object`
+        name: 'x',
+        content: `x position of the current object`
     },
     {
-        name: 'Y',
-        content: `Y position of the current object`
+        name: 'y',
+        content: `y position of the current object`
     },
     {
         name: 'speed',
@@ -132,8 +132,8 @@ self.speed = 2;[/code]`
         content: `Calculates the direction angle in degrees from current position to target point.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Target X position in world coordinates.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Target Y position in world coordinates.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Target x position in world coordinates.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Target y position in world coordinates.[/i]
 
 [b][color=#ffa500]Returns: the angle in degrees (0-360).[/color][/b]
 
@@ -172,8 +172,8 @@ self.speed = 2;[/code]`
         content: `Calculates the distance from current position to target point.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Target X position in world coordinates.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Target Y position in world coordinates.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Target x position in world coordinates.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Target y position in world coordinates.[/i]
 
 [b][color=#ffa500]Returns: the distance as a number.[/color][/b]
 
@@ -183,13 +183,13 @@ self.speed = 2;[/code]`
     {
         name: 'lenDirX',
         threadTitle: 'lenDirX(len, dir)',
-        content: `Converts length and direction (angle in degrees) to X component.
+        content: `Converts length and direction (angle in degrees) to x component.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]len[/color][/b] - [i]Length/distance.[/i]
 [b][color=#90ee90]dir[/color][/b] - [i]Direction angle in degrees.[/i]
 
-[b][color=#ffa500]Returns: the X component as a number.[/color][/b]
+[b][color=#ffa500]Returns: the x component as a number.[/color][/b]
 
 [b]Example:[/b]
 [code]var offsetX = lenDirX(10, 90); // returns 0 (straight up)[/code]`
@@ -197,13 +197,13 @@ self.speed = 2;[/code]`
     {
         name: 'lenDirY',
         threadTitle: 'lenDirY(len, dir)',
-        content: `Converts length and direction (angle in degrees) to Y component.
+        content: `Converts length and direction (angle in degrees) to y component.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]len[/color][/b] - [i]Length/distance.[/i]
 [b][color=#90ee90]dir[/color][/b] - [i]Direction angle in degrees.[/i]
 
-[b][color=#ffa500]Returns: the Y component as a number.[/color][/b]
+[b][color=#ffa500]Returns: the y component as a number.[/color][/b]
 
 [b]Example:[/b]
 [code]var offsetY = lenDirY(10, 90); // returns 10 (straight up)[/code]`
@@ -211,7 +211,7 @@ self.speed = 2;[/code]`
     {
         name: 'move',
         threadTitle: 'move(len, dir)',
-        content: `Moves the instance by the given length in the given direction (angle in degrees). Modifies X and Y positions directly.
+        content: `Moves the instance by the given length in the given direction (angle in degrees). Modifies x and y positions directly.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]len[/color][/b] - [i]Distance to move in pixels.[/i]
@@ -346,8 +346,8 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Draws a circle at specified position with optional outline and color.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]X position (center).[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Y position (center).[/i]
+[b][color=#90ee90]x[/color][/b] - [i]x position (center).[/i]
+[b][color=#90ee90]y[/color][/b] - [i]y position (center).[/i]
 [b][color=#90ee90]r[/color][/b] - [i]Radius.[/i]
 [color=#9acd32]outline[/color] - [i]Outline width (0 = filled). Optional.[/i]
 [color=#9acd32]color[/color] - [i]Hex color (e.g. "#ff0000") or RGBA array. Optional.[/i]
@@ -363,8 +363,8 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Draws a rectangle at specified position with optional color. x, y: bottom-left corner position. w, h: width and height.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Bottom-left corner X.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Bottom-left corner Y.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Bottom-left corner x.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Bottom-left corner y.[/i]
 [b][color=#90ee90]w[/color][/b] - [i]Width.[/i]
 [b][color=#90ee90]h[/color][/b] - [i]Height.[/i]
 [color=#9acd32]color[/color] - [i]Hex color or RGBA array. Optional.[/i]
@@ -395,8 +395,8 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Adds a light source that makes ground squares lighter based on distance. Closer squares become lighter. x and y are the light position. radius is the effect radius (optional, default: 50). power is the light intensity 0-1 (optional, default: 1.0).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Light X position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Light Y position.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Light x position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Light y position.[/i]
 [color=#9acd32]radius[/color] - [i]Effect radius. Optional, default 50.[/i]
 [color=#9acd32]power[/color] - [i]Light intensity 0-1. Optional, default 1.0.[/i]
 
@@ -438,8 +438,8 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Draws text at specified position with optional color and size.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]X position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Y position.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]x position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]y position.[/i]
 [b][color=#90ee90]text[/color][/b] - [i]Text to draw.[/i]
 [color=#9acd32]color[/color] - [i]Hex color or RGB/RGBA array. Optional.[/i]
 [color=#9acd32]size[/color] - [i]Font size. Optional.[/i]
@@ -467,8 +467,8 @@ drawText(5, 5, "Wave: " + w);[/code]`
         content: `Draws a sprite from the server. spriteName must start with @ and end with .gif or .png. xScale and yScale are scale factors. color: optional hex color string or RGBA array to tint/blend the sprite.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]X position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Y position.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]x position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]y position.[/i]
 [b][color=#90ee90]name[/color][/b] - [i]Sprite filename; must start with @ and end with .gif or .png.[/i]
 [b][color=#90ee90]scaleX[/color][/b] - [i]Horizontal scale factor.[/i]
 [b][color=#90ee90]scaleY[/color][/b] - [i]Vertical scale factor.[/i]
@@ -486,8 +486,8 @@ drawSprite(90, 160, "@sprite.png", 1, 1, 0, "#FF0000"); // Red tinted sprite[/co
         content: `Draws a frame from a spritesheet. spriteName must start with @ and end with .gif or .png. frame: frame index (0-based). maxCellsX: number of cells horizontally. maxCellsY: number of cells vertically.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]X position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Y position.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]x position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]y position.[/i]
 [b][color=#90ee90]name[/color][/b] - [i]Spritesheet filename; must start with @ and end with .gif or .png.[/i]
 [b][color=#90ee90]frame[/color][/b] - [i]Frame index (0-based).[/i]
 [b][color=#90ee90]maxCellsX[/color][/b] - [i]Number of cells horizontally in the sheet.[/i]
@@ -503,8 +503,8 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
         content: `Embeds a YouTube video at specified world coordinates. x, y: world coordinates for top-left corner. w, h: width and height. url: YouTube URL or video ID.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Top-left X in world coordinates.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Top-left Y in world coordinates.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Top-left x in world coordinates.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Top-left y in world coordinates.[/i]
 [b][color=#90ee90]w[/color][/b] - [i]Width.[/i]
 [b][color=#90ee90]h[/color][/b] - [i]Height.[/i]
 [b][color=#90ee90]url[/color][/b] - [i]YouTube URL or video ID.[/i]
@@ -526,8 +526,8 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
         content: `Creates a new instance of a coded object. If typeName is provided, calls the object's type function on creation.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]X position for the new instance.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Y position for the new instance.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]x position for the new instance.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]y position for the new instance.[/i]
 [b][color=#90ee90]name[/color][/b] - [i]Object name (codeChild name from the editor).[/i]
 [color=#9acd32]type[/color] - [i]Type function to call on creation. Optional.[/i]
 
@@ -551,8 +551,8 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
         content: `Creates a bullet at specified position with given properties (x, y, speed, direction, size required).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]X position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Y position.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]x position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]y position.[/i]
 [b][color=#90ee90]speed[/color][/b] - [i]Bullet speed.[/i]
 [b][color=#90ee90]dir[/color][/b] - [i]Direction in degrees.[/i]
 [b][color=#90ee90]size[/color][/b] - [i]Bullet size.[/i]
@@ -569,8 +569,8 @@ drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
         content: `Displays an animated character sprite at specified position.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]X position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Y position.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]x position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]y position.[/i]
 [b][color=#90ee90]name[/color][/b] - [i]DragonBones armature name (asset name).[/i]
 [b][color=#90ee90]anim[/color][/b] - [i]Animation name to play.[/i]
 [color=#9acd32]bones[/color] - [i]Array of bone names to hide. Optional.[/i]
@@ -616,8 +616,8 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
         content: `Checks if the object at specified position is outside screen bounds.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]X position to check.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Y position to check.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]x position to check.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]y position to check.[/i]
 [color=#9acd32]margin[/color] - [i]Extra margin (0-1 or pixels) outside the visible area. Optional.[/i]
 
 [b][color=#ffa500]Returns: true if outside screen, false otherwise.[/color][/b]
@@ -631,8 +631,8 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
         content: `Finds all player bullet IDs within radius of (x,y) this frame.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Center X position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Center Y position.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Center x position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Center y position.[/i]
 [b][color=#90ee90]radius[/color][/b] - [i]Search radius.[/i]
 
 [b][color=#ffa500]Returns: an array of player bullet IDs; [] if none.[/color][/b]
@@ -648,8 +648,8 @@ inBullet(bids)
         content: `Circle vs circle collision detection. Skips self.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Center X position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Center Y position.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Center x position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Center y position.[/i]
 [b][color=#90ee90]radius[/color][/b] - [i]Collision radius for this object.[/i]
 [b][color=#90ee90]tag[/color][/b] - [i]Tag to filter objects by. Only objects with this tag are considered.[/i]
 [b][color=#90ee90]size[/color][/b] - [i]Radius to use for the other objects (or their collision size).[/i]
@@ -680,8 +680,8 @@ drawBackground(0, 0, "bg1")[/code]`
         content: `Draws a background buffer at specified position.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]X position to draw at.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Y position to draw at.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]x position to draw at.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]y position to draw at.[/i]
 [b][color=#90ee90]name[/color][/b] - [i]Name of the background buffer (from background("name")).[/i]
 
 [b]Example:[/b]
