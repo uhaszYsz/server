@@ -2064,6 +2064,22 @@ function handleWebSocketConnection(ws, req) {
             }));
           }
         }
+      } else if (data.type === 'codeObjectSync' && ws.room) {
+        const party = findPartyByMemberId(ws.id);
+        if (!party || party.leader !== ws.id) return;
+        const room = rooms.get(ws.room);
+        if (!room) return;
+        const targetTime = globalTimer + 1000;
+        const batches = Array.isArray(data.batches) ? data.batches : [];
+        for (const client of room.clients) {
+          if (client.readyState === ws.OPEN) {
+            client.send(msgpack.encode({
+              type: 'codeObjectSync',
+              targetTime,
+              batches
+            }));
+          }
+        }
       } else if (data.type === 'blockShield' && ws.room) {
         // Broadcast block shield instantly to all clients in the room (no buffering)
         const room = rooms.get(ws.room);
@@ -3303,11 +3319,7 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to delete campaign level' }));
         }
       } else if (data.type === 'listLobbyRooms') {
-        if (!ws.username) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
-            return;
-        }
-
+        // Allow unregistered players to list and switch lobbies
         try {
             const lobbyRooms = [];
             for (const [roomName, roomData] of rooms.entries()) {
