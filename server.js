@@ -2050,15 +2050,13 @@ function handleWebSocketConnection(ws, req) {
         // Add timestamp for future delivery (server time + 1 second)
         const targetTime = globalTimer + 1000;
 
-        // Broadcast to all clients in the same room INCLUDING the sender
-        // This ensures consistent buffering behavior - everyone receives the same data with same delay
+        // Send only to other clients in the room (not back to the sender)
         for (const client of roomClients) {
-          // Include the sender so they receive their own data back for buffer system
-          if (client.readyState === ws.OPEN) {
+          if (client !== ws && client.readyState === ws.OPEN) {
             client.send(msgpack.encode({
               type: 'playerUpdate',
               id: ws.id,
-              username: ws.username || null, // Include username so clients can identify their own data
+              username: ws.username || null,
               data: data.text,
               targetTime: targetTime
             }));
