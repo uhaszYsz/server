@@ -2945,6 +2945,14 @@ function handleWebSocketConnection(ws, req) {
                 if (buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4E || buffer[3] !== 0x47) {
                     throw new Error('Invalid PNG file format');
                 }
+                // Reject 1x1 (or tiny) PNGs so sprites don't appear as a single color when drawn
+                if (buffer.length >= 24) {
+                    const width = buffer.readUInt32BE(16);
+                    const height = buffer.readUInt32BE(20);
+                    if (width < 2 || height < 2) {
+                        throw new Error('Sprite must be at least 2x2 pixels. Use Resize in Sprite Creator to enlarge the canvas.');
+                    }
+                }
             }
             
             // Get user's id for folder path (work only with IDs)
@@ -3169,10 +3177,15 @@ function handleWebSocketConnection(ws, req) {
         }
       } else if (data.type === 'getSprite') {
         try {
-            const { filename, folderPath } = data;
+            let { filename, folderPath } = data;
             if (!filename) throw new Error('Filename is required');
-            
-            // Support both old format (filename only) and new format (folderPath)
+            const requestKey = filename; // Echo back so client can cache under requested path
+            // Parse "folderPath/filename.png" into folderPath and filename (so drawSprite("@userId/sprite.png") works)
+            if (typeof filename === 'string' && filename.includes('/')) {
+                const parts = filename.split('/');
+                filename = parts.pop();
+                folderPath = parts.join('/');
+            }
             const sprite = await spritesDb.getSpriteByFilename(filename, folderPath || '');
             if (!sprite) throw new Error('Sprite not found');
             
@@ -3180,7 +3193,8 @@ function handleWebSocketConnection(ws, req) {
                 type: 'getSpriteResponse',
                 filename: sprite.filename,
                 folderPath: sprite.folder_path || '',
-                data: sprite.data // base64 string
+                data: sprite.data, // base64 string
+                requestKey: requestKey // So client caches under e.g. "userId/sprite.png"
             }));
         } catch (error) {
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to get sprite' }));
@@ -3208,7 +3222,8 @@ function handleWebSocketConnection(ws, req) {
                     sprites.push({
                         filename: sprite.filename,
                         folderPath: sprite.folder_path || '',
-                        data: sprite.data
+                        data: sprite.data,
+                        requestKey: filenameOrPath // So client caches under e.g. "userId/sprite.png"
                     });
                 }
             }
