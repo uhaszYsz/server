@@ -2430,11 +2430,9 @@ function handleWebSocketConnection(ws, req) {
 
         broadcastPartyUpdate(inviterParty);
       } else if (data.type === 'chatMessage') {
-        if (!ws.username) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
-            return;
-        }
-        
+        // Allow both registered and guest players to send chat (guests use display name Guest_<id>)
+        const displayName = ws.username || `Guest_${ws.id}`;
+
         // Validate and sanitize message
         const messageValidation = validateChatMessage(data.message);
         if (!messageValidation.valid) {
@@ -2456,7 +2454,7 @@ function handleWebSocketConnection(ws, req) {
             if (client.readyState === ws.OPEN) {
                 client.send(msgpack.encode({
                     type: 'chatMessage',
-                    username: ws.username,
+                    username: displayName,
                     message: sanitizedMessage
                 }));
             }
