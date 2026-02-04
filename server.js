@@ -1945,9 +1945,6 @@ function handleWebSocketConnection(ws, req) {
         }));
         
         console.log(`[RerollItem] User ${ws.username} rerolled stats for item at index ${inventoryIndex}`);
-      } else if (data.type === 'partyInvite') {
-        console.log
-        (`User ${ws.username} equipped ${item.name} in ${slotName} slot`);
       } else if (data.type === 'join') {
         const { room } = data;
 
