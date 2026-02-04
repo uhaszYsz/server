@@ -1371,9 +1371,13 @@ function ensurePartyForClient(client) {
 
 function broadcastPartyUpdate(party) {
     if (!party) return;
+    const leaderClient = clients.get(party.leader);
     const partyDetails = {
-        leader: clients.get(party.leader)?.username || null,
-        members: [...party.members].map(id => clients.get(id)?.username).filter(Boolean)
+        leader: leaderClient?.username ?? (party.leader != null ? `Guest_${party.leader}` : null),
+        members: [...party.members].map(id => {
+            const client = clients.get(id);
+            return client?.username ?? `Guest_${id}`;
+        })
     };
 
     for (const memberId of party.members) {
@@ -2047,17 +2051,24 @@ function handleWebSocketConnection(ws, req) {
         if (!room) return;
         const roomClients = room.clients;
 
-        // Add timestamp for future delivery (server time + 1 second)
+        const text = data.text || {};
+        const isLobbyMove = typeof text.startX === 'number' && typeof text.startY === 'number' &&
+          typeof text.destX === 'number' && typeof text.destY === 'number';
+
+        const payload = { ...text };
+        if (isLobbyMove) {
+          payload.startTime = globalTimer;
+        }
+
         const targetTime = globalTimer + 1000;
 
-        // Send only to other clients in the room (not back to the sender)
         for (const client of roomClients) {
           if (client !== ws && client.readyState === ws.OPEN) {
             client.send(msgpack.encode({
               type: 'playerUpdate',
               id: ws.id,
               username: ws.username || null,
-              data: data.text,
+              data: payload,
               targetTime: targetTime
             }));
           }
