@@ -1954,6 +1954,7 @@ function handleWebSocketConnection(ws, req) {
         if (ws.room && rooms.has(ws.room)) {
           const oldRoom = rooms.get(ws.room);
           oldRoom.clients.delete(ws);
+          if (oldRoom.lobbyPositions) oldRoom.lobbyPositions.delete(ws.id);
         }
 
         // Only allow joining campaign lobby rooms that exist
@@ -1975,7 +1976,8 @@ function handleWebSocketConnection(ws, req) {
               rooms.set(room, {
                 type: 'lobby',
                 level: `${level.slug}.json`,
-                clients: new Set()
+                clients: new Set(),
+                lobbyPositions: new Map() // clientId -> { x, y } (destination only, for new joiners)
               });
             }
             
@@ -1983,6 +1985,12 @@ function handleWebSocketConnection(ws, req) {
             if (!updatedRoom.clients) {
               updatedRoom.clients = new Set();
             }
+            if (!updatedRoom.lobbyPositions) {
+              updatedRoom.lobbyPositions = new Map();
+            }
+            const DEFAULT_LOBBY_X = 90;
+            const DEFAULT_LOBBY_Y = 80;
+            updatedRoom.lobbyPositions.set(ws.id, { x: DEFAULT_LOBBY_X, y: DEFAULT_LOBBY_Y });
             updatedRoom.clients.add(ws);
             ws.room = room;
 
@@ -2008,6 +2016,24 @@ function handleWebSocketConnection(ws, req) {
                 levelName: levelName
             }));
             console.log(`Client joined campaign lobby room: ${room} (level: ${level.name})`);
+
+            if (roomData.type === 'lobby' && roomData.lobbyPositions) {
+              const players = [];
+              for (const client of roomData.clients) {
+                const pos = roomData.lobbyPositions.get(client.id);
+                if (pos) {
+                  players.push({
+                    id: client.id,
+                    username: client.username || null,
+                    x: pos.x,
+                    y: pos.y
+                  });
+                }
+              }
+              if (players.length > 0) {
+                ws.send(msgpack.encode({ type: 'lobbyPlayersPositions', players }));
+              }
+            }
             
             // Handle game room logic if needed
             if (roomData.type === 'game') {
@@ -2054,6 +2080,10 @@ function handleWebSocketConnection(ws, req) {
         const text = data.text || {};
         const isLobbyMove = typeof text.startX === 'number' && typeof text.startY === 'number' &&
           typeof text.destX === 'number' && typeof text.destY === 'number';
+
+        if (isLobbyMove && room.lobbyPositions) {
+          room.lobbyPositions.set(ws.id, { x: text.destX, y: text.destY });
+        }
 
         const payload = { ...text };
         if (isLobbyMove) {
@@ -4873,7 +4903,8 @@ function handleWebSocketConnection(ws, req) {
     if (ws.room && rooms.has(ws.room)) {
       const room = rooms.get(ws.room);
       room.clients.delete(ws);
-      
+      if (room.lobbyPositions) room.lobbyPositions.delete(ws.id);
+
       // Notify other clients that this player has disconnected
       for (const client of room.clients) {
         if (client.readyState === ws.OPEN) {
