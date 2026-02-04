@@ -1303,6 +1303,7 @@ async function joinFirstCampaignLobby(ws) {
             roomType: roomData.type, 
             level: roomData.level ?? null,
             levelName: levelName,
+            clientId: ws.id,
             autoJoined: true // Flag to indicate this was an auto-join
         }));
         
@@ -2013,7 +2014,8 @@ function handleWebSocketConnection(ws, req) {
                 room: room, 
                 roomType: roomData.type, 
                 level: roomData.level ?? null,
-                levelName: levelName
+                levelName: levelName,
+                clientId: ws.id
             }));
             console.log(`Client joined campaign lobby room: ${room} (level: ${level.name})`);
 
