@@ -2075,7 +2075,49 @@ function handleWebSocketConnection(ws, req) {
             return;
           }
         } else {
-          // Not a campaign lobby - don't create room, just reject
+          // Allow joining an existing game room (created by sendPartyToGameRoom)
+          const existingRoom = rooms.get(room);
+          if (existingRoom && existingRoom.type === 'game') {
+            if (!existingRoom.clients) existingRoom.clients = new Set();
+            existingRoom.clients.add(ws);
+            ws.room = room;
+
+            let levelName = null;
+            if (existingRoom.level) {
+              try {
+                const levelData = await loadCampaignLevelByName(existingRoom.level);
+                levelName = levelData?.name || levelData?.data?.name || existingRoom.level.replace('.json', '');
+              } catch (e) {
+                levelName = existingRoom.level.replace('.json', '');
+              }
+            }
+
+            ws.send(msgpack.encode({
+              type: 'roomUpdate',
+              room: room,
+              roomType: 'game',
+              level: existingRoom.level ?? null,
+              levelName: levelName,
+              clientId: ws.id,
+              clientUsername: ws.username || null
+            }));
+            console.log(`Client joined game room: ${room} (level: ${existingRoom.level})`);
+
+            const initPayload = await buildPlayerInitDataForRoom(room, ws.id);
+            if (initPayload.length > 0) {
+              ws.send(msgpack.encode({ type: 'playerInitData', players: initPayload }));
+            }
+            const weaponPayload = await buildRoomWeaponData(existingRoom.clients ? [...existingRoom.clients] : []);
+            if (weaponPayload.length > 0) {
+              const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
+              for (const client of existingRoom.clients) {
+                if (client && client.readyState === openState) {
+                  client.send(msgpack.encode({ type: 'roomWeaponData', roomWeaponData: weaponPayload }));
+                }
+              }
+            }
+            return;
+          }
           ws.send(msgpack.encode({ type: 'error', message: 'Only campaign lobby rooms are allowed' }));
           return;
         }
