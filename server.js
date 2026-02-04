@@ -2017,22 +2017,23 @@ function handleWebSocketConnection(ws, req) {
             }));
             console.log(`Client joined campaign lobby room: ${room} (level: ${level.name})`);
 
-            if (roomData.type === 'lobby' && roomData.lobbyPositions) {
+            // Send list of all players already in lobby (with positions) to the joiner so they render at correct spots
+            if (roomData.type === 'lobby') {
+              const DEFAULT_X = 90;
+              const DEFAULT_Y = 80;
               const players = [];
               for (const client of roomData.clients) {
-                const pos = roomData.lobbyPositions.get(client.id);
-                if (pos) {
-                  players.push({
-                    id: client.id,
-                    username: client.username || null,
-                    x: pos.x,
-                    y: pos.y
-                  });
-                }
+                const pos = roomData.lobbyPositions && roomData.lobbyPositions.get(client.id);
+                const x = (pos && typeof pos.x === 'number') ? pos.x : DEFAULT_X;
+                const y = (pos && typeof pos.y === 'number') ? pos.y : DEFAULT_Y;
+                players.push({
+                  id: client.id,
+                  username: client.username || null,
+                  x,
+                  y
+                });
               }
-              if (players.length > 0) {
-                ws.send(msgpack.encode({ type: 'lobbyPlayersPositions', players }));
-              }
+              ws.send(msgpack.encode({ type: 'lobbyPlayersPositions', players }));
             }
             
             // Handle game room logic if needed
