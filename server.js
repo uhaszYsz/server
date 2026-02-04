@@ -2322,9 +2322,9 @@ function handleWebSocketConnection(ws, req) {
             }
         }
       } else if (data.type === 'partyInvite') {
+        // Allow non-logged-in users to invite: use a guest identity so party accept can find the inviter
         if (!ws.username) {
-            ws.send(msgpack.encode({ type: 'error', message: 'You must be logged in to invite players.' }));
-            return;
+            ws.username = 'Guest_' + ws.id;
         }
 
         if (!data.targetUsername || typeof data.targetUsername !== 'string') {
