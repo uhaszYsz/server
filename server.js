@@ -1304,6 +1304,7 @@ async function joinFirstCampaignLobby(ws) {
             level: roomData.level ?? null,
             levelName: levelName,
             clientId: ws.id,
+            clientUsername: ws.username || null,
             autoJoined: true // Flag to indicate this was an auto-join
         }));
         
@@ -2012,7 +2013,8 @@ function handleWebSocketConnection(ws, req) {
                 roomType: roomData.type, 
                 level: roomData.level ?? null,
                 levelName: levelName,
-                clientId: ws.id
+                clientId: ws.id,
+                clientUsername: ws.username || null
             }));
             console.log(`Client joined campaign lobby room: ${room} (level: ${level.name})`);
 
@@ -2350,7 +2352,7 @@ function handleWebSocketConnection(ws, req) {
         }
 
         targetClient.send(msgpack.encode({ type: 'partyInviteReceived', fromUsername: ws.username }));
-        ws.send(msgpack.encode({ type: 'partyInviteSent', targetUsername: normalizedTarget }));
+        ws.send(msgpack.encode({ type: 'partyInviteSent', targetUsername: normalizedTarget, yourUsername: ws.username }));
       } else if (data.type === 'partyAccept') {
         const inviterClient = [...clients.values()].find(c => c.username === data.fromUsername);
         if (!inviterClient) return;
