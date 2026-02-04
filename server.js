@@ -2017,7 +2017,7 @@ function handleWebSocketConnection(ws, req) {
             }));
             console.log(`Client joined campaign lobby room: ${room} (level: ${level.name})`);
 
-            // Send list of all players already in lobby (with positions) to the joiner so they render at correct spots
+            // Send list of all players already in lobby: position = destination of their last move click (or default)
             if (roomData.type === 'lobby') {
               const DEFAULT_X = 90;
               const DEFAULT_Y = 80;
