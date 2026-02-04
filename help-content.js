@@ -498,6 +498,40 @@ drawSprite(90, 160, "@sprite.png", 1, 1, 0, "#FF0000"); // Red tinted sprite[/co
 drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
     },
     {
+        name: 'drawHealthbar',
+        threadTitle: 'drawHealthbar(x, y, width, height, hp, maxHp, depth)',
+        content: `Draws a healthbar in world coordinates. Depth is optional (default 0), same z-order as drawSprite.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]x[/color][/b] - [i]Bottom-left x in world units.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Bottom-left y in world units.[/i]
+[b][color=#90ee90]width[/color][/b] - [i]Bar width in world units.[/i]
+[b][color=#90ee90]height[/color][/b] - [i]Bar height in world units.[/i]
+[b][color=#90ee90]hp[/color][/b] - [i]Current health.[/i]
+[b][color=#90ee90]maxHp[/color][/b] - [i]Max health (fill ratio = hp/maxHp).[/i]
+[color=#9acd32]depth[/color] - [i]Optional z-order (default 0).[/i]
+
+[b]Example:[/b]
+[code]drawHealthbar(80, 150, 20, 3, 70, 100); // Bar at (80,150), 20x3, 70% full
+drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
+    },
+    {
+        name: 'drawHealthbarUI',
+        threadTitle: 'drawHealthbarUI(x, y, width, height, hp, maxHp)',
+        content: `Draws a healthbar in UI coordinates, on top of all other elements (including bullets layer). Same coordinate space as drawText (0..WORLD_WIDTH, 0..WORLD_HEIGHT).
+
+[b]Arguments:[/b]
+[b][color=#90ee90]x[/color][/b] - [i]x position in UI space.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]y position in UI space.[/i]
+[b][color=#90ee90]width[/color][/b] - [i]Bar width in UI units.[/i]
+[b][color=#90ee90]height[/color][/b] - [i]Bar height in UI units.[/i]
+[b][color=#90ee90]hp[/color][/b] - [i]Current health.[/i]
+[b][color=#90ee90]maxHp[/color][/b] - [i]Max health.[/i]
+
+[b]Example:[/b]
+[code]drawHealthbarUI(10, 300, 40, 6, 50, 100); // UI bar at (10,300), 40x6, 50% full[/code]`
+    },
+    {
         name: 'youtubePlay',
         threadTitle: 'youtubePlay(x, y, w, h, url)',
         content: `Embeds a YouTube video at specified world coordinates. x, y: world coordinates for top-left corner. w, h: width and height. url: YouTube URL or video ID.
