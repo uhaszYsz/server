@@ -2036,6 +2036,14 @@ function handleWebSocketConnection(ws, req) {
                 });
               }
               ws.send(msgpack.encode({ type: 'lobbyPlayersPositions', players }));
+              // Notify existing clients so the new joiner appears instantly (at default position)
+              const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_X, y: DEFAULT_Y }];
+              const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
+              for (const client of roomData.clients) {
+                if (client !== ws && client.readyState === openState) {
+                  client.send(msgpack.encode({ type: 'lobbyPlayersPositions', players: newPlayerPayload }));
+                }
+              }
             }
             
             // Handle game room logic if needed
