@@ -1683,6 +1683,9 @@ function handleWebSocketConnection(ws, req) {
             if (userDataChanged) {
                 await db.updateUser(ws.googleId, user);
             }
+            ws.equippedOutfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
+                ? user.equipment.outfit.characterIndex
+                : null;
             ws.send(msgpack.encode({
                 type: 'playerData',
                 playerData: {
@@ -1939,6 +1942,11 @@ function handleWebSocketConnection(ws, req) {
         // Save to database
         await db.updateUser(ws.googleId, user);
         
+        // Keep socket outfit in sync so lobby/game broadcasts show correct sprite
+        ws.equippedOutfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
+            ? user.equipment.outfit.characterIndex
+            : null;
+        
         // Send success response with updated player data
         ws.send(msgpack.encode({
             type: 'equipSuccess',
@@ -2073,6 +2081,16 @@ function handleWebSocketConnection(ws, req) {
 
             const roomData = rooms.get(room);
             
+            // Ensure outfit is set on socket for lobby (e.g. reconnected with sessionId only)
+            if (roomData.type === 'lobby' && ws.googleId && ws.equippedOutfitCharacterIndex === undefined) {
+                const user = await db.getUserByGoogleId(ws.googleId);
+                if (user) {
+                    ws.equippedOutfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
+                        ? user.equipment.outfit.characterIndex
+                        : null;
+                }
+            }
+            
             // Get the actual level name from database
             let levelName = null;
             if (roomData.level) {
@@ -2109,12 +2127,13 @@ function handleWebSocketConnection(ws, req) {
                   id: client.id,
                   username: client.username || null,
                   x,
-                  y
+                  y,
+                  outfitCharacterIndex: client.equippedOutfitCharacterIndex ?? null
                 });
               }
               ws.send(msgpack.encode({ type: 'lobbyPlayersPositions', players }));
               // Notify existing clients so the new joiner appears instantly (at default position)
-              const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_X, y: DEFAULT_Y }];
+              const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_X, y: DEFAULT_Y, outfitCharacterIndex: ws.equippedOutfitCharacterIndex ?? null }];
               const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
               for (const client of roomData.clients) {
                 if (client !== ws && client.readyState === openState) {
@@ -2219,6 +2238,7 @@ function handleWebSocketConnection(ws, req) {
         if (isLobbyMove) {
           payload.startTime = globalTimer;
         }
+        payload.outfitCharacterIndex = ws.equippedOutfitCharacterIndex ?? null;
 
         const targetTime = globalTimer + 1000;
 
@@ -4193,6 +4213,9 @@ function handleWebSocketConnection(ws, req) {
             ws.sessionId = session.sessionId; // Store session ID on WebSocket
             ws.rank = user.rank || 'player';
             ws.isAdmin = (ws.rank === 'admin');
+            ws.equippedOutfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
+                ? user.equipment.outfit.characterIndex
+                : null;
             
             // Send login success with session ID
             ws.send(msgpack.encode({
@@ -4286,6 +4309,9 @@ function handleWebSocketConnection(ws, req) {
                 ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
+            ws.equippedOutfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
+                ? user.equipment.outfit.characterIndex
+                : null;
             
             // Send session restored
             ws.send(msgpack.encode({

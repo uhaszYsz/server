@@ -900,7 +900,7 @@ function initForumCategories() {
                             function processAllSubcategories() {
                                 // Update "Danmaku raiders general" to "General" if it exists
                                 db.run('UPDATE forum_categories SET name = ?, display_order = ? WHERE name = ? AND parent_id = ?',
-                                    ['General', 1, 'Danmaku raiders general', discussionsId], (err) => {
+                                    ['General', 1, 'General', discussionsId], (err) => {
                                     if (err) {
                                         console.error('Error updating old category name:', err);
                                     }
