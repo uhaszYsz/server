@@ -2079,6 +2079,14 @@ function handleWebSocketConnection(ws, req) {
           const oldRoom = rooms.get(ws.room);
           oldRoom.clients.delete(ws);
           if (oldRoom.lobbyPositions) oldRoom.lobbyPositions.delete(ws.id);
+          // Notify remaining lobby clients so they stop drawing this player immediately (e.g. left to start quest)
+          if (oldRoom.type === 'lobby' && oldRoom.clients) {
+            const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
+            const leavePayload = msgpack.encode({ type: 'playerDisconnect', id: ws.id });
+            for (const client of oldRoom.clients) {
+              if (client.readyState === openState) client.send(leavePayload);
+            }
+          }
         }
 
         // Only allow joining campaign lobby rooms that exist
