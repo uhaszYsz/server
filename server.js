@@ -1287,6 +1287,22 @@ async function initializeCampaignLevelLobbies() {
 // Initialize campaign level lobbies on server startup
 await initializeCampaignLevelLobbies();
 
+// Every 10s remove disconnected clients from room.clients and lobbyPositions (so lobby list is only connected clients)
+const OPEN = 1;
+setInterval(() => {
+    for (const [, roomData] of rooms) {
+        if (!roomData.clients) continue;
+        const toRemove = [];
+        for (const client of roomData.clients) {
+            if (client.readyState !== OPEN) toRemove.push(client);
+        }
+        for (const client of toRemove) {
+            roomData.clients.delete(client);
+            if (roomData.lobbyPositions) roomData.lobbyPositions.delete(client.id);
+        }
+    }
+}, 10000);
+
 // Helper function to join player to "main" campaign lobby
 async function joinFirstCampaignLobby(ws) {
     try {
@@ -2114,12 +2130,14 @@ function handleWebSocketConnection(ws, req) {
             }));
             console.log(`Client joined campaign lobby room: ${room} (level: ${level.name})`);
 
-            // Send list of all players already in lobby: position = destination of their last move click (or default)
+            // Send list of all players already in lobby: only connected clients (position = destination)
             if (roomData.type === 'lobby') {
               const DEFAULT_X = 90;
               const DEFAULT_Y = 80;
+              const OPEN = 1;
               const players = [];
               for (const client of roomData.clients) {
+                if (client.readyState !== OPEN) continue; // skip disconnected
                 const pos = roomData.lobbyPositions && roomData.lobbyPositions.get(client.id);
                 const x = (pos && typeof pos.x === 'number') ? pos.x : DEFAULT_X;
                 const y = (pos && typeof pos.y === 'number') ? pos.y : DEFAULT_Y;
@@ -2131,7 +2149,7 @@ function handleWebSocketConnection(ws, req) {
                   outfitCharacterIndex: client.equippedOutfitCharacterIndex ?? null
                 });
               }
-              ws.send(msgpack.encode({ type: 'lobbyPlayersPositions', players }));
+              ws.send(msgpack.encode({ type: 'lobbyPlayersPositions', players, fullList: true }));
               // Notify existing clients so the new joiner appears instantly (at default position)
               const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_X, y: DEFAULT_Y, outfitCharacterIndex: ws.equippedOutfitCharacterIndex ?? null }];
               const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
