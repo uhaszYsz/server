@@ -340,6 +340,30 @@ await Promise.all([
 // Equipment slots
 const EQUIPMENT_SLOTS = ['weapon', 'armor', 'amulet', 'outfit', 'spellcard'];
 
+// Outfit list: same as client outfits.js (displayName + characterIndex for sprite)
+const OUTFIT_LIST = [
+    { characterIndex: 1, displayName: 'Glenys Alt 1' },
+    { characterIndex: 2, displayName: 'Glenys Alt 2' },
+    { characterIndex: 3, displayName: 'Glenys' },
+    { characterIndex: 4, displayName: 'Hex Alt 1' },
+    { characterIndex: 5, displayName: 'Hex Alt 2' },
+    { characterIndex: 6, displayName: 'Hex' },
+    { characterIndex: 7, displayName: 'Ley Alt 1' },
+    { characterIndex: 8, displayName: 'Ley Alt 2' },
+    { characterIndex: 9, displayName: 'Ley' },
+    { characterIndex: 10, displayName: 'Linail Alt 1' },
+    { characterIndex: 11, displayName: 'Linail Alt 2' },
+    { characterIndex: 12, displayName: 'Linail' },
+    { characterIndex: 13, displayName: 'Oratio Alt 1' },
+    { characterIndex: 14, displayName: 'Oratio Alt 2' },
+    { characterIndex: 15, displayName: 'Oratio' },
+    { characterIndex: 16, displayName: 'Ouzo Alt 1' },
+    { characterIndex: 17, displayName: 'Ouzo Alt 2' },
+    { characterIndex: 18, displayName: 'Ouzo' },
+    { characterIndex: 39, displayName: 'Prime Alt' },
+    { characterIndex: 40, displayName: 'Prime' }
+];
+
 // Available stats for items
 const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback', 'recovery', 'reload'];
 
@@ -513,13 +537,22 @@ function initializeInventoryAndEquipment() {
         stats: [] // Empty stats array
     };
 
+    // Give new user one random outfit (stores characterIndex for sprite)
+    const randomOutfit = OUTFIT_LIST[Math.floor(Math.random() * OUTFIT_LIST.length)];
+    const starterOutfit = {
+        name: 'outfit',
+        displayName: randomOutfit.displayName,
+        characterIndex: randomOutfit.characterIndex,
+        stats: []
+    };
+
     return {
-        inventory: [starterWeapon], // Only sword in inventory for new users
+        inventory: [starterWeapon, starterOutfit],
         equipment: {
             weapon: null,
             armor: null,
             amulet: null,
-            outfit: null,
+            outfit: starterOutfit, // Equip starter outfit so sprite shows
             spellcard: null
         },
         weaponData: null
@@ -749,7 +782,10 @@ async function buildRoomWeaponData(clientsCollection) {
         data.push({
             username: user.name || client.googleId, // Use name for display
             playerId: client.id,
-            weaponData: user.weaponData || null
+            weaponData: user.weaponData || null,
+            outfitCharacterIndex: (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
+                ? user.equipment.outfit.characterIndex
+                : null
         });
         
         // Save user if it was modified
@@ -816,6 +852,9 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
 
             entry.weaponData = user.weaponData || null;
             entry.stats = user.stats || null;
+            entry.outfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
+                ? user.equipment.outfit.characterIndex
+                : null;
         }
 
         console.log('[RoomWeapons] Init payload entry:', {
@@ -1657,6 +1696,44 @@ function handleWebSocketConnection(ws, req) {
         } else {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
         }
+      } else if (data.type === 'getRandomOutfit') {
+        // Admin only: add a random outfit item to the player's inventory
+        if (ws.rank !== 'admin') {
+            ws.send(msgpack.encode({ type: 'error', message: 'Only administrators can use this' }));
+            return;
+        }
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        const user = await db.getUserByGoogleId(ws.googleId);
+        if (!user) {
+            ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            return;
+        }
+        const outfitEntry = OUTFIT_LIST[Math.floor(Math.random() * OUTFIT_LIST.length)];
+        const outfitItem = {
+            name: 'outfit',
+            displayName: outfitEntry.displayName,
+            characterIndex: outfitEntry.characterIndex,
+            stats: []
+        };
+        if (!user.inventory) {
+            user.inventory = [];
+        }
+        user.inventory.push(outfitItem);
+        await db.updateUser(ws.googleId, user);
+        ws.send(msgpack.encode({
+            type: 'randomOutfitGranted',
+            playerData: {
+                username: user.name,
+                name: user.name,
+                stats: user.stats,
+                inventory: user.inventory,
+                equipment: user.equipment
+            }
+        }));
+        console.log(`[getRandomOutfit] Admin ${ws.username || ws.googleId} received outfit: ${outfitItem.displayName}`);
       } else if (data.type === 'debugGiveLoot') {
         // Debug: Generate and give random loot to player
         if (!ws.googleId) {
@@ -1683,8 +1760,9 @@ function handleWebSocketConnection(ws, req) {
         
         // Set display name and special properties based on item type
         if (itemType === 'outfit') {
-            // Outfit has no stats
-            lootItem.displayName = 'Outfit';
+            const outfitEntry = OUTFIT_LIST[Math.floor(Math.random() * OUTFIT_LIST.length)];
+            lootItem.displayName = outfitEntry.displayName;
+            lootItem.characterIndex = outfitEntry.characterIndex;
             lootItem.stats = [];
         } else if (itemType === 'spellcard') {
             // Random active ability for spellcard (no stats)
@@ -3575,8 +3653,9 @@ function handleWebSocketConnection(ws, req) {
                 
                 // Set display name and special properties based on item type
                 if (itemType === 'outfit') {
-                    // Outfit has no stats
-                    lootItem.displayName = 'Outfit';
+                    const outfitEntry = OUTFIT_LIST[Math.floor(Math.random() * OUTFIT_LIST.length)];
+                    lootItem.displayName = outfitEntry.displayName;
+                    lootItem.characterIndex = outfitEntry.characterIndex;
                     lootItem.stats = [];
                 } else if (itemType === 'spellcard') {
                     // Random active ability for spellcard (no stats)

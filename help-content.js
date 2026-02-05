@@ -518,18 +518,18 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     {
         name: 'drawHealthbarUI',
         threadTitle: 'drawHealthbarUI(x, y, width, height, hp, maxHp)',
-        content: `Draws a healthbar in UI coordinates, on top of all other elements (including bullets layer). Same coordinate space as drawText (0..WORLD_WIDTH, 0..WORLD_HEIGHT).
+        content: `Draws a healthbar in world coordinates on the UI layer (on top of everything, including bullets). Camera-relative: moves when the camera moves. x, y, width, height are in world units (same as drawHealthbar).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]x position in UI space.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]y position in UI space.[/i]
-[b][color=#90ee90]width[/color][/b] - [i]Bar width in UI units.[/i]
-[b][color=#90ee90]height[/color][/b] - [i]Bar height in UI units.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]x position in world units.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]y position in world units.[/i]
+[b][color=#90ee90]width[/color][/b] - [i]Bar width in world units.[/i]
+[b][color=#90ee90]height[/color][/b] - [i]Bar height in world units.[/i]
 [b][color=#90ee90]hp[/color][/b] - [i]Current health.[/i]
 [b][color=#90ee90]maxHp[/color][/b] - [i]Max health.[/i]
 
 [b]Example:[/b]
-[code]drawHealthbarUI(10, 300, 40, 6, 50, 100); // UI bar at (10,300), 40x6, 50% full[/code]`
+[code]drawHealthbarUI(80, 150, 20, 3, 70, 100); // World bar at (80,150), 20x3, 70% full[/code]`
     },
     {
         name: 'youtubePlay',
