@@ -2431,13 +2431,7 @@ function handleWebSocketConnection(ws, req) {
         }
       } else if (data.type === 'partyStartLevel') {
         const party = findPartyByMemberId(ws.id);
-        if (!party) {
-            if (ws.readyState === ws.OPEN) {
-                ws.send(msgpack.encode({ type: 'error', message: 'Party not found.' }));
-            }
-            return;
-        }
-        if (party.leader !== ws.id) {
+        if (party && party.leader !== ws.id) {
             if (ws.readyState === ws.OPEN) {
                 ws.send(msgpack.encode({ type: 'error', message: 'Only the party leader can start the level.' }));
             }
@@ -2450,6 +2444,13 @@ function handleWebSocketConnection(ws, req) {
             : DEFAULT_CAMPAIGN_LEVEL_FILE;
 
         try {
+            if (!party) {
+                // Solo play: no party, create a one-member "party" just for this start
+                const soloParty = { leader: ws.id, members: new Set([ws.id]) };
+                console.log(`[PartyStartLevel] solo play: ${ws.username || ws.id} requestedLevel=${requestedLevel}`);
+                await sendPartyToGameRoom(soloParty, { levelFileName: requestedLevel });
+                return;
+            }
             console.log(`[PartyStartLevel] leader=${ws.username || ws.id} hasStageData=${party.stageData ? 'yes' : 'no'} requestedLevel=${requestedLevel}`);
             if (party.stageData) {
                 // Use the stage data that was loaded earlier (from local or server)
