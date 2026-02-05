@@ -1299,28 +1299,12 @@ setInterval(() => {
         for (const client of toRemove) {
             roomData.clients.delete(client);
             if (roomData.lobbyPositions) roomData.lobbyPositions.delete(client.id);
-        }
-        // Broadcast full lobby roster to all clients in this lobby so they prune disconnected players
-        if (roomData.type === 'lobby' && roomData.clients && roomData.clients.size > 0) {
-            const DEFAULT_X = 90;
-            const DEFAULT_Y = 80;
-            const players = [];
-            for (const client of roomData.clients) {
-                if (client.readyState !== OPEN) continue;
-                const pos = roomData.lobbyPositions && roomData.lobbyPositions.get(client.id);
-                const x = (pos && typeof pos.x === 'number') ? pos.x : DEFAULT_X;
-                const y = (pos && typeof pos.y === 'number') ? pos.y : DEFAULT_Y;
-                players.push({
-                    id: client.id,
-                    username: client.username || null,
-                    x,
-                    y,
-                    outfitCharacterIndex: client.equippedOutfitCharacterIndex ?? null
-                });
-            }
-            const payload = msgpack.encode({ type: 'lobbyPlayersPositions', players, fullList: true });
-            for (const client of roomData.clients) {
-                if (client.readyState === OPEN) client.send(payload);
+            // Notify remaining clients so they stop drawing this player (in case close event was missed)
+            if (roomData.type === 'lobby' && roomData.clients) {
+                const leavePayload = msgpack.encode({ type: 'playerDisconnect', id: client.id });
+                for (const remaining of roomData.clients) {
+                    if (remaining.readyState === OPEN) remaining.send(leavePayload);
+                }
             }
         }
     }
