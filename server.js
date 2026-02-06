@@ -1425,6 +1425,10 @@ function findPartyByMemberId(memberId) {
 }
 
 function ensurePartyForClient(client) {
+    // Assign guest identity so roomUpdate sends clientUsername (guests need it for Start Level button)
+    if (!client.username) {
+        client.username = 'Guest_' + client.id;
+    }
     let party = findPartyByMemberId(client.id);
     if (!party) {
         party = { leader: client.id, members: new Set([client.id]) };
@@ -1531,7 +1535,8 @@ async function sendPartyToGameRoom(party, options = {}) {
         }
     }
 
-    const gameRoomName = leaderClient.username;
+    // Use username for room name; fallback to Guest_id for guests (username can be null)
+    const gameRoomName = leaderClient.username || ('Guest_' + leaderClient.id);
     let roomEntry = rooms.get(gameRoomName);
     if (!roomEntry) {
         roomEntry = { type: 'game', level: resolvedLevelFile || null, clients: new Set(), startTime: null };

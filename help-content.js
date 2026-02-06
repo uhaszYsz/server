@@ -375,6 +375,24 @@ drawText(5, 5, "Wave: " + w);[/code]`
 // or drawRectangle(10, 20, 50, 30, [1.0, 0.0, 0.0, 0.5]); // red rectangle with 50% opacity[/code]`
     },
     {
+        name: 'drawLine',
+        threadTitle: 'drawLine(x1, y1, x2, y2, width, color)',
+        content: `Draws a line from (x1, y1) to (x2, y2) with optional width and color.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]x1[/color][/b] - [i]Start x position.[/i]
+[b][color=#90ee90]y1[/color][/b] - [i]Start y position.[/i]
+[b][color=#90ee90]x2[/color][/b] - [i]End x position.[/i]
+[b][color=#90ee90]y2[/color][/b] - [i]End y position.[/i]
+[color=#9acd32]width[/color] - [i]Line width in pixels. Optional, default 1.[/i]
+[color=#9acd32]color[/color] - [i]Hex color or RGBA array. Optional.[/i]
+
+[b]Example:[/b]
+[code]drawLine(10, 20, 100, 150); // white line
+// or drawLine(10, 20, 100, 150, 2); // line width 2
+// or drawLine(10, 20, 100, 150, 1, "#ff0000"); // red line[/code]`
+    },
+    {
         name: 'drawGround',
         threadTitle: 'drawGround(cellW, cellH, color)',
         content: `Draws a grid of rectangles covering the whole world. cellWidth and cellHeight are the dimensions of each grid cell.
