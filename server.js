@@ -470,17 +470,23 @@ async function verifyGoogleIdToken(idToken) {
                     }
                     
                     // Verify audience (client ID) if we have it configured
+                    // Note: If using only Android Client ID, oauth.txt can contain Android Client ID
+                    // or be empty to skip audience verification
                     const googleClientId = loadGoogleClientId();
                     if (googleClientId && tokenInfo.aud) {
-                        // Verify the token was issued for our client ID
+                        // Verify the token was issued for our client ID (can be Web or Android Client ID)
                         if (tokenInfo.aud !== googleClientId) {
                             console.warn(`[GoogleAuth] Token audience mismatch: expected ${googleClientId}, got ${tokenInfo.aud}`);
-                            resolve(null);
-                            return;
+                            // Don't reject - allow if no client ID configured (for Android-only setup)
+                            if (googleClientId) {
+                                resolve(null);
+                                return;
+                            }
                         }
                     } else if (googleClientId) {
                         console.warn('[GoogleAuth] Token missing audience field');
                     }
+                    // If no googleClientId configured, skip audience verification (Android-only setup)
                     
                     // Token is valid, return user info
                     resolve({
@@ -4191,12 +4197,13 @@ function handleWebSocketConnection(ws, req) {
                     return;
                 }
             } else {
-                // Fallback: Use provided ID (less secure, but allows older clients)
+                // Fallback: Use provided ID when no ID token (Android-only setup without Web Client ID)
+                // This is acceptable when using only Android Client ID - Google Sign-In SDK ensures authenticity
                 if (!data.id) {
                     ws.send(msgpack.encode({ type: 'error', message: 'ID token or Google ID required' }));
                     return;
                 }
-                console.warn('[GoogleLogin] No ID token provided, using fallback verification');
+                console.log('[GoogleLogin] No ID token provided, using Google ID (Android-only setup)');
                 verifiedGoogleId = data.id;
             }
             

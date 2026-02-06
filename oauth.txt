@@ -1,0 +1,7 @@
+# Google OAuth Client ID (optional - for token verification)
+# If using only Android Client ID, you can leave this empty or put Android Client ID here
+# Format: xxxxx.apps.googleusercontent.com
+# Get from Google Cloud Console: APIs & Services > Credentials > OAuth 2.0 Client IDs
+# 
+# For Android-only setup: Leave empty or put Android Client ID
+# For Web + Android setup: Put Web Client ID here
