@@ -1364,6 +1364,10 @@ async function joinFirstCampaignLobby(ws) {
             }
         }
         
+        // Build peerIds for WebRTC (only when game room: in-quest P2P)
+        const peerIds = roomData.type === 'game' && roomData.clients
+            ? [...roomData.clients].filter(c => c !== ws && c.id != null).map(c => c.id)
+            : [];
         // Send room update to the joining client
         ws.send(msgpack.encode({ 
             type: 'roomUpdate', 
@@ -1373,7 +1377,8 @@ async function joinFirstCampaignLobby(ws) {
             levelName: levelName,
             clientId: ws.id,
             clientUsername: ws.username || null,
-            autoJoined: true // Flag to indicate this was an auto-join
+            autoJoined: true, // Flag to indicate this was an auto-join
+            peerIds: roomData.type === 'game' ? peerIds : undefined
         }));
         
         // Send player init data to the joining client (so they see existing players)
@@ -2145,6 +2150,9 @@ function handleWebSocketConnection(ws, req) {
                 }
             }
             
+            const peerIdsGame = roomData.type === 'game' && roomData.clients
+                ? [...roomData.clients].filter(c => c !== ws && c.id != null).map(c => c.id)
+                : [];
             ws.send(msgpack.encode({ 
                 type: 'roomUpdate', 
                 room: room, 
@@ -2152,7 +2160,8 @@ function handleWebSocketConnection(ws, req) {
                 level: roomData.level ?? null,
                 levelName: levelName,
                 clientId: ws.id,
-                clientUsername: ws.username || null
+                clientUsername: ws.username || null,
+                peerIds: roomData.type === 'game' ? peerIdsGame : undefined
             }));
             console.log(`Client joined campaign lobby room: ${room} (level: ${level.name})`);
 
@@ -2233,6 +2242,7 @@ function handleWebSocketConnection(ws, req) {
               }
             }
 
+            const peerIdsGame = [...existingRoom.clients].filter(c => c !== ws && c.id != null).map(c => c.id);
             ws.send(msgpack.encode({
               type: 'roomUpdate',
               room: room,
@@ -2240,7 +2250,8 @@ function handleWebSocketConnection(ws, req) {
               level: existingRoom.level ?? null,
               levelName: levelName,
               clientId: ws.id,
-              clientUsername: ws.username || null
+              clientUsername: ws.username || null,
+              peerIds: peerIdsGame
             }));
             console.log(`Client joined game room: ${room} (level: ${existingRoom.level})`);
 
@@ -2262,6 +2273,22 @@ function handleWebSocketConnection(ws, req) {
           ws.send(msgpack.encode({ type: 'error', message: 'Only campaign lobby rooms are allowed' }));
           return;
         }
+      }
+
+      // WebRTC signaling: forward SDP/ICE between peers (only in game room; no game data through server)
+      else if (data.type === 'webrtc-signal') {
+        const targetId = data.targetPeerId;
+        const signalType = data.signalType;
+        const payload = data.payload;
+        if (targetId == null || !signalType || payload == null) return;
+        const target = clients.get(targetId);
+        if (!target || target.readyState !== (target.OPEN ?? 1)) return;
+        target.send(msgpack.encode({
+          type: 'webrtc-signal',
+          fromPeerId: ws.id,
+          signalType: signalType,
+          payload: payload
+        }));
       }
 
       // When a client sends a message to their room
