@@ -2290,13 +2290,21 @@ function handleWebSocketConnection(ws, req) {
             }));
             console.log(`Client joined game room: ${room} (level: ${existingRoom.level})`);
 
+            // Notify existing clients of updated peer list so they can establish WebRTC to the new joiner
+            const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
+            for (const client of existingRoom.clients) {
+              if (client !== ws && client.readyState === openState) {
+                const otherPeerIds = [...existingRoom.clients].filter(c => c !== client && c.id != null).map(c => c.id);
+                client.send(msgpack.encode({ type: 'gameRoomPeers', peerIds: otherPeerIds }));
+              }
+            }
+
             const initPayload = await buildPlayerInitDataForRoom(room, ws.id);
             if (initPayload.length > 0) {
               ws.send(msgpack.encode({ type: 'playerInitData', players: initPayload }));
             }
             const weaponPayload = await buildRoomWeaponData(existingRoom.clients ? [...existingRoom.clients] : []);
             if (weaponPayload.length > 0) {
-              const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
               for (const client of existingRoom.clients) {
                 if (client && client.readyState === openState) {
                   client.send(msgpack.encode({ type: 'roomWeaponData', roomWeaponData: weaponPayload }));
