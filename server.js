@@ -1274,7 +1274,8 @@ async function initializeCampaignLevelLobbies() {
             rooms.set(roomName, {
                 type: 'lobby',
                 level: `${level.slug}.json`, // Keep .json extension for compatibility
-                clients: new Set()
+                clients: new Set(),
+                lobbyPositions: new Map()
             });
             
             console.log(`  ✅ Created lobby room: "${roomName}" for level "${level.name}" (${level.slug})`);
@@ -1339,7 +1340,8 @@ async function joinFirstCampaignLobby(ws) {
             rooms.set(roomName, {
                 type: 'lobby',
                 level: `${mainLevel.slug}.json`,
-                clients: new Set()
+                clients: new Set(),
+                lobbyPositions: new Map()
             });
         }
         
@@ -1347,6 +1349,12 @@ async function joinFirstCampaignLobby(ws) {
         if (!updatedRoom.clients) {
             updatedRoom.clients = new Set();
         }
+        if (!updatedRoom.lobbyPositions) {
+            updatedRoom.lobbyPositions = new Map();
+        }
+        const DEFAULT_LOBBY_X = 90;
+        const DEFAULT_LOBBY_Y = 80;
+        updatedRoom.lobbyPositions.set(ws.id, { x: DEFAULT_LOBBY_X, y: DEFAULT_LOBBY_Y });
         updatedRoom.clients.add(ws);
         ws.room = roomName;
         
@@ -1398,6 +1406,33 @@ async function joinFirstCampaignLobby(ws) {
                     type: 'roomWeaponData',
                     roomWeaponData: weaponPayload
                 }));
+            }
+        }
+        
+        // Lobby visibility: send lobbyPlayersPositions (same as manual join) so clients see each other in lobby
+        if (roomData.type === 'lobby') {
+            const OPEN = 1;
+            const players = [];
+            for (const client of roomData.clients) {
+                if (client.readyState !== OPEN) continue;
+                const pos = roomData.lobbyPositions && roomData.lobbyPositions.get(client.id);
+                const x = (pos && typeof pos.x === 'number') ? pos.x : DEFAULT_LOBBY_X;
+                const y = (pos && typeof pos.y === 'number') ? pos.y : DEFAULT_LOBBY_Y;
+                players.push({
+                    id: client.id,
+                    username: client.username || null,
+                    x,
+                    y,
+                    outfitCharacterIndex: client.equippedOutfitCharacterIndex ?? null
+                });
+            }
+            ws.send(msgpack.encode({ type: 'lobbyPlayersPositions', players, fullList: true }));
+            const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_LOBBY_X, y: DEFAULT_LOBBY_Y, outfitCharacterIndex: ws.equippedOutfitCharacterIndex ?? null }];
+            const openStateLobby = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
+            for (const client of roomData.clients) {
+                if (client !== ws && client.readyState === openStateLobby) {
+                    client.send(msgpack.encode({ type: 'lobbyPlayersPositions', players: newPlayerPayload }));
+                }
             }
         }
         
