@@ -2334,7 +2334,7 @@ function handleWebSocketConnection(ws, req) {
         const signalType = data.signalType;
         const payload = data.payload;
         if (targetId == null || !signalType || payload == null) return;
-        const target = clients.get(targetId);
+        const target = clients.get(Number(targetId)) || clients.get(String(targetId)) || clients.get(targetId);
         if (!target || target.readyState !== (target.OPEN ?? 1)) return;
         target.send(msgpack.encode({
           type: 'webrtc-signal',
