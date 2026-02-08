@@ -810,11 +810,25 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
     const joiningClientParty = joiningClientId ? findPartyByMemberId(joiningClientId) : null;
 
     for (const client of clients.values()) {
-        if (!client || !client.googleId) continue;
+        if (!client) continue;
         if (roomName && client.room !== roomName) continue;
 
+        // Guests: include minimal entry so room members list is complete for P2P otherPlayers
+        const displayName = client.username || (client.id != null ? 'Guest_' + client.id : null);
+        const entry = {
+            id: client.id,
+            username: displayName
+        };
+        if (!client.googleId) {
+            payload.push(entry);
+            continue;
+        }
+
         const user = await db.getUserByGoogleId(client.googleId);
-        if (!user) continue;
+        if (!user) {
+            payload.push(entry);
+            continue;
+        }
 
         // Check if this client is in the same party as the joining client
         const clientParty = findPartyByMemberId(client.id);
@@ -822,11 +836,7 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
                               joiningClientParty.leader === clientParty.leader &&
                               joiningClientParty.members.has(client.id);
 
-        // Always include id and username
-        const entry = {
-            id: client.id,
-            username: client.username
-        };
+        // entry already set above (id + displayName)
 
         let userModified = false;
 
