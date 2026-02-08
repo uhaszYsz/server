@@ -451,6 +451,19 @@ drawText(5, 5, "Wave: " + w);[/code]`
 [code]if (didReleased()) { /* handle release */ }[/code]`
     },
     {
+        name: 'sync',
+        threadTitle: 'sync(disableVariables)',
+        content: `Marks this object for multiplayer sync. The party leader sends this object's state to other clients (with delay); other clients display it from the buffer.
+
+[b]Optional argument:[/b]
+[color=#9acd32]disableVariables[/color] - [i]Array of variable names (strings) to exclude from syncing. E.g. sync(["hp", "x"]) does not sync hp and x.[/i]
+
+[b]Example:[/b]
+[code]sync(); // mark for MP sync, sync all variables
+sync(["hp"]); // sync but exclude hp
+sync(["x", "y", "hp"]); // sync but exclude x, y, hp[/code]`
+    },
+    {
         name: 'drawText',
         threadTitle: 'drawText(x, y, text, color, size)',
         content: `Draws text at specified position with optional color and size.
