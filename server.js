@@ -2053,12 +2053,14 @@ function handleWebSocketConnection(ws, req) {
       } else if (data.type === 'npcGiveSpellcards') {
         // Spellcard NPC (client-rendered) - add all 3 spellcards to user inventory
         if (!ws.googleId) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            console.log('[npcGiveSpellcards] Rejected: not logged in');
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in', fromNpcSpellcards: true }));
             return;
         }
         const user = await db.getUserByGoogleId(ws.googleId);
         if (!user) {
-            ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            console.log('[npcGiveSpellcards] Rejected: user not found for googleId');
+            ws.send(msgpack.encode({ type: 'error', message: 'User not found', fromNpcSpellcards: true }));
             return;
         }
         if (!user.inventory) user.inventory = [];
@@ -2069,14 +2071,15 @@ function handleWebSocketConnection(ws, req) {
         ];
         spellcards.forEach(sc => user.inventory.push(sc));
         await db.updateUser(ws.googleId, user);
+        console.log('[npcGiveSpellcards] Granted 3 spellcards to', ws.username || ws.googleId);
         ws.send(msgpack.encode({
-            type: 'playerData',
+            type: 'npcSpellcardsGranted',
             playerData: {
+                username: user.name,
+                name: user.name,
                 stats: user.stats,
                 inventory: user.inventory,
-                equipment: user.equipment,
-                name: user.name,
-                username: user.username
+                equipment: user.equipment
             }
         }));
       } else if (data.type === 'equipItem') {
