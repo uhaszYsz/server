@@ -101,6 +101,25 @@ function validateForumContent(content) {
     return { valid: true, value: trimmed };
 }
 
+// Placeholder for # inside [code] blocks so DOMPurify doesn't convert # to space when sanitizing.
+const CODE_BLOCK_HASH_PLACEHOLDER = '\uE000';
+
+function protectHashInCodeBlocks(content) {
+    if (!content || typeof content !== 'string') return content;
+    return content.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, (match, codeContent) => {
+        const protectedContent = codeContent.replace(/#/g, CODE_BLOCK_HASH_PLACEHOLDER);
+        return '[code]' + protectedContent + '[/code]';
+    });
+}
+
+function restoreHashInCodeBlocks(content) {
+    if (!content || typeof content !== 'string') return content;
+    return content.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, (match, codeContent) => {
+        const restoredContent = codeContent.split(CODE_BLOCK_HASH_PLACEHOLDER).join('#');
+        return '[code]' + restoredContent + '[/code]';
+    });
+}
+
 const msgpack = new Encoder({
     useRecords: false
 });
@@ -4764,10 +4783,12 @@ function handleWebSocketConnection(ws, req) {
             ALLOWED_ATTR: []
         });
         
-        const sanitizedContent = purify.sanitize(contentValidation.value, {
+        // Protect # in [code] blocks so DOMPurify doesn't convert them to space, then restore after
+        const contentForSanitize = protectHashInCodeBlocks(contentValidation.value);
+        const sanitizedContent = restoreHashInCodeBlocks(purify.sanitize(contentForSanitize, {
             ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre'], // Allow basic formatting
             ALLOWED_ATTR: []
-        });
+        }));
         
         try {
             console.log('[createForumThread] Creating thread in category:', data.categoryId);
@@ -4850,11 +4871,12 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         
-        // Sanitize content to prevent XSS
-        const sanitizedContent = purify.sanitize(contentValidation.value, {
+        // Protect # in [code] blocks so DOMPurify doesn't convert them to space, then restore after
+        const contentForSanitize = protectHashInCodeBlocks(contentValidation.value);
+        const sanitizedContent = restoreHashInCodeBlocks(purify.sanitize(contentForSanitize, {
             ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre'], // Allow basic formatting
             ALLOWED_ATTR: []
-        });
+        }));
         
         try {
             const postId = await db.createForumPost(data.threadId, ws.googleId, sanitizedContent);
@@ -5297,10 +5319,12 @@ function handleWebSocketConnection(ws, req) {
                 return;
             }
             
-            const sanitizedContent = purify.sanitize(contentValidation.value, {
+            // Protect # in [code] blocks so DOMPurify doesn't convert them to space, then restore after
+            const contentForSanitize = protectHashInCodeBlocks(contentValidation.value);
+            const sanitizedContent = restoreHashInCodeBlocks(purify.sanitize(contentForSanitize, {
                 ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre'],
                 ALLOWED_ATTR: []
-            });
+            }));
 
             await db.updateForumPost(data.postId, sanitizedContent);
             ws.send(msgpack.encode({ type: 'forumPostUpdated', postId: data.postId }));
