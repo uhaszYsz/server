@@ -101,25 +101,6 @@ function validateForumContent(content) {
     return { valid: true, value: trimmed };
 }
 
-// Placeholder for # inside [code] blocks so DOMPurify doesn't convert # to space when sanitizing.
-const CODE_BLOCK_HASH_PLACEHOLDER = '\uE000';
-
-function protectHashInCodeBlocks(content) {
-    if (!content || typeof content !== 'string') return content;
-    return content.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, (match, codeContent) => {
-        const protectedContent = codeContent.replace(/#/g, CODE_BLOCK_HASH_PLACEHOLDER);
-        return '[code]' + protectedContent + '[/code]';
-    });
-}
-
-function restoreHashInCodeBlocks(content) {
-    if (!content || typeof content !== 'string') return content;
-    return content.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, (match, codeContent) => {
-        const restoredContent = codeContent.split(CODE_BLOCK_HASH_PLACEHOLDER).join('#');
-        return '[code]' + restoredContent + '[/code]';
-    });
-}
-
 const msgpack = new Encoder({
     useRecords: false
 });
@@ -4706,40 +4687,40 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to change name' }));
         }
       } else if (data.type === 'createForumThread') {
+        const isDebugGuest = !ws.googleId && data.debugGuest === true;
         console.log('[createForumThread] Received request:', { 
             categoryId: data.categoryId, 
             title: data.title ? data.title.substring(0, 50) : 'none',
             contentLength: data.content ? data.content.length : 0,
             googleId: ws.googleId ? 'present' : 'missing',
-            name: ws.name || 'none'
+            name: ws.name || 'none',
+            debugGuest: !!data.debugGuest
         });
         
-        // Verify user is authenticated (googleId is set during Google login)
-        if (!ws.googleId) {
+        // Allow guest thread creation when client sends debugGuest (e.g. debug mode + not logged in)
+        let authorId = null;
+        if (isDebugGuest) {
+            authorId = 'Guest';
+            console.log('[createForumThread] Allowing guest post (debugGuest)');
+        } else if (!ws.googleId) {
             console.error('[createForumThread] User not logged in - no googleId');
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
-        }
-        
-        // Verify user exists (we already have googleId from login, just verify user exists)
-        try {
-            if (!ws.googleId) {
-                console.error('[createForumThread] Missing googleId');
-                ws.send(msgpack.encode({ type: 'error', message: 'Not authenticated' }));
+        } else {
+            // Verify user exists (we already have googleId from login, just verify user exists)
+            try {
+                const user = await db.getUserByGoogleId(ws.googleId);
+                if (!user) {
+                    console.error('[createForumThread] User not found for googleId:', ws.googleId.substring(0, 20) + '...');
+                    ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+                    return;
+                }
+                authorId = ws.googleId;
+            } catch (verifyErr) {
+                console.error('[createForumThread] Verification error:', verifyErr);
+                ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
                 return;
             }
-            
-            // Verify user exists by Google ID
-            const user = await db.getUserByGoogleId(ws.googleId);
-            if (!user) {
-                console.error('[createForumThread] User not found for googleId:', ws.googleId.substring(0, 20) + '...');
-                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
-                return;
-            }
-        } catch (verifyErr) {
-            console.error('[createForumThread] Verification error:', verifyErr);
-            ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
-            return;
         }
         if (!data.categoryId) {
             console.error('[createForumThread] Category ID missing');
@@ -4747,14 +4728,14 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
 
-        // Restriction: Only admins can create threads in Manuals subcategories
+        // Restriction: Only admins can create threads in Manuals subcategories (guests are not admin)
         try {
             const categories = await db.getForumCategories();
             const category = categories.find(c => c.id === data.categoryId);
             if (category && category.parent_id) {
                 const parent = categories.find(p => p.id === category.parent_id);
                 if (parent && parent.name === 'Manuals' && !ws.isAdmin) {
-                    console.warn(`[createForumThread] Non-admin user ${ws.name} attempted to create thread in Manuals subcategory: ${category.name}`);
+                    console.warn(`[createForumThread] Non-admin user ${ws.name || 'Guest'} attempted to create thread in Manuals subcategory: ${category.name}`);
                     ws.send(msgpack.encode({ type: 'error', message: 'Only administrators can create threads in Manuals subcategories' }));
                     return;
                 }
@@ -4783,22 +4764,18 @@ function handleWebSocketConnection(ws, req) {
             ALLOWED_ATTR: []
         });
         
-        // Protect # in [code] blocks so DOMPurify doesn't convert them to space, then restore after
-        const contentForSanitize = protectHashInCodeBlocks(contentValidation.value);
-        const sanitizedContent = restoreHashInCodeBlocks(purify.sanitize(contentForSanitize, {
+        const sanitizedContent = purify.sanitize(contentValidation.value, {
             ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre'], // Allow basic formatting
             ALLOWED_ATTR: []
-        }));
+        });
         
         try {
-            console.log('[createForumThread] Creating thread in category:', data.categoryId);
-            // Use ws.name (username) if available, otherwise fallback to googleId for lookup
-            const authorId = ws.name || ws.username || ws.googleId;
-            const threadId = await db.createForumThread(data.categoryId, sanitizedTitle, ws.googleId);
-            console.log('[createForumThread] Thread created with ID:', threadId, 'author stored as googleId:', ws.googleId, 'display name:', ws.name);
+            console.log('[createForumThread] Creating thread in category:', data.categoryId, 'author:', authorId);
+            const threadId = await db.createForumThread(data.categoryId, sanitizedTitle, authorId);
+            console.log('[createForumThread] Thread created with ID:', threadId, 'author:', authorId);
             
             // Create the first post with the thread content
-            await db.createForumPost(threadId, ws.googleId, sanitizedContent);
+            await db.createForumPost(threadId, authorId, sanitizedContent);
             console.log('[createForumThread] First post created for thread:', threadId);
             
             // Auto-verify code for Objects/Functions categories
@@ -4871,12 +4848,11 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         
-        // Protect # in [code] blocks so DOMPurify doesn't convert them to space, then restore after
-        const contentForSanitize = protectHashInCodeBlocks(contentValidation.value);
-        const sanitizedContent = restoreHashInCodeBlocks(purify.sanitize(contentForSanitize, {
+        // Sanitize content to prevent XSS
+        const sanitizedContent = purify.sanitize(contentValidation.value, {
             ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre'], // Allow basic formatting
             ALLOWED_ATTR: []
-        }));
+        });
         
         try {
             const postId = await db.createForumPost(data.threadId, ws.googleId, sanitizedContent);
@@ -5319,12 +5295,10 @@ function handleWebSocketConnection(ws, req) {
                 return;
             }
             
-            // Protect # in [code] blocks so DOMPurify doesn't convert them to space, then restore after
-            const contentForSanitize = protectHashInCodeBlocks(contentValidation.value);
-            const sanitizedContent = restoreHashInCodeBlocks(purify.sanitize(contentForSanitize, {
+            const sanitizedContent = purify.sanitize(contentValidation.value, {
                 ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre'],
                 ALLOWED_ATTR: []
-            }));
+            });
 
             await db.updateForumPost(data.postId, sanitizedContent);
             ws.send(msgpack.encode({ type: 'forumPostUpdated', postId: data.postId }));
