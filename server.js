@@ -2050,6 +2050,35 @@ function handleWebSocketConnection(ws, req) {
         } else {
             console.log(`[DebugGiveLoot] Added ${itemDesc} to ${ws.username || ws.googleId}'s inventory`);
         }
+      } else if (data.type === 'npcGiveSpellcards') {
+        // Spellcard NPC (client-rendered) - add all 3 spellcards to user inventory
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        const user = await db.getUserByGoogleId(ws.googleId);
+        if (!user) {
+            ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            return;
+        }
+        if (!user.inventory) user.inventory = [];
+        const spellcards = [
+            { name: 'spellcard', displayName: 'Shield Spellcard', activeAbility: 'shield', stats: [] },
+            { name: 'spellcard', displayName: 'Heal Zone Spellcard', activeAbility: 'heal_zone', stats: [] },
+            { name: 'spellcard', displayName: 'Explosion Spellcard', activeAbility: 'explosion', stats: [] }
+        ];
+        spellcards.forEach(sc => user.inventory.push(sc));
+        await db.updateUser(ws.googleId, user);
+        ws.send(msgpack.encode({
+            type: 'playerData',
+            playerData: {
+                stats: user.stats,
+                inventory: user.inventory,
+                equipment: user.equipment,
+                name: user.name,
+                username: user.username
+            }
+        }));
       } else if (data.type === 'equipItem') {
         // Handle equipping an item
         if (!ws.googleId) {
