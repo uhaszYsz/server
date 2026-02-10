@@ -4855,8 +4855,51 @@ function handleWebSocketConnection(ws, req) {
         });
         
         try {
+            // First-reply-in-General reward: one random outfit for first reply (not thread create) in General
+            let giveFirstReplyOutfit = false;
+            const thread = await db.getForumThread(data.threadId);
+            if (thread) {
+                const categories = await db.getForumCategories();
+                const generalCat = categories.find(c => (c.name || '').toLowerCase() === 'general');
+                if (generalCat && thread.category_id === generalCat.id) {
+                    const existingPosts = await db.getForumPosts(data.threadId);
+                    const isReply = existingPosts && existingPosts.length >= 1;
+                    if (isReply) {
+                        const replyCount = await db.countUserRepliesInCategory(ws.googleId, generalCat.id);
+                        if (replyCount === 0) giveFirstReplyOutfit = true;
+                    }
+                }
+            }
+
             const postId = await db.createForumPost(data.threadId, ws.googleId, sanitizedContent);
             ws.send(msgpack.encode({ type: 'forumPostCreated', postId }));
+
+            if (giveFirstReplyOutfit) {
+                const user = await db.getUserByGoogleId(ws.googleId);
+                if (user) {
+                    const outfitEntry = OUTFIT_LIST[Math.floor(Math.random() * OUTFIT_LIST.length)];
+                    const outfitItem = {
+                        name: 'outfit',
+                        displayName: outfitEntry.displayName,
+                        characterIndex: outfitEntry.characterIndex,
+                        stats: []
+                    };
+                    if (!user.inventory) user.inventory = [];
+                    user.inventory.push(outfitItem);
+                    await db.updateUser(ws.googleId, user);
+                    ws.send(msgpack.encode({
+                        type: 'randomOutfitGranted',
+                        playerData: {
+                            username: user.name,
+                            name: user.name,
+                            stats: user.stats,
+                            inventory: user.inventory,
+                            equipment: user.equipment
+                        }
+                    }));
+                    console.log(`[createForumPost] First reply in General: granted outfit "${outfitItem.displayName}" to ${user.name || ws.googleId}`);
+                }
+            }
         } catch (error) {
             console.error('Failed to create forum post', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to create forum post' }));

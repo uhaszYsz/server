@@ -603,6 +603,19 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
 // or createObject(90, 160, "myObject", "myType"); // with type[/code]`
     },
     {
+        name: 'typeSet',
+        threadTitle: 'typeSet(typename)',
+        content: `Sets the type of the current (already running) object and runs that type's code. Use on an object that was already spawned to apply type codes at runtime (e.g. createObject without typeName, or to switch type). Type function runs at the start of the next frame.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]typename[/color][/b] - [i]Name of the type (type function) to apply to this object.[/i]
+
+[b][color=#ffa500]Returns: true if pending type was set, false otherwise.[/color][/b]
+
+[b]Example:[/b]
+[code]typeSet("myType"); // Apply type "myType" to this object next frame[/code]`
+    },
+    {
         name: 'makeDraggable',
         threadTitle: 'makeDraggable()',
         content: `Makes the current codeChild draggable (like the player). The object must call this function each frame to remain draggable.

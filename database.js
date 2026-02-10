@@ -1408,6 +1408,24 @@ export function getForumPostById(postId) {
     });
 }
 
+/** Count posts by user in a category that are replies (not the first post of each thread). */
+export function countUserRepliesInCategory(googleId, categoryId) {
+    return new Promise((resolve, reject) => {
+        db.get(`
+            SELECT COUNT(*) as cnt FROM forum_posts p
+            INNER JOIN forum_threads t ON p.thread_id = t.id
+            WHERE t.category_id = ? AND p.author = ?
+            AND p.id <> (SELECT MIN(id) FROM forum_posts WHERE thread_id = p.thread_id)
+        `, [categoryId, googleId], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(row ? row.cnt : 0);
+        });
+    });
+}
+
 export function createForumPost(threadId, author, content) {
     return new Promise((resolve, reject) => {
         db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)', 
