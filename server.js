@@ -2,7 +2,6 @@
 import { WebSocketServer } from 'ws';
 import { promises as fs, readFileSync, existsSync } from 'fs';
 import path from 'path';
-import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { Encoder } from 'msgpackr';
 import * as db from './database.js';
@@ -110,10 +109,6 @@ const __dirname = path.dirname(__filename);
 const levelsDirectory = path.join(__dirname, 'levels');
 const weaponsDirectory = path.join(__dirname, 'weapons');
 const DEFAULT_CAMPAIGN_LEVEL_FILE = 'lev.json'; // Default slug for campaign level
-
-// App files directory for OTA updates (should point to MyApplication/app/src/main/assets/www)
-// You can set this to the actual path where your app files are located
-const APP_FILES_DIRECTORY = path.join(__dirname, '..', 'MyApplication', 'app', 'src', 'main', 'assets', 'www');
 
 const OPENAI_KEY_FILE = path.join(__dirname, 'oak.txt');
 const OAUTH_CLIENT_ID_FILE = path.join(__dirname, 'oauth.txt');
@@ -1048,161 +1043,6 @@ httpApp.get('/privacy', (req, res) => {
         res.sendFile(privacyPolicyPath);
     } else {
         res.status(404).send('Privacy policy not found');
-    }
-});
-
-// Calculate file hash (MD5) for version checking
-async function calculateFileHash(filePath) {
-    try {
-        const content = await fs.readFile(filePath);
-        return crypto.createHash('md5').update(content).digest('hex');
-    } catch (error) {
-        return null;
-    }
-}
-
-// Recursively get all files in a directory with their hashes
-async function getFileManifest(dir, baseDir = dir) {
-    const manifest = {};
-    try {
-        const entries = await fs.readdir(dir, { withFileTypes: true });
-        
-        for (const entry of entries) {
-            const fullPath = path.join(dir, entry.name);
-            const relativePath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
-            
-            if (entry.isDirectory()) {
-                const subManifest = await getFileManifest(fullPath, baseDir);
-                Object.assign(manifest, subManifest);
-            } else if (entry.isFile()) {
-                const hash = await calculateFileHash(fullPath);
-                if (hash) {
-                    manifest[relativePath] = {
-                        hash,
-                        size: (await fs.stat(fullPath)).size
-                    };
-                }
-            }
-        }
-    } catch (error) {
-        console.error(`Error reading directory ${dir}:`, error);
-    }
-    
-    return manifest;
-}
-
-// Endpoint: Get update manifest (list of all files with hashes)
-httpApp.get('/api/app/update/manifest', async (req, res) => {
-    try {
-        if (!existsSync(APP_FILES_DIRECTORY)) {
-            return res.status(404).json({ error: 'App files directory not found' });
-        }
-        
-        const manifest = await getFileManifest(APP_FILES_DIRECTORY);
-        res.json({ manifest, timestamp: Date.now() });
-    } catch (error) {
-        console.error('Error generating manifest:', error);
-        res.status(500).json({ error: 'Failed to generate manifest' });
-    }
-});
-
-// Endpoint: Check for updates (compare client manifest with server)
-httpApp.post('/api/app/update/check', async (req, res) => {
-    try {
-        if (!existsSync(APP_FILES_DIRECTORY)) {
-            return res.status(404).json({ error: 'App files directory not found' });
-        }
-        
-        const clientManifest = req.body.manifest || {};
-        const serverManifest = await getFileManifest(APP_FILES_DIRECTORY);
-        
-        // Find files that need updating
-        const filesToUpdate = [];
-        for (const [filePath, serverFile] of Object.entries(serverManifest)) {
-            const clientFile = clientManifest[filePath];
-            if (!clientFile || clientFile.hash !== serverFile.hash) {
-                filesToUpdate.push(filePath);
-            }
-        }
-        
-        // Find files that exist on server but not on client
-        for (const filePath of Object.keys(serverManifest)) {
-            if (!clientManifest[filePath]) {
-                filesToUpdate.push(filePath);
-            }
-        }
-        
-        res.json({
-            needsUpdate: filesToUpdate.length > 0,
-            filesToUpdate,
-            totalFiles: Object.keys(serverManifest).length
-        });
-    } catch (error) {
-        console.error('Error checking updates:', error);
-        res.status(500).json({ error: 'Failed to check updates' });
-    }
-});
-
-// Endpoint: Download a specific file
-httpApp.get('/api/app/update/file/:filePath(*)', async (req, res) => {
-    try {
-        const filePath = req.params.filePath;
-        
-        // Security: prevent path traversal
-        if (filePath.includes('..') || path.isAbsolute(filePath)) {
-            return res.status(400).json({ error: 'Invalid file path' });
-        }
-        
-        const fullPath = path.join(APP_FILES_DIRECTORY, filePath);
-        
-        // Ensure file is within app files directory
-        const resolvedPath = path.resolve(fullPath);
-        const resolvedBase = path.resolve(APP_FILES_DIRECTORY);
-        if (!resolvedPath.startsWith(resolvedBase)) {
-            return res.status(403).json({ error: 'Access denied' });
-        }
-        
-        if (!existsSync(fullPath)) {
-            return res.status(404).json({ error: 'File not found' });
-        }
-        
-        const stats = await fs.stat(fullPath);
-        if (!stats.isFile()) {
-            return res.status(400).json({ error: 'Not a file' });
-        }
-        
-        // Set appropriate headers
-        res.setHeader('Content-Type', 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filePath)}"`);
-        
-        // Stream file
-        const fileStream = await fs.readFile(fullPath);
-        res.send(fileStream);
-    } catch (error) {
-        console.error('Error downloading file:', error);
-        res.status(500).json({ error: 'Failed to download file' });
-    }
-});
-
-// Endpoint: Download multiple files as ZIP (for batch updates)
-httpApp.post('/api/app/update/download-batch', async (req, res) => {
-    try {
-        const { files } = req.body;
-        if (!Array.isArray(files) || files.length === 0) {
-            return res.status(400).json({ error: 'Files array required' });
-        }
-        
-        // For now, return file list - client can download individually
-        // In production, you might want to create a ZIP file
-        res.json({
-            files: files.map(filePath => ({
-                path: filePath,
-                url: `/api/app/update/file/${encodeURIComponent(filePath)}`
-            }))
-        });
-    } catch (error) {
-        console.error('Error preparing batch download:', error);
-        res.status(500).json({ error: 'Failed to prepare batch download' });
     }
 });
 
