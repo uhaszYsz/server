@@ -1062,6 +1062,7 @@ const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 const GITHUB_WWW_PATH = process.env.GITHUB_WWW_PATH || 'app/src/main/assets/www';  // path inside repo to www folder
 
 let _githubToken = null;
+let _githubBranch = null;  // resolved default branch (cached)
 function getGitHubToken() {
     if (_githubToken !== null) return _githubToken;
     try {
@@ -1097,7 +1098,15 @@ async function getGitHubFileManifest() {
         throw new Error('Invalid GITHUB_REPO (use owner/repo)');
     }
     const baseUrl = `https://api.github.com/repos/${owner}/${repo}`;
-    const branchRes = await fetchGitHub(`${baseUrl}/branches/${encodeURIComponent(GITHUB_BRANCH)}`);
+
+    // Fetch repo first to get default_branch (avoids 404 if branch is "master" or different)
+    const repoRes = await fetchGitHub(baseUrl);
+    const repoData = await repoRes.json();
+    const branchName = repoData.default_branch || GITHUB_BRANCH;
+    if (!branchName) throw new Error('Could not get default branch');
+    _githubBranch = branchName;
+
+    const branchRes = await fetchGitHub(`${baseUrl}/branches/${encodeURIComponent(branchName)}`);
     const branch = await branchRes.json();
     const commitSha = branch.commit?.sha;
     if (!commitSha) throw new Error('Could not get branch commit');
@@ -1121,8 +1130,9 @@ async function getGitHubFileManifest() {
 
 async function getGitHubFileContent(filePath) {
     const [owner, repo] = GITHUB_REPO.split('/');
+    const branch = _githubBranch || GITHUB_BRANCH;
     const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${GITHUB_WWW_PATH.replace(/\\/g, '/')}/${encodedPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${GITHUB_WWW_PATH.replace(/\\/g, '/')}/${encodedPath}?ref=${encodeURIComponent(branch)}`;
     const res = await fetchGitHub(url);
     const data = await res.json();
     if (data.content == null) throw new Error('File not found or not a file');
