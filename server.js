@@ -1060,6 +1060,7 @@ const GITHUB_TOKEN_FILE = path.join(__dirname, 'github-token.txt');
 const GITHUB_REPO = process.env.GITHUB_REPO || 'uhaszYsz/danmakuRaiders';
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 const GITHUB_WWW_PATH = process.env.GITHUB_WWW_PATH || 'app/src/main/assets/www';  // path inside repo to www folder
+const OTA_EXCLUDE_PREFIXES = ['sprites/bosses/'];  // paths to exclude from OTA updates (never download)
 
 let _githubToken = null;
 let _githubBranch = null;  // resolved default branch (cached)
@@ -1123,6 +1124,7 @@ async function getGitHubFileManifest() {
         const p = node.path;
         if (prefix && !p.startsWith(prefix + '/') && p !== prefix) continue;
         const relative = prefix ? p.slice(prefix.length).replace(/^\//, '') : p;
+        if (OTA_EXCLUDE_PREFIXES.some(ex => relative.startsWith(ex))) continue;
         manifest[relative] = { hash: node.sha, size: node.size };
     }
     return manifest;
@@ -1177,9 +1179,14 @@ httpApp.post('/api/app/update/check', async (req, res) => {
             if (!clientManifest[filePath]) filesToUpdate.push(filePath);
         }
         const unique = [...new Set(filesToUpdate)];
+        const fileHashes = {};
+        for (const p of unique) {
+            if (serverManifest[p]) fileHashes[p] = serverManifest[p].hash;
+        }
         res.json({
             needsUpdate: unique.length > 0,
             filesToUpdate: unique,
+            fileHashes,
             totalFiles: Object.keys(serverManifest).length
         });
     } catch (error) {
@@ -1197,6 +1204,9 @@ httpApp.get('/api/app/update/file/:filePath(*)', async (req, res) => {
         const filePath = req.params.filePath;
         if (filePath.includes('..') || path.isAbsolute(filePath)) {
             return res.status(400).json({ error: 'Invalid file path' });
+        }
+        if (OTA_EXCLUDE_PREFIXES.some(ex => filePath.startsWith(ex))) {
+            return res.status(403).json({ error: 'Path excluded from OTA updates' });
         }
         const content = await getGitHubFileContent(filePath);
         res.setHeader('Content-Type', 'application/octet-stream');
