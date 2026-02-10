@@ -12,6 +12,7 @@ import { JSDOM } from 'jsdom';
 import * as spritesDb from './spritesDatabase.js';
 import OpenAI from 'openai';
 import express from 'express';
+import http from 'http';
 import https from 'https';
 import { fork } from 'child_process';
 
@@ -1046,7 +1047,154 @@ httpApp.get('/privacy', (req, res) => {
     }
 });
 
-// HTTP/HTTPS servers disabled - only WSS WebSocket server runs
+// ========== OTA updates from GitHub (private repo supported via token) ==========
+const GITHUB_TOKEN_FILE = path.join(__dirname, 'github-token.txt');
+const GITHUB_REPO = process.env.GITHUB_REPO || 'your-username/your-repo';  // e.g. 'owner/repo'
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
+const GITHUB_WWW_PATH = process.env.GITHUB_WWW_PATH || 'MyApplication/app/src/main/assets/www';  // path inside repo to www folder
+
+let _githubToken = null;
+function getGitHubToken() {
+    if (_githubToken !== null) return _githubToken;
+    try {
+        if (existsSync(GITHUB_TOKEN_FILE)) {
+            _githubToken = readFileSync(GITHUB_TOKEN_FILE, 'utf8').trim();
+            return _githubToken;
+        }
+    } catch (e) {
+        console.error('[OTA] Failed to read github-token.txt:', e.message);
+    }
+    _githubToken = '';
+    return _githubToken;
+}
+
+async function fetchGitHub(url, options = {}) {
+    const token = getGitHubToken();
+    const headers = {
+        Accept: 'application/vnd.github.v3+json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...options.headers
+    };
+    const res = await fetch(url, { ...options, headers });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`GitHub API ${res.status}: ${text.slice(0, 200)}`);
+    }
+    return res;
+}
+
+async function getGitHubFileManifest() {
+    const [owner, repo] = GITHUB_REPO.split('/');
+    if (!owner || !repo) {
+        throw new Error('Invalid GITHUB_REPO (use owner/repo)');
+    }
+    const baseUrl = `https://api.github.com/repos/${owner}/${repo}`;
+    const branchRes = await fetchGitHub(`${baseUrl}/branches/${encodeURIComponent(GITHUB_BRANCH)}`);
+    const branch = await branchRes.json();
+    const commitSha = branch.commit?.sha;
+    if (!commitSha) throw new Error('Could not get branch commit');
+    const commitRes = await fetchGitHub(`${baseUrl}/git/commits/${commitSha}`);
+    const commit = await commitRes.json();
+    const treeSha = commit.tree?.sha;
+    if (!treeSha) throw new Error('Could not get tree sha');
+    const treeRes = await fetchGitHub(`${baseUrl}/git/trees/${treeSha}?recursive=1`);
+    const tree = await treeRes.json();
+    const prefix = GITHUB_WWW_PATH.replace(/\\/g, '/').replace(/\/$/, '');
+    const manifest = {};
+    for (const node of tree.tree || []) {
+        if (node.type !== 'blob') continue;
+        const p = node.path;
+        if (prefix && !p.startsWith(prefix + '/') && p !== prefix) continue;
+        const relative = prefix ? p.slice(prefix.length).replace(/^\//, '') : p;
+        manifest[relative] = { hash: node.sha, size: node.size };
+    }
+    return manifest;
+}
+
+async function getGitHubFileContent(filePath) {
+    const [owner, repo] = GITHUB_REPO.split('/');
+    const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${GITHUB_WWW_PATH.replace(/\\/g, '/')}/${encodedPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
+    const res = await fetchGitHub(url);
+    const data = await res.json();
+    if (data.content == null) throw new Error('File not found or not a file');
+    const content = Buffer.from(data.content, data.encoding || 'base64');
+    return content;
+}
+
+function otaUnavailable(res, message) {
+    res.status(503).json({ error: 'OTA unavailable', message });
+}
+
+// GET /api/app/update/manifest — list of files and hashes from GitHub
+httpApp.get('/api/app/update/manifest', async (req, res) => {
+    try {
+        if (!getGitHubToken()) {
+            return otaUnavailable(res, 'Configure github-token.txt for private repo access');
+        }
+        const manifest = await getGitHubFileManifest();
+        res.json({ manifest, timestamp: Date.now() });
+    } catch (error) {
+        console.error('[OTA] Error generating manifest:', error.message);
+        res.status(500).json({ error: 'Failed to generate manifest', message: error.message });
+    }
+});
+
+// POST /api/app/update/check — compare client manifest with GitHub, return files to update
+httpApp.post('/api/app/update/check', async (req, res) => {
+    try {
+        if (!getGitHubToken()) {
+            return otaUnavailable(res, 'Configure github-token.txt for private repo access');
+        }
+        const clientManifest = req.body.manifest || {};
+        const serverManifest = await getGitHubFileManifest();
+        const filesToUpdate = [];
+        for (const [filePath, serverFile] of Object.entries(serverManifest)) {
+            const clientFile = clientManifest[filePath];
+            if (!clientFile || clientFile.hash !== serverFile.hash) {
+                filesToUpdate.push(filePath);
+            }
+        }
+        for (const filePath of Object.keys(serverManifest)) {
+            if (!clientManifest[filePath]) filesToUpdate.push(filePath);
+        }
+        const unique = [...new Set(filesToUpdate)];
+        res.json({
+            needsUpdate: unique.length > 0,
+            filesToUpdate: unique,
+            totalFiles: Object.keys(serverManifest).length
+        });
+    } catch (error) {
+        console.error('[OTA] Error checking updates:', error.message);
+        res.status(500).json({ error: 'Failed to check updates', message: error.message });
+    }
+});
+
+// GET /api/app/update/file/:filePath(*) — stream file from GitHub
+httpApp.get('/api/app/update/file/:filePath(*)', async (req, res) => {
+    try {
+        if (!getGitHubToken()) {
+            return otaUnavailable(res, 'Configure github-token.txt for private repo access');
+        }
+        const filePath = req.params.filePath;
+        if (filePath.includes('..') || path.isAbsolute(filePath)) {
+            return res.status(400).json({ error: 'Invalid file path' });
+        }
+        const content = await getGitHubFileContent(filePath);
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filePath)}"`);
+        res.send(content);
+    } catch (error) {
+        console.error('[OTA] Error downloading file:', error.message);
+        res.status(404).json({ error: 'Failed to download file', message: error.message });
+    }
+});
+
+// Start HTTP server for OTA updates and privacy policy (port 8082)
+const httpServer = http.createServer(httpApp);
+httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
+    console.log(`✅ HTTP server for OTA updates running on port ${HTTP_PORT}`);
+});
 
 // Create WebSocket server - WSS only (secure)
 let wss;

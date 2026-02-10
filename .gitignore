@@ -9,3 +9,6 @@ sprites.db-journal
 # Local OpenAI key (do not commit)
 oak.txt
 
+# GitHub token for OTA updates (private repo) - do not commit
+github-token.txt
+
