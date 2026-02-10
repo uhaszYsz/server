@@ -1049,9 +1049,9 @@ httpApp.get('/privacy', (req, res) => {
 
 // ========== OTA updates from GitHub (private repo supported via token) ==========
 const GITHUB_TOKEN_FILE = path.join(__dirname, 'github-token.txt');
-const GITHUB_REPO = process.env.GITHUB_REPO || 'your-username/your-repo';  // e.g. 'owner/repo'
+const GITHUB_REPO = process.env.GITHUB_REPO || 'uhaszYsz/danmakuRaiders';
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
-const GITHUB_WWW_PATH = process.env.GITHUB_WWW_PATH || 'MyApplication/app/src/main/assets/www';  // path inside repo to www folder
+const GITHUB_WWW_PATH = process.env.GITHUB_WWW_PATH || 'app/src/main/assets/www';  // path inside repo to www folder
 
 let _githubToken = null;
 function getGitHubToken() {
