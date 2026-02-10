@@ -12,6 +12,7 @@ import { JSDOM } from 'jsdom';
 import * as spritesDb from './spritesDatabase.js';
 import OpenAI from 'openai';
 import express from 'express';
+import cors from 'cors';
 import http from 'http';
 import https from 'https';
 import { fork } from 'child_process';
@@ -1026,6 +1027,13 @@ if (existsSync(SSL_CERT_PATH) && existsSync(SSL_KEY_PATH)) {
 
 // Middleware
 httpApp.use(express.json());
+
+// CORS - required for WebView (file:// origin = "null") to fetch OTA endpoints
+httpApp.use(cors({
+    origin: (orig, cb) => cb(null, orig || '*'),  // allow any origin, incl. null
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Serve privacy policy
 httpApp.get('/privacy-policy', (req, res) => {
