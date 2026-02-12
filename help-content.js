@@ -65,6 +65,20 @@ repeat(5)
 #createBullet(x,y,5,direction-15*i)
 #i++[/code]
 [i]Creates 5 bullets in a spread pattern using a counter variable.[/i]`
+    },
+    {
+        name: 'interval',
+        threadTitle: 'interval(frames)',
+        content: `Runs a block every N frames. Frame-based timer (NOT like JavaScript setInterval). Synchronous and deterministic.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]frames[/color][/b] - [i]Number of frames between each execution of the block.[/i]
+
+[b]Example:[/b]
+[code]interval(20)
+#if x > 20
+##hp++[/code]
+[i]Runs the block every 20 frames. Equivalent to: def timer = 20; timer--; if (timer <= 0) { timer = 20; ... }[/i]`
     }
 ];
 

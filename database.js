@@ -476,6 +476,36 @@ export function getUserByGoogleIdHash(googleIdHash) {
     });
 }
 
+// Get full raw user row by Google ID (all columns for "see my data" / GDPR-style export)
+export function getUserRawByGoogleId(googleId) {
+    const googleIdHash = hashGoogleId(googleId);
+    return new Promise((resolve, reject) => {
+        db.get('SELECT * FROM users WHERE googleIdHash = ?', [googleIdHash], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            if (!row) {
+                resolve(null);
+                return;
+            }
+            const raw = {
+                id: row.id,
+                googleIdHash: row.googleIdHash,
+                name: row.name || null,
+                stats: row.stats ? JSON.parse(row.stats) : {},
+                inventory: row.inventory ? JSON.parse(row.inventory) : [],
+                equipment: row.equipment ? JSON.parse(row.equipment) : {},
+                weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
+                passiveAbility: row.passiveAbility || null,
+                rank: row.rank || 'player',
+                verified: row.verified || null
+            };
+            resolve(raw);
+        });
+    });
+}
+
 // Verify user by Google ID (no email needed - ID token already verified by Google)
 export function verifyUserByGoogleId(googleId) {
     return new Promise(async (resolve, reject) => {

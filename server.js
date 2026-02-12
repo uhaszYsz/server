@@ -1060,7 +1060,12 @@ const GITHUB_TOKEN_FILE = path.join(__dirname, 'github-token.txt');
 const GITHUB_REPO = process.env.GITHUB_REPO || 'uhaszYsz/danmakuRaiders';
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 const GITHUB_WWW_PATH = process.env.GITHUB_WWW_PATH || 'app/src/main/assets/www';  // path inside repo to www folder
-const OTA_EXCLUDE_PREFIXES = ['sprites/bosses/'];  // paths to exclude from OTA updates (never download)
+const OTA_EXCLUDE_PREFIXES = [
+    'sprites/bosses/',      // DragonBones boss assets - load always from APK
+    'lib/dragonBones',      // DragonBones library
+    'lib/pixi.min',         // PIXI (DragonBones dependency)
+    'ui/dragonbones'        // DragonBones UI module
+];  // paths to exclude from OTA updates (never download)
 
 let _githubToken = null;
 let _githubBranch = null;  // resolved default branch (cached)
@@ -1931,6 +1936,22 @@ function handleWebSocketConnection(ws, req) {
             }));
         } else {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+        }
+      } else if (data.type === 'getMyUserData') {
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in', fromGetMyUserData: true }));
+            return;
+        }
+        try {
+            const user = await db.getUserRawByGoogleId(ws.googleId);
+            if (!user) {
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found', fromGetMyUserData: true }));
+                return;
+            }
+            ws.send(msgpack.encode({ type: 'myUserData', user }));
+        } catch (err) {
+            console.error('[getMyUserData] Error:', err);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to get user data', fromGetMyUserData: true }));
         }
       } else if (data.type === 'getRandomOutfit') {
         // Admin only: add a random outfit item to the player's inventory
