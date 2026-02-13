@@ -262,6 +262,20 @@ move(10, 0); // moves 10 pixels to the right[/code]`
 [code]var value = rand(-100, 100); // random number between -100 and 100[/code]`
     },
     {
+        name: 'choose',
+        threadTitle: 'choose(...values)',
+        content: `Returns one random value from the given arguments. Each argument has equal chance of being selected.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]values[/color][/b] - [i]Any number of values (numbers, strings, etc.).[/i]
+
+[b][color=#ffa500]Returns: one of the given values, chosen at random.[/color][/b]
+
+[b]Example:[/b]
+[code]var dir = choose(0, 90, 180, 270); // random direction
+var speed = choose(3, 5, 8); // random speed[/code]`
+    },
+    {
         name: 'isEnemy',
         threadTitle: 'isEnemy()',
         content: `Marks the current object as an enemy. When called, the object will have isEnemy=true and will be added to the global enemyList.
