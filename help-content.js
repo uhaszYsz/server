@@ -68,21 +68,17 @@ repeat(5)
     },
     {
         name: 'interval',
-        threadTitle: 'interval(frames, cond1, cond2, ...)',
+        threadTitle: 'interval(frames)',
         content: `Runs a block every N frames. Frame-based timer (NOT like JavaScript setInterval). Synchronous and deterministic.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]frames[/color][/b] - [i]Number of frames between each execution of the block.[/i]
-[b][color=#90ee90]cond1, cond2, ...[/color][/b] - [i]Optional. Boolean conditions. ALL must be true for the interval to run. If any is false, the timer pauses (no decrement, no block execution).[/i]
 
 [b]Example:[/b]
 [code]interval(20)
 #if x > 20
-##hp++
-
-interval(cooldown, ammo > 0, !paused)
-#createBullet(x, y, 5, dir, 2)[/code]
-[i]First: runs every 20 frames. Second: runs every cooldown frames only when ammo > 0 and not paused. Timer pauses when conditions are false.[/i]`
+##hp++[/code]
+[i]Runs the block every 20 frames. Equivalent to: def timer = 20; timer--; if (timer <= 0) { timer = 20; ... }[/i]`
     }
 ];
 

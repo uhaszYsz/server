@@ -3139,21 +3139,13 @@ function handleWebSocketConnection(ws, req) {
             }
         }
       } else if (data.type === 'uploadedLevel') {
-        if (!ws.username) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
-            return;
-        }
-
         try {
             const levelPayload = data.level ?? { name: data.name, data: data.data };
             const { fileName, sanitizedPayload } = sanitizeLevelPayload(levelPayload);
-            const uploaderGoogleId = ws.googleId;
+            // Use Google ID for logged-in users, or Guest_<clientId> for unregistered users
+            const uploaderGoogleId = ws.googleId || ('Guest_' + ws.id);
             let forumThreadId = null;
             let forumPostId = null;
-
-            if (!uploaderGoogleId) {
-                throw new Error('Unable to determine uploader googleId');
-            }
 
             // Check if level already exists and is owned by this user
             const existingLevel = await db.getStageBySlug(fileName);
