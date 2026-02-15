@@ -75,10 +75,10 @@ repeat(5)
 [b][color=#90ee90]frames[/color][/b] - [i]Number of frames between each execution of the block.[/i]
 
 [b]Example:[/b]
-[code]interval(20)
+[code]if interval(20)
 #if x > 20
 ##hp++[/code]
-[i]Runs the block every 20 frames. Equivalent to: def timer = 20; timer--; if (timer <= 0) { timer = 20; ... }[/i]`
+[i]Runs the block every 20 frames. Use [color=#90ee90]if interval(frames)[/color] followed by an indented block. Equivalent to: def timer = 20; timer--; if (timer <= 0) { timer = 20; ... }[/i]`
     }
 ];
 
@@ -91,7 +91,26 @@ export const builtInVariablesHelp = [
     {
         name: 'bulletData',
         content: `Array of all existing bullets and their parameters. Use inBullet() to iterate. When looping, [color=#ffa500]Type[/color] is in [color=#ffa500]bulletTypes[i][/color] (0 = player, 1 = enemy). Bullets are removed by the engine (collision, out of bounds).
-[b]Properties:[/b] [color=#ffa500]Id[/color], [color=#ffa500]X[/color], [color=#ffa500]Y[/color], [color=#ffa500]Vx[/color], [color=#ffa500]Vy[/color], [color=#ffa500]R[/color], [color=#ffa500]G[/color], [color=#ffa500]B[/color], [color=#ffa500]Alpha[/color], [color=#ffa500]Size[/color], [color=#ffa500]ScaleY[/color], [color=#ffa500]Rotation[/color], [color=#ffa500]Lifetime[/color], [color=#ffa500]Homing[/color], [color=#ffa500]Spin[/color], [color=#ffa500]Shape[/color], [color=#ffa500]Type[/color] (bulletTypes[i]), [color=#ffa500]GlowSize[/color], [color=#ffa500]GlowPower[/color], [color=#ffa500]GlowR[/color], [color=#ffa500]GlowG[/color], [color=#ffa500]GlowB[/color]`
+
+[b]Properties:[/b]
+[color=#ffa500]Id[/color] - [i]Unique bullet ID. Use with deleteBullet(id) or inBullet(id).[/i]
+[color=#ffa500]X[/color], [color=#ffa500]Y[/color] - [i]Position in world coordinates.[/i]
+[color=#ffa500]Vx[/color], [color=#ffa500]Vy[/color] - [i]Velocity components (pixels per frame).[/i]
+[color=#ffa500]Speed[/color] - [i]Read-only: magnitude of velocity. Use Direction to change heading.[/i]
+[color=#ffa500]Direction[/color] - [i]Angle in degrees (0=right, 90=up). Derived from Vx,Vy.[/i]
+[color=#ffa500]Color[/color] - [i]Bullet color as hex (e.g. Color = "#FF0000" for red).[/i]
+[color=#ffa500]Alpha[/color] - [i]Opacity 0-1 (0=invisible, 1=opaque).[/i]
+[color=#ffa500]Size[/color] - [i]Bullet radius in pixels.[/i]
+[color=#ffa500]ScaleY[/color] - [i]Vertical scale (1=circle, less than 1=ellipse).[/i]
+[color=#ffa500]Rotation[/color] - [i]Rotation in radians (internal). Use Direction for angle.[/i]
+[color=#ffa500]Lifetime[/color] - [i]Frame counter (-1=infinite). Increments each frame.[/i]
+[color=#ffa500]Homing[/color] - [i]Homing strength in degrees. Bullet turns toward player.[/i]
+[color=#ffa500]Spin[/color] - [i]Spin velocity in radians per frame.[/i]
+[color=#ffa500]Shape[/color] - [i]Shape index (0=circle, etc.).[/i]
+[color=#ffa500]Type[/color] - [i]In bulletTypes[i]: 0=player bullet, 1=enemy bullet.[/i]
+[color=#ffa500]GlowSize[/color] - [i]Glow radius (-1=use default).[/i]
+[color=#ffa500]GlowPower[/color] - [i]Glow intensity 0-1 (-1=default).[/i]
+[color=#ffa500]ColorGlow[/color] - [i]Glow color as hex (e.g. ColorGlow = "#FF0000" for red glow).[/i]`
     },
     {
         name: 'bulletCount',
@@ -274,6 +293,90 @@ move(10, 0); // moves 10 pixels to the right[/code]`
 [b]Example:[/b]
 [code]var dir = choose(0, 90, 180, 270); // random direction
 var speed = choose(3, 5, 8); // random speed[/code]`
+    },
+    {
+        name: 'listShuffle',
+        threadTitle: 'listShuffle(arr)',
+        content: `Shuffles an array in place using Fisher-Yates algorithm. Modifies the array and returns it.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]arr[/color][/b] - [i]Array to shuffle.[/i]
+
+[b][color=#ffa500]Returns: the same array (shuffled in place).[/color][/b]
+
+[b]Example:[/b]
+[code]var items = [1, 2, 3, 4, 5];
+listShuffle(items); // items is now randomly ordered[/code]`
+    },
+    {
+        name: 'listFilterOut',
+        threadTitle: 'listFilterOut(array, value)',
+        content: `Removes all occurrences of value from array. Modifies array in place.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]array[/color][/b] - [i]Array to modify.[/i]
+[b][color=#90ee90]value[/color][/b] - [i]Value to remove (all occurrences).[/i]
+
+[b][color=#ffa500]Returns: the same array (modified in place).[/color][/b]
+
+[b]Example:[/b]
+[code]var list = [1, 22, 3, 22];
+listFilterOut(list, 22); // list is now [1, 3][/code]`
+    },
+    {
+        name: 'listAdd',
+        threadTitle: 'listAdd(array, value)',
+        content: `Pushes value to end of array. Modifies array in place.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]array[/color][/b] - [i]Array to modify.[/i]
+[b][color=#90ee90]value[/color][/b] - [i]Value to add.[/i]
+
+[b][color=#ffa500]Returns: the same array (modified in place).[/color][/b]
+
+[b]Example:[/b]
+[code]var list = [1, 2]; listAdd(list, 3); // list is now [1, 2, 3][/code]`
+    },
+    {
+        name: 'listFind',
+        threadTitle: 'listFind(array, value)',
+        content: `Returns first index of value in array.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]array[/color][/b] - [i]Array to search.[/i]
+[b][color=#90ee90]value[/color][/b] - [i]Value to find.[/i]
+
+[b][color=#ffa500]Returns: index (0-based) or -1 if not found.[/color][/b]
+
+[b]Example:[/b]
+[code]var i = listFind([1, 22, 3], 22); // returns 1[/code]`
+    },
+    {
+        name: 'listPop',
+        threadTitle: 'listPop(array)',
+        content: `Removes and returns the last element of array.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]array[/color][/b] - [i]Array to pop from.[/i]
+
+[b][color=#ffa500]Returns: the removed element, or undefined if empty.[/color][/b]
+
+[b]Example:[/b]
+[code]var last = listPop(list); // removes last, returns it[/code]`
+    },
+    {
+        name: 'listRemove',
+        threadTitle: 'listRemove(array, value)',
+        content: `Removes all occurrences of value from array. Modifies array in place.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]array[/color][/b] - [i]Array to modify.[/i]
+[b][color=#90ee90]value[/color][/b] - [i]Value to remove (all occurrences).[/i]
+
+[b][color=#ffa500]Returns: the same array (modified in place).[/color][/b]
+
+[b]Example:[/b]
+[code]listRemove(list, 22); // removes all 22s[/code]`
     },
     {
         name: 'isEnemy',
@@ -670,6 +773,22 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
 [code]var bulletId = createBullet(x, y, 5, 90, 2, [255, 0, 0], 1, 1.0, 0, 2.0, 0.3);[/code]`
     },
     {
+        name: 'deleteBullet',
+        threadTitle: 'deleteBullet(id)',
+        content: `Removes a bullet by its ID (from createBullet or inBullet).
+
+[b]Arguments:[/b]
+[b][color=#90ee90]id[/color][/b] - [i]Bullet ID to remove.[/i]
+
+[b][color=#ffa500]Returns:[/color][/b] true if bullet was removed, false if not found.
+
+[b]Example:[/b]
+[code]var bid = createBullet(x, y, 5, 90, 2);
+if interval(60)
+#deleteBullet(bid)[/code]
+[i]Creates a bullet and removes it after 60 frames.[/i]`
+    },
+    {
         name: 'drawAnimated',
         threadTitle: 'drawAnimated(x, y, name, anim, bones, scaleX, scaleY)',
         content: `Displays an animated character sprite at specified position.
@@ -938,7 +1057,13 @@ export const arrayMethodsHelp = [
     { name: 'array.map(fn)', content: `Transform array` },
     { name: 'array.filter(fn)', content: `Filter array` },
     { name: 'array.find(fn)', content: `Find first match` },
-    { name: 'array.join(sep)', content: `Join to string` }
+    { name: 'array.join(sep)', content: `Join to string` },
+    { name: 'listShuffle(arr)', content: `Shuffle array in place` },
+    { name: 'listFilterOut(array, value)', content: `Remove all occurrences of value` },
+    { name: 'listAdd(array, value)', content: `Push value to end` },
+    { name: 'listFind(array, value)', content: `Find first index of value` },
+    { name: 'listPop(array)', content: `Pop and return last element` },
+    { name: 'listRemove(array, value)', content: `Remove all occurrences of value` }
 ];
 
 export const stringMethodsHelp = [
