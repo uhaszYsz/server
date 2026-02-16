@@ -789,6 +789,69 @@ if interval(60)
 [i]Creates a bullet and removes it after 60 frames.[/i]`
     },
     {
+        name: 'surfaceSet',
+        threadTitle: 'surfaceSet(surfaceName)',
+        content: `Sets the current surface for subsequent createBullet and draw calls (drawCircle, drawLine, drawSprite, etc.). Creates the surface if it doesn't exist. Main surface is drawn by default; other surfaces only when you call drawSurface().
+
+[b]Arguments:[/b]
+[b][color=#90ee90]surfaceName[/color][/b] - [i]Surface name (e.g. "main" or "test").[/i]
+
+[b]Example:[/b]
+[code]surfaceSet("test");
+createBullet(x, y, 5, 270, 5);
+drawCircle(x, y, 3);
+surfaceReset();
+createBullet(x, y, 3, 0, 2);[/code]`
+    },
+    {
+        name: 'surfaceReset',
+        threadTitle: 'surfaceReset()',
+        content: `Resets the current surface to main. Equivalent to surfaceSet("main").
+
+[b]Example:[/b]
+[code]surfaceSet("back");
+createBullet(x, y, 3, 0, 2);
+surfaceReset();[/code]`
+    },
+    {
+        name: 'drawBlendSet',
+        threadTitle: 'drawBlendSet(mode)',
+        content: `Sets the blend mode for subsequent draw calls (drawCircle, drawLine, drawSprite, drawBackground). Use drawBlendReset() to restore normal.
+
+[b]Modes:[/b]
+[color=#90ee90]normal[/color] - [i]Default alpha blending.[/i]
+[color=#90ee90]additive[/color] - [i]Additive blending (glow, light effects).[/i]
+[color=#90ee90]subtract[/color] - [i]Subtract blending (cutout/hole - punches through current surface to reveal layers below).[/i]
+
+[b]Example:[/b]
+[code]surfaceSet("top");
+drawCircle(50, 50, 20);
+drawBlendSet("subtract");
+drawCircle(90, 90, 15);  // Hole in top surface
+drawBlendReset();[/code]`
+    },
+    {
+        name: 'drawBlendReset',
+        threadTitle: 'drawBlendReset()',
+        content: `Resets blend mode to normal. Equivalent to drawBlendSet("normal").`
+    },
+    {
+        name: 'drawSurface',
+        threadTitle: 'drawSurface(surfaceName, x, y, xscale, yscale, alpha, depth)',
+        content: `Draws a surface's bullets, shapes (drawCircle, drawLine), sprites (drawSprite, drawSheetSprite), and backgrounds (drawBackground) at position (x,y) with scale (xscale,yscale), alpha, and depth for z-ordering. Surfaces other than "main" are NOT drawn automatically.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]surfaceName[/color][/b] - [i]Surface name to draw.[/i]
+[color=#9acd32]x, y[/color] - [i]Position offset. Default 0.[/i]
+[color=#9acd32]xscale, yscale[/color] - [i]Scale factors. Default 1.[/i]
+[color=#9acd32]alpha[/color] - [i]Opacity 0-1. Default 1.[/i]
+[color=#9acd32]depth[/color] - [i]Z-order for sorting. Default 0.[/i]
+
+[b]Example:[/b]
+[code]drawSurface("back", 0, 0, 1, 1, 0.5, -10);[/code]
+[i]Draws "back" surface at 50% alpha, behind main.[/i]`
+    },
+    {
         name: 'drawAnimated',
         threadTitle: 'drawAnimated(x, y, name, anim, bones, scaleX, scaleY)',
         content: `Displays an animated character sprite at specified position.
