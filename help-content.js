@@ -95,19 +95,20 @@ export const builtInVariablesHelp = [
 [b]Properties:[/b]
 [color=#ffa500]Id[/color] - [i]Unique bullet ID. Use with deleteBullet(id) or inBullet(id).[/i]
 [color=#ffa500]X[/color], [color=#ffa500]Y[/color] - [i]Position in world coordinates.[/i]
-[color=#ffa500]Vx[/color], [color=#ffa500]Vy[/color] - [i]Velocity components (pixels per frame).[/i]
-[color=#ffa500]Speed[/color] - [i]Read-only: magnitude of velocity. Use Direction to change heading.[/i]
-[color=#ffa500]Direction[/color] - [i]Angle in degrees (0=right, 90=up). Derived from Vx,Vy.[/i]
+[color=#ffa500]Vx[/color], [color=#ffa500]Vy[/color] - [i](Internal)Don't use this one, use Speed and Direction instead[/i]
+[color=#ffa500]Speed[/color] - [i]Moves bullet basing on Direction (pixels per frame).[/i]
+[color=#ffa500]Direction[/color] - [i]Direction of bullet movement(0-360, 0 = right).[/i]
 [color=#ffa500]Color[/color] - [i]Bullet color as hex (e.g. Color = "#FF0000" for red).[/i]
 [color=#ffa500]Alpha[/color] - [i]Opacity 0-1 (0=invisible, 1=opaque).[/i]
 [color=#ffa500]Size[/color] - [i]Bullet radius in pixels.[/i]
 [color=#ffa500]ScaleY[/color] - [i]Vertical scale (1=circle, less than 1=ellipse).[/i]
-[color=#ffa500]Rotation[/color] - [i]Rotation in radians (internal). Use Direction for angle.[/i]
-[color=#ffa500]Lifetime[/color] - [i]Frame counter (-1=infinite). Increments each frame.[/i]
+[color=#ffa500]Rotation[/color] - [i]Rotation in radians (internal, 0-3.14).[/i]
+[color=#ffa500]Lifetime[/color] - [i]Tells how long bullet exists.[/i]
 [color=#ffa500]Homing[/color] - [i]Homing strength in degrees. Bullet turns toward player.[/i]
 [color=#ffa500]Spin[/color] - [i]Spin velocity in radians per frame.[/i]
-[color=#ffa500]Shape[/color] - [i]Shape index (0=circle, etc.).[/i]
+[color=#ffa500]Shape[/color] - [i]Shape index: 0=circle, 1=square, 2=triangle, 3=diamond, 4=star, 5=scross.[/i]
 [color=#ffa500]Type[/color] - [i]In bulletTypes[i]: 0=player bullet, 1=enemy bullet.[/i]
+[color=#ffa500]Surface[/color] - [i]Do Surface = "surfaceName" to set bullet on that surface. "main" is default.[/i]
 [color=#ffa500]GlowSize[/color] - [i]Glow radius (-1=use default).[/i]
 [color=#ffa500]GlowPower[/color] - [i]Glow intensity 0-1 (-1=default).[/i]
 [color=#ffa500]ColorGlow[/color] - [i]Glow color as hex (e.g. ColorGlow = "#FF0000" for red glow).[/i]`
@@ -172,6 +173,30 @@ self.speed = 2;[/code]`
 
 [b]Example:[/b]
 [code]var dir = getDirection(100, 200);[/code]`
+    },
+    {
+        name: 'getDirectionFromTo',
+        threadTitle: 'getDirectionFromTo(fromX, fromY, toX, toY)',
+        content: `Direction in degrees from (fromX, fromY) to (toX, toY). Use for fluid splat direction.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]fromX, fromY[/color][/b] - [i]Start point.[/i]
+[b][color=#90ee90]toX, toY[/color][/b] - [i]End point.[/i]
+
+[b]Example:[/b]
+[code]fluidSplat(x, y, 0.002, getDirectionFromTo(lx, ly, x, y), 10, "#66b3ff");[/code]`
+    },
+    {
+        name: 'getDistanceFromTo',
+        threadTitle: 'getDistanceFromTo(fromX, fromY, toX, toY)',
+        content: `Distance between (fromX, fromY) and (toX, toY).
+
+[b]Arguments:[/b]
+[b][color=#90ee90]fromX, fromY[/color][/b] - [i]Start point.[/i]
+[b][color=#90ee90]toX, toY[/color][/b] - [i]End point.[/i]
+
+[b]Example:[/b]
+[code]var d = getDistanceFromTo(lx, ly, x, y);[/code]`
     },
     {
         name: 'normalizeAngle',
@@ -240,6 +265,21 @@ self.speed = 2;[/code]`
 
 [b]Example:[/b]
 [code]var offsetY = lenDirY(10, 90); // returns 10 (straight up)[/code]`
+    },
+    {
+        name: 'hsvToHex',
+        threadTitle: 'hsvToHex(h, s, v)',
+        content: `Converts HSV to hex color string.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]h[/color][/b] - [i]Hue 0-360.[/i]
+[b][color=#90ee90]s[/color][/b] - [i]Saturation 0-1 or 0-100.[/i]
+[b][color=#90ee90]v[/color][/b] - [i]Value 0-1 or 0-100.[/i]
+
+[b][color=#ffa500]Returns: "#rrggbb" hex string.[/color][/b]
+
+[b]Example:[/b]
+[code]var color = hsvToHex(200, 0.8, 1); // blue[/code]`
     },
     {
         name: 'move',
