@@ -177,14 +177,14 @@ self.speed = 2;[/code]`
     {
         name: 'getDirectionFromTo',
         threadTitle: 'getDirectionFromTo(fromX, fromY, toX, toY)',
-        content: `Direction in degrees from (fromX, fromY) to (toX, toY). Use for fluid splat direction.
+        content: `Direction in degrees from (fromX, fromY) to (toX, toY).
 
 [b]Arguments:[/b]
 [b][color=#90ee90]fromX, fromY[/color][/b] - [i]Start point.[/i]
 [b][color=#90ee90]toX, toY[/color][/b] - [i]End point.[/i]
 
 [b]Example:[/b]
-[code]fluidSplat(x, y, 0.002, getDirectionFromTo(lx, ly, x, y), 10, "#66b3ff");[/code]`
+[code]var dir = getDirectionFromTo(lx, ly, x, y);[/code]`
     },
     {
         name: 'getDistanceFromTo',
@@ -877,19 +877,21 @@ drawBlendReset();[/code]`
     },
     {
         name: 'drawSurface',
-        threadTitle: 'drawSurface(surfaceName, x, y, xscale, yscale, alpha, depth)',
-        content: `Draws a surface's bullets, shapes (drawCircle, drawLine), sprites (drawSprite, drawSheetSprite), and backgrounds (drawBackground) at position (x,y) with scale (xscale,yscale), alpha, and depth for z-ordering. Surfaces other than "main" are NOT drawn automatically.
+        threadTitle: 'drawSurface(surfaceName, x, y, angle, xscale, yscale, alpha, depth)',
+        content: `Draws a surface's bullets, shapes (drawCircle, drawLine), sprites (drawSprite, drawSheetSprite), and backgrounds (drawBackground) at position (x,y) with scale (xscale,yscale), alpha, depth, and angle for z-ordering. Surfaces other than "main" are NOT drawn automatically.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]surfaceName[/color][/b] - [i]Surface name to draw.[/i]
 [color=#9acd32]x, y[/color] - [i]Position offset. Default 0.[/i]
+[color=#9acd32]angle[/color] - [i]Rotation in degrees around (x,y). Default 0.[/i]
 [color=#9acd32]xscale, yscale[/color] - [i]Scale factors. Default 1.[/i]
 [color=#9acd32]alpha[/color] - [i]Opacity 0-1. Default 1.[/i]
 [color=#9acd32]depth[/color] - [i]Z-order for sorting. Default 0.[/i]
 
 [b]Example:[/b]
-[code]drawSurface("back", 0, 0, 1, 1, 0.5, -10);[/code]
-[i]Draws "back" surface at 50% alpha, behind main.[/i]`
+[code]drawSurface("back", 0, 0, 0, 1, 1, 0.5, -10);
+drawSurface("front", 0, 0, 45, 1, 1, 1, -1);[/code]
+[i]Draws "back" at 50% alpha; "front" rotated 45°.[/i]`
     },
     {
         name: 'drawAnimated',
@@ -1004,19 +1006,22 @@ drawBackground(0, 0, "bg1")[/code]`
     },
     {
         name: 'drawBackground',
-        threadTitle: 'drawBackground(x, y, name)',
+        threadTitle: 'drawBackground(x, y, name, angle, color)',
         content: `Draws a background buffer at specified position.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]x position to draw at.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]y position to draw at.[/i]
 [b][color=#90ee90]name[/color][/b] - [i]Name of the background buffer (from background("name")).[/i]
+[color=#9acd32]angle[/color] - [i]Optional rotation in degrees around (x,y).[/i]
+[color=#9acd32]color[/color] - [i]Optional tint (hex or RGBA).[/i]
 
 [b]Example:[/b]
 [code]background("myBg")
 #drawCircle(0, 0, 4)
 // Later:
-drawBackground(90, 160, "myBg")[/code]`
+drawBackground(90, 160, "myBg")
+drawBackground(0, 0, "myBg", 45, "#FF0000")[/code]`
     },
     {
         name: 'musicPlay',
