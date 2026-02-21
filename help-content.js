@@ -144,6 +144,24 @@ export const builtInVariablesHelp = [
     {
         name: 'Id',
         content: `Unique ID of this codeChild`
+    },
+    {
+        name: 'myBullets',
+        content: `Set of bullet IDs created by [b]this object[/b] via createBullet(). Only populated when your code references [b]myBullets[/b] at least once (e.g. inBullet(myBullets)); otherwise the list stays inactive and bullets are not tracked.
+
+[b]Use:[/b]
+[code]inBullet(myBullets)
+#Alpha = 0.5[/code]
+[i]Affects only bullets created by this object.[/i]
+
+[b]Count:[/b] Use [color=#ffa500]myBullets.size[/color] (Set has .size, not .length).
+
+[b]Example:[/b]
+[code]createBullet(x, y, 5, direction, 2)
+inBullet(myBullets)
+#Speed = 3
+if (myBullets.size > 10)
+#deleteBullet(Id)[/code]`
     }
 ];
 
