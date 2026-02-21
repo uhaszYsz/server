@@ -2530,20 +2530,26 @@ function handleWebSocketConnection(ws, req) {
         }
       }
 
-      // WebRTC signaling: forward SDP/ICE between peers (only in game room; no game data through server)
-      else if (data.type === 'webrtc-signal') {
-        const targetId = data.targetPeerId;
-        const signalType = data.signalType;
-        const payload = data.payload;
-        if (targetId == null || !signalType || payload == null) return;
-        const target = clients.get(Number(targetId)) || clients.get(String(targetId)) || clients.get(targetId);
-        if (!target || target.readyState !== (target.OPEN ?? 1)) return;
-        target.send(msgpack.encode({
-          type: 'webrtc-signal',
-          fromPeerId: ws.id,
-          signalType: signalType,
-          payload: payload
-        }));
+      // In-quest player position: client sends every 2 frames; server broadcasts to all other clients in game room
+      else if (data.type === 'gamePlayerPosition' && ws.room) {
+        const room = rooms.get(ws.room);
+        if (!room || room.type !== 'game' || !room.clients) return;
+        const x = typeof data.x === 'number' ? data.x : 0;
+        const y = typeof data.y === 'number' ? data.y : 0;
+        const hp = data.hp;
+        const targetTime = data.targetTime != null ? data.targetTime : null;
+        const payload = msgpack.encode({
+          type: 'playerUpdate',
+          id: ws.id,
+          username: ws.username || null,
+          data: { x, y, hp },
+          targetTime: targetTime
+        });
+        for (const client of room.clients) {
+          if (client !== ws && client.readyState === (client.OPEN ?? 1)) {
+            client.send(payload);
+          }
+        }
       }
 
       // When a client sends a message to their room
