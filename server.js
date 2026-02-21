@@ -908,8 +908,8 @@ const IP_CONNECTION_RATE_LIMIT = 30; // Max connections per IP per window
 const IP_CONNECTION_WINDOW_MS = 60000; // 1 minute window
 const ipConnectionAttempts = new Map(); // IP -> {count, resetTime}
 
-// Message rate limiting per connection
-const MESSAGE_RATE_LIMIT = 100; // Max messages per connection per window
+// Message rate limiting per connection (game sends position every 2 frames + stage state + HP etc.)
+const MESSAGE_RATE_LIMIT = 300; // Max messages per connection per window (was 100; game traffic can spike)
 const MESSAGE_RATE_WINDOW_MS = 1000; // 1 second window
 const connectionMessageCounts = new Map(); // ws.id -> {count, resetTime}
 
