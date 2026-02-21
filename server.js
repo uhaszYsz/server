@@ -2720,59 +2720,18 @@ function handleWebSocketConnection(ws, req) {
       } else if (data.type === 'playerDamageReport' && ws.room) {
         const room = rooms.get(ws.room);
         if (!room) return;
-        const party = findPartyByMemberId(ws.id);
-        if (!party) return;
-        
-        // Check if fun mode is enabled (default to false)
-        // We'll determine this by checking if hp is in the message (fun mode ON sends hp, fun mode OFF doesn't)
-        const funModeEnabled = data.hp !== undefined;
-        
-        if (funModeEnabled) {
-            // Fun mode ON: Broadcast to everyone directly
-            for (const client of room.clients) {
-                if (client.readyState === ws.OPEN) {
-                    client.send(msgpack.encode({
-                        type: 'playerDamageReport',
-                        playerId: ws.username || data.playerId,
-                        damage: data.damage,
-                        hp: data.hp,
-                        knockbackDirX: data.knockbackDirX,
-                        knockbackDirY: data.knockbackDirY
-                    }));
-                }
-            }
-        } else {
-            // Fun mode OFF: 
-            // If leader sent this (with hp field), it's the broadcast - send to everyone
-            // Otherwise, forward to leader for processing
-            if (party.leader === ws.id && data.hp !== undefined) {
-                // Leader is broadcasting with authoritative HP - send to everyone
-                for (const client of room.clients) {
-                    if (client.readyState === ws.OPEN) {
-                        client.send(msgpack.encode({
-                            type: 'playerDamageReport',
-                            playerId: data.playerId,
-                            damage: data.damage,
-                            hp: data.hp,
-                            knockbackDirX: data.knockbackDirX,
-                            knockbackDirY: data.knockbackDirY
-                        }));
-                    }
-                }
-            } else {
-                // Forward to leader for processing (leader will send broadcast with hp)
-                const leaderClient = clients.get(party.leader);
-                if (leaderClient && leaderClient.readyState === ws.OPEN) {
-                    leaderClient.send(msgpack.encode({
-                        type: 'playerDamageReport',
-                        playerId: ws.username || data.playerId,
-                        damage: data.damage,
-                        currentHp: data.currentHp,
-                        knockbackDirX: data.knockbackDirX,
-                        knockbackDirY: data.knockbackDirY
-                    }));
-                }
-            }
+        // Each client sends after applying damage locally; broadcast to everyone
+        const payload = {
+          type: 'playerDamageReport',
+          playerId: ws.username || data.playerId,
+          damage: data.damage,
+          hp: data.hp,
+          knockbackDirection: data.knockbackDirection
+        };
+        for (const client of room.clients) {
+          if (client.readyState === ws.OPEN) {
+            client.send(msgpack.encode(payload));
+          }
         }
       } else if (data.type === 'playerHpUpdate' && ws.room) {
         // Leader sends HP update - broadcast to all party members
