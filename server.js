@@ -2584,6 +2584,23 @@ function handleWebSocketConnection(ws, req) {
         }
       }
 
+      // Leader sends stage simulation state; server adds timestamp (NTP + 1s) and broadcasts to room
+      else if (data.type === 'stageSimulationState' && ws.room) {
+        const party = findPartyByMemberId(ws.id);
+        if (!party || party.leader !== ws.id) return;
+        const room = rooms.get(ws.room);
+        if (!room || room.type !== 'game' || !room.clients) return;
+        const state = data.state;
+        if (!state || !Array.isArray(state.codeChildren)) return;
+        const timestamp = globalTimer + 1000;
+        const payload = msgpack.encode({ type: 'stageSimulationState', state, timestamp });
+        for (const client of room.clients) {
+          if (client.readyState === (client.OPEN ?? 1)) {
+            client.send(payload);
+          }
+        }
+      }
+
       // When a client sends a message to their room
       else if (data.type === 'message' && ws.room) {
         const room = rooms.get(ws.room);
