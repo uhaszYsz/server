@@ -2538,6 +2538,8 @@ function handleWebSocketConnection(ws, req) {
         const y = typeof data.y === 'number' ? data.y : 0;
         const hp = data.hp;
         const targetTime = data.targetTime != null ? data.targetTime : null;
+        ws.gameX = x;
+        ws.gameY = y;
         const payload = msgpack.encode({
           type: 'playerUpdate',
           id: ws.id,
@@ -2548,6 +2550,36 @@ function handleWebSocketConnection(ws, req) {
         for (const client of room.clients) {
           if (client !== ws && client.readyState === (client.OPEN ?? 1)) {
             client.send(payload);
+          }
+        }
+        // Server-only ready line check: when all party members in this room are above the line, broadcast gameReady (once)
+        const READY_LINE_Y = 160.5; // Half of world height 321; Y increases upward, "above" = y > READY_LINE_Y
+        if (!room.startTime) {
+          const party = findPartyByMemberId(ws.id);
+          if (party) {
+            let allAbove = true;
+            for (const memberId of party.members) {
+              const memberClient = clients.get(memberId);
+              if (!memberClient || memberClient.room !== ws.room) {
+                allAbove = false;
+                break;
+              }
+              if (memberClient.gameY === undefined || memberClient.gameY <= READY_LINE_Y) {
+                allAbove = false;
+                break;
+              }
+            }
+            if (allAbove) {
+              room.startTime = Date.now();
+              const startTime = globalTimer + 2000;
+              const readyPayload = msgpack.encode({ type: 'gameReady', startTime });
+              for (const client of room.clients) {
+                if (client.readyState === (client.OPEN ?? 1)) {
+                  client.send(readyPayload);
+                }
+              }
+              console.log(`⏱️ Game room ${ws.room} ready line crossed by all, startTime=${startTime}`);
+            }
           }
         }
       }
@@ -3924,31 +3956,7 @@ function handleWebSocketConnection(ws, req) {
             }
         }
       } else if (data.type === 'gameReady') {
-        // Handle game ready message from party leader to start timer
-        if (!ws.username) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
-            return;
-        }
-
-        // Find the party this player belongs to
-        const party = findPartyByMemberId(ws.id);
-        if (!party || party.leader !== ws.id) {
-            console.warn(`Non-leader ${ws.username} tried to send gameReady`);
-            return; // Only leader can send ready
-        }
-
-        // Get the game room
-        const room = ws.room ? rooms.get(ws.room) : null;
-        if (!room || room.type !== 'game') {
-            console.warn(`Party leader ${ws.username} sent gameReady but not in a game room`);
-            return;
-        }
-
-        // Set start time for this game room (only if not already set)
-        if (!room.startTime) {
-            room.startTime = Date.now();
-            console.log(`⏱️ Game room ${ws.room} started timer at ${room.startTime}`);
-        }
+        // No longer used: ready is determined by server from positions (gamePlayerPosition). Ignore client-sent gameReady.
       } else if (data.type === 'raidCompleted') {
         // Only accept raid completion from party leader
         if (!ws.username) {
