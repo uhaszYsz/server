@@ -976,7 +976,8 @@ function checkMessageRateLimit(wsId) {
         // First message or window expired, start new window
         connectionMessageCounts.set(wsId, {
             count: 1,
-            resetTime: now + MESSAGE_RATE_WINDOW_MS
+            resetTime: now + MESSAGE_RATE_WINDOW_MS,
+            byType: {}
         });
         return { allowed: true };
     }
@@ -1839,7 +1840,12 @@ function handleWebSocketConnection(ws, req) {
     // Check message rate limit
     const messageRateCheck = checkMessageRateLimit(ws.id);
     if (!messageRateCheck.allowed) {
-      console.warn(`⚠️  Message rate limit exceeded: ID=${ws.id}, IP=${ws.clientIP}`);
+      // Log per-type counts for this connection to find what's spamming
+      const counts = connectionMessageCounts.get(ws.id);
+      if (counts && counts.byType) {
+        const sorted = Object.entries(counts.byType).sort((a, b) => b[1] - a[1]);
+        console.warn(`⚠️  Message rate limit exceeded: ID=${ws.id}, IP=${ws.clientIP}. Counts by type:`, sorted.slice(0, 15));
+      }
       ws.close(1008, 'Message rate limit exceeded');
       return;
     }
@@ -1857,6 +1863,14 @@ function handleWebSocketConnection(ws, req) {
     
     try {
       const data = msgpack.decode(message);
+
+      // Track message counts by type (for rate-limit debugging)
+      const record = connectionMessageCounts.get(ws.id);
+      if (record) {
+        const type = (data && data.type) ? String(data.type) : 'unknown';
+        if (!record.byType) record.byType = {};
+        record.byType[type] = (record.byType[type] || 0) + 1;
+      }
       
       // Validate session if sessionId is provided (for authenticated requests)
       // Require both sessionId and googleId for security (bind session to Google ID)
