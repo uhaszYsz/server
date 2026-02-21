@@ -90,28 +90,28 @@ export const builtInVariablesHelp = [
     },
     {
         name: 'bulletData',
-        content: `Array of all existing bullets and their parameters. Use inBullet() to iterate. When looping, [color=#ffa500]Type[/color] is in [color=#ffa500]bulletTypes[i][/color] (0 = player, 1 = enemy). Bullets are removed by the engine (collision, out of bounds).
+        content: `Array of all existing bullets and their parameters. Use [color=#90ee90]inBullet()[/color] to iterate. When looping, [color=#ffa500]Type[/color] is in [color=#ffa500]bulletTypes[i][/color] ([color=#90ee90]0 = player, 1 = enemy[/color]). Bullets are removed by the engine (collision, out of bounds).
 
 [b]Properties:[/b]
-[color=#ffa500]Id[/color] - [i]Unique bullet ID. Use with deleteBullet(id) or inBullet(id).[/i]
-[color=#ffa500]X[/color], [color=#ffa500]Y[/color] - [i]Position in world coordinates.[/i]
-[color=#ffa500]Vx[/color], [color=#ffa500]Vy[/color] - [i](Internal)Don't use this one, use Speed and Direction instead[/i]
-[color=#ffa500]Speed[/color] - [i]Moves bullet basing on Direction (pixels per frame).[/i]
-[color=#ffa500]Direction[/color] - [i]Direction of bullet movement(0-360, 0 = right).[/i]
-[color=#ffa500]Color[/color] - [i]Bullet color as hex (e.g. Color = "#FF0000" for red).[/i]
-[color=#ffa500]Alpha[/color] - [i]Opacity 0-1 (0=invisible, 1=opaque).[/i]
-[color=#ffa500]Size[/color] - [i]Bullet radius in pixels.[/i]
-[color=#ffa500]ScaleY[/color] - [i]Vertical scale (1=circle, less than 1=ellipse).[/i]
-[color=#ffa500]Rotation[/color] - [i]Rotation in radians (internal, 0-3.14).[/i]
-[color=#ffa500]Lifetime[/color] - [i]Tells how long bullet exists.[/i]
-[color=#ffa500]Homing[/color] - [i]Homing strength in degrees. Bullet turns toward player.[/i]
-[color=#ffa500]Spin[/color] - [i]Spin velocity in radians per frame.[/i]
-[color=#ffa500]Shape[/color] - [i]Shape index: 0=circle, 1=square, 2=triangle, 3=diamond, 4=star, 5=scross.[/i]
-[color=#ffa500]Type[/color] - [i]In bulletTypes[i]: 0=player bullet, 1=enemy bullet.[/i]
-[color=#ffa500]Surface[/color] - [i]Do Surface = "surfaceName" to set bullet on that surface. "main" is default.[/i]
-[color=#ffa500]GlowSize[/color] - [i]Glow radius (-1=use default).[/i]
-[color=#ffa500]GlowPower[/color] - [i]Glow intensity 0-1 (-1=default).[/i]
-[color=#ffa500]ColorGlow[/color] - [i]Glow color as hex (e.g. ColorGlow = "#FF0000" for red glow).[/i]`
+[color=#ffa500]Id[/color] - [i]Unique bullet ID. Use with [color=#90ee90]deleteBullet(id)[/color] or [color=#90ee90]inBullet(id)[/color].[/i]
+[color=#ffa500]X[/color], [color=#ffa500]Y[/color] - [i]Position in [color=#90ee90]world coordinates[/color].[/i]
+[color=#ffa500]Vx[/color], [color=#ffa500]Vy[/color] - [i](Internal) Don't use; use [color=#90ee90]Speed[/color] and [color=#90ee90]Direction[/color] instead.[/i]
+[color=#ffa500]Speed[/color] - [i]Moves bullet from Direction ([color=#90ee90]pixels per frame[/color]).[/i]
+[color=#ffa500]Direction[/color] - [i]Direction of movement ([color=#90ee90]0-360[/color], 0 = right).[/i]
+[color=#ffa500]Color[/color] - [i]Bullet color as hex (e.g. [color=#90ee90]"#FF0000"[/color] for red).[/i]
+[color=#ffa500]Alpha[/color] - [i]Opacity [color=#90ee90]0-1[/color] (0=invisible, 1=opaque).[/i]
+[color=#ffa500]Size[/color] - [i]Bullet radius in [color=#90ee90]pixels[/color].[/i]
+[color=#ffa500]ScaleY[/color] - [i]Vertical scale ([color=#90ee90]1=circle[/color], &lt;1=ellipse).[/i]
+[color=#ffa500]Rotation[/color] - [i]Rotation in radians (internal, [color=#90ee90]0-3.14[/color]).[/i]
+[color=#ffa500]Lifetime[/color] - [i]Frames bullet exists ([color=#90ee90]-1 = infinite[/color]).[/i]
+[color=#ffa500]Homing[/color] - [i]Homing strength in [color=#90ee90]degrees[/color]. Bullet turns toward player.[/i]
+[color=#ffa500]Spin[/color] - [i]Spin velocity in [color=#90ee90]radians per frame[/color].[/i]
+[color=#ffa500]Shape[/color] - [i]Index: [color=#90ee90]0=circle, 1=square, 2=triangle, 3=diamond, 4=star, 5=scross[/color].[/i]
+[color=#ffa500]Type[/color] - [i]In [color=#90ee90]bulletTypes[i][/color]: 0=player bullet, 1=enemy bullet.[/i]
+[color=#ffa500]Surface[/color] - [i]Set via [color=#90ee90]Surface = "surfaceName"[/color]; [color=#90ee90]"main"[/color] is default.[/i]
+[color=#ffa500]GlowSize[/color] - [i]Glow radius ([color=#90ee90]-1=default[/color]).[/i]
+[color=#ffa500]GlowPower[/color] - [i]Glow intensity [color=#90ee90]0-1[/color] (-1=default).[/i]
+[color=#ffa500]ColorGlow[/color] - [i]Glow color as hex (e.g. [color=#90ee90]"#FF0000"[/color] for red glow).[/i]`
     },
     {
         name: 'bulletCount',
