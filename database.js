@@ -239,6 +239,11 @@ export function initDatabase() {
                                     return;
                                 }
                                 console.log('✅ Campaign levels table initialized');
+                                db.run(`ALTER TABLE campaign_levels ADD COLUMN times TEXT DEFAULT '[]'`, (err) => {
+                                    if (err && !err.message.includes('duplicate column name')) {
+                                        console.warn('Warning: Could not add campaign_levels.times column:', err.message);
+                                    }
+                                });
                                 
                                 // Create sessions table for authentication
                                 db.run(`
@@ -1926,11 +1931,13 @@ export function deleteStage(slug) {
 }
 
 // Campaign level functions
-export function createCampaignLevel(slug, name, data, uploadedBy) {
+// times: array of target times in seconds to beat (e.g. [155, 110, 90] for 2:35, 1:50, 1:30)
+export function createCampaignLevel(slug, name, data, uploadedBy, times = null) {
     return new Promise((resolve, reject) => {
+        const timesJson = JSON.stringify(Array.isArray(times) ? times : []);
         const stmt = db.prepare(`
-            INSERT INTO campaign_levels (slug, name, data, uploaded_by, uploaded_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO campaign_levels (slug, name, data, uploaded_by, uploaded_at, times)
+            VALUES (?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
@@ -1939,6 +1946,7 @@ export function createCampaignLevel(slug, name, data, uploadedBy) {
             JSON.stringify(data),
             uploadedBy,
             new Date().toISOString(),
+            timesJson,
             function(err) {
                 if (err) {
                     reject(err);
@@ -1965,14 +1973,20 @@ export function getCampaignLevelBySlug(slug) {
                 return;
             }
 
-            // Parse JSON data
+            // Parse JSON data; times = array of target times in seconds
+            let times = [];
+            try {
+                if (row.times != null && row.times !== '') times = JSON.parse(row.times);
+                if (!Array.isArray(times)) times = [];
+            } catch (_) {}
             const level = {
                 id: row.id,
                 slug: row.slug,
                 name: row.name,
                 data: JSON.parse(row.data),
                 uploadedBy: row.uploaded_by,
-                uploadedAt: row.uploaded_at
+                uploadedAt: row.uploaded_at,
+                times
             };
 
             resolve(level);
@@ -1988,42 +2002,45 @@ export function getAllCampaignLevels() {
                 return;
             }
 
-            // Parse JSON data for each level
-            const levels = rows.map(row => ({
-                id: row.id,
-                slug: row.slug,
-                name: row.name,
-                data: JSON.parse(row.data),
-                uploadedBy: row.uploaded_by,
-                uploadedAt: row.uploaded_at
-            }));
+            const levels = rows.map(row => {
+                let times = [];
+                try {
+                    if (row.times != null && row.times !== '') times = JSON.parse(row.times);
+                    if (!Array.isArray(times)) times = [];
+                } catch (_) {}
+                return {
+                    id: row.id,
+                    slug: row.slug,
+                    name: row.name,
+                    data: JSON.parse(row.data),
+                    uploadedBy: row.uploaded_by,
+                    uploadedAt: row.uploaded_at,
+                    times
+                };
+            });
 
             resolve(levels);
         });
     });
 }
 
-export function updateCampaignLevel(slug, name, data) {
+export function updateCampaignLevel(slug, name, data, times = undefined) {
     return new Promise((resolve, reject) => {
-        const stmt = db.prepare(`
-            UPDATE campaign_levels 
-            SET name = ?, data = ?
-            WHERE slug = ?
-        `);
-
-        stmt.run(
-            name,
-            JSON.stringify(data),
-            slug,
-            function(err) {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(this.changes > 0);
-                }
+        const setTimes = times !== undefined;
+        const sql = setTimes
+            ? `UPDATE campaign_levels SET name = ?, data = ?, times = ? WHERE slug = ?`
+            : `UPDATE campaign_levels SET name = ?, data = ? WHERE slug = ?`;
+        const stmt = db.prepare(sql);
+        const args = setTimes
+            ? [name, JSON.stringify(data), JSON.stringify(Array.isArray(times) ? times : []), slug]
+            : [name, JSON.stringify(data), slug];
+        stmt.run(...args, function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
             }
-        );
-
+        });
         stmt.finalize();
     });
 }

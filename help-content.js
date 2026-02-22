@@ -469,30 +469,32 @@ for(var i=0; i<enemies.length; i++) {
     },
     {
         name: 'turnTowards',
-        threadTitle: 'turnTowards(target, maxTurn)',
-        content: `Gradually turns the current direction towards target direction, limited by maxTurn degrees per frame.
+        threadTitle: 'turnTowards(direction, targetDirection, maxTurn)',
+        content: `Pure function: returns the new direction. Does not change any variable. Clamps the turn to maxTurn degrees per step.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]target[/color][/b] - [i]Target direction angle in degrees.[/i]
-[b][color=#90ee90]maxTurn[/color][/b] - [i]Maximum degrees to turn per frame.[/i]
+[b][color=#90ee90]direction[/color][/b] - [i]Current direction in degrees.[/i]
+[b][color=#90ee90]targetDirection[/color][/b] - [i]Target direction angle in degrees.[/i]
+[b][color=#90ee90]maxTurn[/color][/b] - [i]Maximum degrees to turn per step.[/i]
 
-[b][color=#ffa500]Returns: true if speed is greater than 0, false otherwise.[/color][/b]
+[b][color=#ffa500]Returns: new direction in degrees (0–360).[/color][/b]
 
 [b]Example:[/b]
-[code]turnTowards(90, 5); // turns up to 5 degrees towards 90[/code]`
+[code]direction = turnTowards(direction, 90, 5); // turn up to 5° towards 90
+direction = turnTowards(direction, getDirection(target.x, target.y), 5);[/code]`
     },
     {
         name: 'turnTowardsPlayer',
         threadTitle: 'turnTowardsPlayer(maxTurn)',
-        content: `Gradually turns the current direction towards the player, limited by maxTurn degrees per frame.
+        content: `Pure function: returns the new direction towards the player. Does not change any variable. Uses current direction and player position.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]maxTurn[/color][/b] - [i]Maximum degrees to turn per frame.[/i]
+[b][color=#90ee90]maxTurn[/color][/b] - [i]Maximum degrees to turn per step.[/i]
 
-[b][color=#ffa500]Returns: true if player exists and speed is greater than 0, false otherwise.[/color][/b]
+[b][color=#ffa500]Returns: new direction in degrees (0–360).[/color][/b]
 
 [b]Example:[/b]
-[code]turnTowardsPlayer(3);[/code]`
+[code]direction = turnTowardsPlayer(5);[/code]`
     },
     {
         name: 'waveStart',
@@ -684,31 +686,31 @@ sync(["x", "y", "hp"]); // sync but exclude x, y, hp[/code]`
     {
         name: 'drawSprite',
         threadTitle: 'drawSprite(x, y, name, scaleX, scaleY, rotation, color)',
-        content: `Draws a sprite from the server. spriteName must start with @ and end with .gif or .png. xScale and yScale are scale factors. color: optional hex color string or RGBA array to tint/blend the sprite.
+        content: `Draws a sprite from the server. spriteName must start with @ and end with .png. xScale and yScale are scale factors. color: optional hex color string or RGBA array to tint/blend the sprite.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]x position.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]y position.[/i]
-[b][color=#90ee90]name[/color][/b] - [i]Sprite filename; must start with @ and end with .gif or .png.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Sprite filename; must start with @ and end with .png.[/i]
 [b][color=#90ee90]scaleX[/color][/b] - [i]Horizontal scale factor.[/i]
 [b][color=#90ee90]scaleY[/color][/b] - [i]Vertical scale factor.[/i]
 [color=#9acd32]rotation[/color] - [i]Rotation in degrees. Optional.[/i]
 [color=#9acd32]color[/color] - [i]Hex color or RGBA array to tint. Optional.[/i]
 
 [b]Example:[/b]
-[code]drawSprite(90, 160, "@grassBlades.gif", 1, 1, 45); // GIF sprite, 1:1 scale, 45° rotation
-drawSprite(90, 160, "@sprite.png", 2, 1); // PNG sprite, 2x width, 1x height
+[code]drawSprite(90, 160, "@sprite.png", 1, 1, 45); // 1:1 scale, 45° rotation
+drawSprite(90, 160, "@sprite.png", 2, 1); // 2x width, 1x height
 drawSprite(90, 160, "@sprite.png", 1, 1, 0, "#FF0000"); // Red tinted sprite[/code]`
     },
     {
         name: 'drawSheetSprite',
         threadTitle: 'drawSheetSprite(x, y, name, frame, maxCellsX, maxCellsY)',
-        content: `Draws a frame from a spritesheet. spriteName must start with @ and end with .gif or .png. frame: frame index (0-based). maxCellsX: number of cells horizontally. maxCellsY: number of cells vertically.
+        content: `Draws a frame from a spritesheet. spriteName must start with @ and end with .png. frame: frame index (0-based). maxCellsX: number of cells horizontally. maxCellsY: number of cells vertically.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]x position.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]y position.[/i]
-[b][color=#90ee90]name[/color][/b] - [i]Spritesheet filename; must start with @ and end with .gif or .png.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Spritesheet filename; must start with @ and end with .png.[/i]
 [b][color=#90ee90]frame[/color][/b] - [i]Frame index (0-based).[/i]
 [b][color=#90ee90]maxCellsX[/color][/b] - [i]Number of cells horizontally in the sheet.[/i]
 [b][color=#90ee90]maxCellsY[/color][/b] - [i]Number of cells vertically in the sheet.[/i]
@@ -1007,6 +1009,57 @@ inBullet(bids)
 [b]Example:[/b]
 [code]var other = colideOtherObject(x, y, 8, "enemy", 6);
 if (other !== null) { other.hp -= 1; }[/code]`
+    },
+    {
+        name: 'objectNearest',
+        threadTitle: 'objectNearest(x, y, objectName)',
+        content: `Returns the nearest codeChild with the given objectName to point (x,y). Skips self.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]x[/color][/b] - [i]X position to measure from.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Y position to measure from.[/i]
+[b][color=#90ee90]objectName[/color][/b] - [i]Name of the code object (e.g. "enemy").[/i]
+
+[b][color=#ffa500]Returns: the nearest codeChild or null if none.[/color][/b]
+
+[b]Example:[/b]
+[code]var target = objectNearest(x, y, "enemy"); if (target) { direction = turnTowards(direction, getDirection(target.x, target.y), 5); }[/code]`
+    },
+    {
+        name: 'objectExists',
+        threadTitle: 'objectExists(objectName)',
+        content: `Returns true if at least one codeChild with the given objectName exists.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]objectName[/color][/b] - [i]Name of the code object (e.g. "enemy").[/i]
+
+[b][color=#ffa500]Returns: true if any exist, false otherwise.[/color][/b]
+
+[b]Example:[/b]
+[code]if (objectExists("enemy")) { /* spawn boss */ }[/code]`
+    },
+    {
+        name: 'objectCount',
+        threadTitle: 'objectCount(objectName)',
+        content: `Returns the number of codeChildren that have the given objectName.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]objectName[/color][/b] - [i]Name of the code object (e.g. "enemy").[/i]
+
+[b][color=#ffa500]Returns: count (number).[/color][/b]
+
+[b]Example:[/b]
+[code]var n = objectCount("enemy"); drawText(5, 5, "Enemies: " + n);[/code]`
+    },
+    {
+        name: 'playerNearest',
+        threadTitle: 'playerNearest()',
+        content: `Returns the nearest player (local or other) to the current instance. Same data as player (e.g. playerNearest().x, playerNearest().y).
+
+[b][color=#ffa500]Returns: player object or null if no valid player.[/color][/b]
+
+[b]Example:[/b]
+[code]var p = playerNearest(); if (p) { direction = turnTowards(direction, getDirection(p.x, p.y), 5); }[/code]`
     },
     {
         name: 'background',

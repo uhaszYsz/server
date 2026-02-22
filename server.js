@@ -668,11 +668,18 @@ function sanitizeLevelPayload(payload) {
         throw new Error('Level data is too large');
     }
 
+    // times: array of target times in seconds to beat (e.g. [155, 110, 90] for 2:35, 1:50, 1:30)
+    let times = [];
+    if (Array.isArray(payload.times)) {
+        times = payload.times.map(t => Number(t)).filter(n => !Number.isNaN(n) && n >= 0);
+    }
+
     return {
         fileName: slug,
         sanitizedPayload: {
             name: normalizedName,
-            data: payload.data
+            data: payload.data,
+            times
         }
     };
 }
@@ -2585,6 +2592,7 @@ function handleWebSocketConnection(ws, req) {
             }
             if (allAbove) {
               room.startTime = Date.now();
+              room.levelStartWallTime = Date.now() + 2000; // Level start = line cross + 2s (matches gameReady startTime)
               const startTime = globalTimer + 2000;
               const readyPayload = msgpack.encode({ type: 'gameReady', startTime });
               for (const client of room.clients) {
@@ -2594,23 +2602,6 @@ function handleWebSocketConnection(ws, req) {
               }
               console.log(`⏱️ Game room ${ws.room} ready line crossed by all, startTime=${startTime}`);
             }
-          }
-        }
-      }
-
-      // Leader sends stage simulation state; server adds timestamp (NTP + 1s) and broadcasts to room
-      else if (data.type === 'stageSimulationState' && ws.room) {
-        const party = findPartyByMemberId(ws.id);
-        if (!party || party.leader !== ws.id) return;
-        const room = rooms.get(ws.room);
-        if (!room || room.type !== 'game' || !room.clients) return;
-        const state = data.state;
-        if (!state || !Array.isArray(state.codeChildren)) return;
-        const timestamp = globalTimer + 1000;
-        const payload = msgpack.encode({ type: 'stageSimulationState', state, timestamp });
-        for (const client of room.clients) {
-          if (client.readyState === (client.OPEN ?? 1)) {
-            client.send(payload);
           }
         }
       }
@@ -3400,12 +3391,13 @@ function handleWebSocketConnection(ws, req) {
                     }));
                     return;
                 }
-                // Overwrite confirmed - update existing level
-                await db.updateCampaignLevel(fileName, sanitizedPayload.name, sanitizedPayload.data);
+                // Overwrite confirmed - update existing level (pass times only if client sent them)
+                const updateTimes = levelPayload.times !== undefined ? sanitizedPayload.times : undefined;
+                await db.updateCampaignLevel(fileName, sanitizedPayload.name, sanitizedPayload.data, updateTimes);
                 // Don't create/update lobby room for overwrites (it already exists)
             } else {
                 // New level or owned by different user - create new
-                await db.createCampaignLevel(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderGoogleId);
+                await db.createCampaignLevel(fileName, sanitizedPayload.name, sanitizedPayload.data, uploaderGoogleId, sanitizedPayload.times);
                 
                 // Update lobby rooms if needed (only for new levels)
                 const roomName = `lobby_${fileName}`;
@@ -3468,13 +3460,13 @@ function handleWebSocketConnection(ws, req) {
                 throw new Error('Filename and file data are required');
             }
 
-            // Validate filename (must be GIF or PNG)
-            if (!filename.toLowerCase().endsWith('.gif') && !filename.toLowerCase().endsWith('.png')) {
-                throw new Error('Only GIF and PNG files are allowed');
+            // Validate filename (PNG only; GIF not supported)
+            if (!filename.toLowerCase().endsWith('.png')) {
+                throw new Error('Only PNG files are allowed');
             }
 
             // Validate filename format (alphanumeric, underscore, hyphen, dot)
-            if (!/^[a-zA-Z0-9_.-]+\.(gif|png)$/i.test(filename)) {
+            if (!/^[a-zA-Z0-9_.-]+\.png$/i.test(filename)) {
                 throw new Error('Invalid filename format');
             }
             
@@ -3487,27 +3479,16 @@ function handleWebSocketConnection(ws, req) {
                 throw new Error(`File size exceeds ${MAX_SPRITE_SIZE} bytes limit`);
             }
 
-            // Validate file format based on extension
-            const isGIF = filename.toLowerCase().endsWith('.gif');
-            const isPNG = filename.toLowerCase().endsWith('.png');
-            
-            if (isGIF) {
-                // Check GIF signature: "GIF87a" or "GIF89a"
-                if (buffer[0] !== 0x47 || buffer[1] !== 0x49 || buffer[2] !== 0x46 || buffer[3] !== 0x38) {
-                    throw new Error('Invalid GIF file format');
-                }
-            } else if (isPNG) {
-                // Check PNG signature
-                if (buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4E || buffer[3] !== 0x47) {
-                    throw new Error('Invalid PNG file format');
-                }
-                // Reject 1x1 (or tiny) PNGs so sprites don't appear as a single color when drawn
-                if (buffer.length >= 24) {
-                    const width = buffer.readUInt32BE(16);
-                    const height = buffer.readUInt32BE(20);
-                    if (width < 2 || height < 2) {
-                        throw new Error('Sprite must be at least 2x2 pixels. Use Resize in Sprite Creator to enlarge the canvas.');
-                    }
+            // Validate PNG signature
+            if (buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4E || buffer[3] !== 0x47) {
+                throw new Error('Invalid PNG file format');
+            }
+            // Reject 1x1 (or tiny) PNGs so sprites don't appear as a single color when drawn
+            if (buffer.length >= 24) {
+                const width = buffer.readUInt32BE(16);
+                const height = buffer.readUInt32BE(20);
+                if (width < 2 || height < 2) {
+                    throw new Error('Sprite must be at least 2x2 pixels. Use Resize in Sprite Creator to enlarge the canvas.');
                 }
             }
             
@@ -3659,8 +3640,8 @@ function handleWebSocketConnection(ws, req) {
                 return;
             }
             const normalizedFolderPath = (folderPath != null && folderPath !== undefined) ? String(folderPath) : '';
-            if (!/^[a-zA-Z0-9_.-]+\.(gif|png)$/i.test(newFilename)) {
-                ws.send(msgpack.encode({ type: 'error', message: 'Invalid new filename. Use only letters, numbers, underscore, hyphen; must end with .png or .gif' }));
+            if (!/^[a-zA-Z0-9_.-]+\.png$/i.test(newFilename)) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Invalid new filename. Use only letters, numbers, underscore, hyphen; must end with .png' }));
                 return;
             }
             const sprite = await spritesDb.getSpriteByFilename(filename, normalizedFolderPath);
@@ -3804,7 +3785,8 @@ function handleWebSocketConnection(ws, req) {
                 name: level.name,
                 slug: level.slug,
                 uploadedBy: level.uploadedBy,
-                uploadedAt: level.uploadedAt
+                uploadedAt: level.uploadedAt,
+                times: level.times || []
             }));
 
             // Sort by name
@@ -3911,12 +3893,13 @@ function handleWebSocketConnection(ws, req) {
             if (!stage) {
                 const campaignLevel = await db.getCampaignLevelBySlug(slug);
                 if (campaignLevel) {
-                    // Convert campaign level to stage format
+                    // Convert campaign level to stage format (include times = target times to beat, in seconds)
                     stage = {
                         name: campaignLevel.name,
                         data: campaignLevel.data,
                         uploadedBy: campaignLevel.uploadedBy,
-                        uploadedAt: campaignLevel.uploadedAt
+                        uploadedAt: campaignLevel.uploadedAt,
+                        times: campaignLevel.times || []
                     };
                 }
             }
@@ -3932,6 +3915,7 @@ function handleWebSocketConnection(ws, req) {
                 uploadedBy: stage.uploadedBy,
                 uploadedAt: stage.uploadedAt
             };
+            if (Array.isArray(stage.times)) levelData.times = stage.times;
 
             ws.send(msgpack.encode({
                 type: 'levelData',
@@ -3947,6 +3931,24 @@ function handleWebSocketConnection(ws, req) {
         }
       } else if (data.type === 'gameReady') {
         // No longer used: ready is determined by server from positions (gamePlayerPosition). Ignore client-sent gameReady.
+      } else if (data.type === 'stageComplete') {
+        // Leader reports stage complete; server stops tracking time and broadcasts stageTime to all in room
+        if (!ws.username) return;
+        const party = findPartyByMemberId(ws.id);
+        if (!party || party.leader !== ws.id) return;
+        const room = ws.room ? rooms.get(ws.room) : null;
+        if (!room || room.type !== 'game') return;
+        let stageTime = 0;
+        if (room.levelStartWallTime != null) {
+          stageTime = Math.max(0, Math.floor((Date.now() - room.levelStartWallTime) / 1000));
+        }
+        const payload = msgpack.encode({ type: 'stageComplete', stageTime });
+        for (const client of room.clients) {
+          if (client.readyState === (client.OPEN ?? 1)) {
+            client.send(payload);
+          }
+        }
+        console.log(`⏱️ Game room ${ws.room} stage complete, stageTime=${stageTime}s (broadcast to all)`);
       } else if (data.type === 'raidCompleted') {
         // Only accept raid completion from party leader
         if (!ws.username) {
