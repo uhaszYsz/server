@@ -668,10 +668,31 @@ function sanitizeLevelPayload(payload) {
         throw new Error('Level data is too large');
     }
 
-    // times: array of target times in seconds to beat (e.g. [155, 110, 90] for 2:35, 1:50, 1:30)
+    // times: array of { time: number (seconds), loot: string (outfit name) | -1 }
     let times = [];
     if (Array.isArray(payload.times)) {
-        times = payload.times.map(t => Number(t)).filter(n => !Number.isNaN(n) && n >= 0);
+        const parseTimeToSeconds = (t) => {
+            if (typeof t === 'number' && !Number.isNaN(t) && t >= 0) return Math.floor(t);
+            if (typeof t === 'string') {
+                const m = String(t).trim().match(/^(\d+):(\d{2})$/);
+                if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+            }
+            return null;
+        };
+        times = payload.times
+            .map((entry) => {
+                const time = (entry && typeof entry === 'object' && 'time' in entry)
+                    ? parseTimeToSeconds(entry.time)
+                    : parseTimeToSeconds(entry);
+                if (time == null) return null;
+                let loot = -1;
+                if (entry && typeof entry === 'object' && 'loot' in entry) {
+                    if (entry.loot === -1 || entry.loot === '-1') loot = -1;
+                    else if (typeof entry.loot === 'string' && entry.loot.trim()) loot = entry.loot.trim();
+                }
+                return { time, loot };
+            })
+            .filter(Boolean);
     }
 
     return {
