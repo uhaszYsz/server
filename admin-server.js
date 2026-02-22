@@ -491,6 +491,45 @@ app.post('/api/db/:database/table/:tableName/delete', async (req, res) => {
     }
 });
 
+// Update single cell (phpMyAdmin-style inline edit)
+app.post('/api/db/:database/table/:tableName/update-cell', async (req, res) => {
+    try {
+        const { database, tableName } = req.params;
+        const { primaryKey, primaryKeyValue, column, value } = req.body;
+
+        if (!primaryKey || primaryKeyValue === undefined || primaryKeyValue === null) {
+            return res.status(400).json({ error: 'primaryKey and primaryKeyValue are required' });
+        }
+        if (!column || typeof column !== 'string') {
+            return res.status(400).json({ error: 'column is required' });
+        }
+
+        let dbInstance = null;
+        if (database === 'users') {
+            dbInstance = await getUsersDbInstance();
+        } else if (database === 'sprites') {
+            dbInstance = await getSpritesDbInstance();
+        } else {
+            return res.status(400).json({ error: 'Invalid database name' });
+        }
+        if (!dbInstance) {
+            return res.status(500).json({ error: 'Database connection not available' });
+        }
+
+        const query = `UPDATE ${escapeIdentifier(tableName)} SET ${escapeIdentifier(column)} = ? WHERE ${escapeIdentifier(primaryKey)} = ?`;
+        await new Promise((resolve, reject) => {
+            dbInstance.run(query, [value, primaryKeyValue], function (err) {
+                if (err) reject(err);
+                else resolve({ changes: this.changes });
+            });
+        });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating cell:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Helper function to escape SQLite identifiers (basic protection)
 function escapeIdentifier(identifier) {
     // Remove any dangerous characters

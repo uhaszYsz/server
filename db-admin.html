@@ -250,6 +250,72 @@
             max-width: 300px;
         }
 
+        .cell-content {
+            display: -webkit-box;
+            -webkit-line-clamp: 5;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            max-width: 100%;
+            min-height: 1.4em;
+            cursor: pointer;
+        }
+
+        td.editable-cell {
+            cursor: pointer;
+            position: relative;
+            vertical-align: top;
+        }
+
+        td.editable-cell .cell-content {
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        .cell-edit-wrap {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 10;
+            background: #fff;
+            padding: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+            min-height: 80px;
+        }
+
+        .cell-edit-wrap textarea {
+            flex: 1;
+            min-height: 80px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+
+        .cell-edit-wrap textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .cell-edit-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .cell-edit-buttons button {
+            padding: 6px 14px;
+            font-size: 13px;
+        }
+
         .status {
             padding: 15px;
             border-radius: 8px;
@@ -603,12 +669,13 @@
                     html += `<td><input type="checkbox" class="row-checkbox" data-row-id="${escapeHtml(String(rowId))}" onchange="toggleRowSelection(this)"></td>`;
                     data.columns.forEach(col => {
                         const value = row[col];
-                        const displayValue = value === null ? '<em>NULL</em>' : 
+                        const rawValue = value === null ? '' : value === undefined ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+                        const displayValue = value === null ? '<em>NULL</em>' :
                                            value === undefined ? '<em>undefined</em>' :
-                                           typeof value === 'object' ? 
-                                               `<div class="json-cell">${escapeHtml(JSON.stringify(value, null, 2))}</div>` :
+                                           typeof value === 'object' ?
+                                               escapeHtml(JSON.stringify(value, null, 2)) :
                                                escapeHtml(String(value));
-                        html += `<td>${displayValue}</td>`;
+                        html += `<td class="editable-cell" data-column="${escapeHtml(col)}" data-value="${escapeAttr(rawValue)}"><div class="cell-content">${displayValue}</div></td>`;
                     });
                     html += '</tr>';
                 });
@@ -700,12 +767,13 @@
                         const cols = data.columns || Object.keys(data.rows[0]);
                         cols.forEach(col => {
                             const value = row[col];
-                            const displayValue = value === null ? '<em>NULL</em>' : 
+                            const rawValue = value === null ? '' : value === undefined ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+                            const displayValue = value === null ? '<em>NULL</em>' :
                                                value === undefined ? '<em>undefined</em>' :
-                                               typeof value === 'object' ? 
-                                                   `<div class="json-cell">${escapeHtml(JSON.stringify(value, null, 2))}</div>` :
+                                               typeof value === 'object' ?
+                                                   escapeHtml(JSON.stringify(value, null, 2)) :
                                                    escapeHtml(String(value));
-                            html += `<td>${displayValue}</td>`;
+                            html += `<td class="editable-cell query-result-cell" data-column="${escapeHtml(col)}" data-value="${escapeAttr(rawValue)}"><div class="cell-content">${displayValue}</div></td>`;
                         });
                         html += '</tr>';
                     });
@@ -847,6 +915,87 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        function escapeAttr(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML.replace(/"/g, '&quot;');
+        }
+
+        document.addEventListener('dblclick', function (e) {
+            const td = e.target.closest('td.editable-cell');
+            if (!td || td.querySelector('.cell-edit-wrap')) return;
+            const contentDiv = td.querySelector('.cell-content');
+            const rawValue = td.getAttribute('data-value') || '';
+            const column = td.getAttribute('data-column') || '';
+            const tr = td.closest('tr');
+            const rowId = tr ? tr.getAttribute('data-row-id') : null;
+            const isTableData = !!rowId && !!currentTable && !!currentPrimaryKey;
+
+            const wrap = document.createElement('div');
+            wrap.className = 'cell-edit-wrap';
+            const ta = document.createElement('textarea');
+            ta.value = rawValue;
+            ta.rows = 6;
+            const btnRow = document.createElement('div');
+            btnRow.className = 'cell-edit-buttons';
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn btn-primary';
+            saveBtn.textContent = 'Save';
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn btn-secondary';
+            cancelBtn.textContent = 'Cancel';
+
+            function closeEditor(applyValue) {
+                if (applyValue && isTableData) {
+                    const newVal = ta.value;
+                    td.setAttribute('data-value', newVal);
+                    const display = newVal === '' ? '<em>NULL</em>' : escapeHtml(newVal);
+                    contentDiv.innerHTML = display;
+                }
+                wrap.remove();
+            }
+
+            saveBtn.onclick = async () => {
+                if (!isTableData) {
+                    closeEditor(false);
+                    return;
+                }
+                saveBtn.disabled = true;
+                try {
+                    const response = await authenticatedFetch(`/api/db/${currentDatabase}/table/${currentTable}/update-cell`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            primaryKey: currentPrimaryKey,
+                            primaryKeyValue: rowId,
+                            column: column,
+                            value: ta.value
+                        })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || 'Update failed');
+                    showStatus('Cell updated', 'success');
+                    closeEditor(true);
+                } catch (err) {
+                    showStatus(err.message || 'Update failed', 'error');
+                } finally {
+                    saveBtn.disabled = false;
+                }
+            };
+            cancelBtn.onclick = () => closeEditor(false);
+
+            wrap.appendChild(ta);
+            wrap.appendChild(btnRow);
+            btnRow.appendChild(saveBtn);
+            btnRow.appendChild(cancelBtn);
+            if (!isTableData) {
+                saveBtn.textContent = 'Close';
+                saveBtn.onclick = () => closeEditor(false);
+            }
+            td.appendChild(wrap);
+            ta.focus();
+        });
 
         // Load tables on page load
         window.addEventListener('load', async () => {
