@@ -263,6 +263,24 @@ export function initDatabase() {
                                         console.log('✅ Sessions table initialized');
                                     }
                                 });
+                                db.run(`
+                                    CREATE TABLE IF NOT EXISTS leaderboards (
+                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        stage_slug TEXT NOT NULL,
+                                        time_seconds INTEGER NOT NULL,
+                                        username TEXT NOT NULL DEFAULT '',
+                                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                    )
+                                `, (err) => {
+                                    if (err) {
+                                        console.error('Error creating leaderboards table:', err);
+                                    } else {
+                                        console.log('✅ Leaderboards table initialized');
+                                    }
+                                });
+                                db.run(`CREATE INDEX IF NOT EXISTS idx_leaderboards_stage_time ON leaderboards(stage_slug, time_seconds)`, (err) => {
+                                    if (err) console.warn('Leaderboards index:', err?.message);
+                                });
                                 
                                 // Initialize default categories
                                 initForumCategories().then(() => {
@@ -2054,6 +2072,52 @@ export function deleteCampaignLevel(slug) {
                 resolve(this.changes > 0);
             }
         });
+    });
+}
+
+// Leaderboards: one row per run (stage_slug = level identifier for campaign or uploaded level)
+export function insertLeaderboardEntry(stageSlug, timeSeconds, username) {
+    return new Promise((resolve, reject) => {
+        if (!stageSlug || typeof timeSeconds !== 'number' || timeSeconds < 0) {
+            reject(new Error('Invalid leaderboard entry'));
+            return;
+        }
+        const name = typeof username === 'string' ? username.trim() : '';
+        db.run(
+            'INSERT INTO leaderboards (stage_slug, time_seconds, username) VALUES (?, ?, ?)',
+            [String(stageSlug).trim().toLowerCase(), Math.floor(timeSeconds), name],
+            function(err) {
+                if (err) reject(err);
+                else resolve(this.lastID);
+            }
+        );
+    });
+}
+
+export function getLeaderboardTop10(stageSlug) {
+    return new Promise((resolve, reject) => {
+        if (!stageSlug) {
+            resolve([]);
+            return;
+        }
+        const slug = String(stageSlug).trim().toLowerCase();
+        db.all(
+            'SELECT id, stage_slug, time_seconds, username, created_at FROM leaderboards WHERE stage_slug = ? ORDER BY time_seconds ASC LIMIT 10',
+            [slug],
+            (err, rows) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(rows.map(r => ({
+                    id: r.id,
+                    stage_slug: r.stage_slug,
+                    time_seconds: r.time_seconds,
+                    username: r.username || '',
+                    created_at: r.created_at
+                })));
+            }
+        );
     });
 }
 

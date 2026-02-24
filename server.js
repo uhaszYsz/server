@@ -3458,7 +3458,12 @@ function handleWebSocketConnection(ws, req) {
                 uploadedBy: stage.uploadedBy
             }));
 
-            levels.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+            // Most recent first (by updatedAt descending)
+            levels.sort((a, b) => {
+                const ta = (a.updatedAt instanceof Date) ? a.updatedAt.getTime() : (Number(a.updatedAt) || 0);
+                const tb = (b.updatedAt instanceof Date) ? b.updatedAt.getTime() : (Number(b.updatedAt) || 0);
+                return tb - ta;
+            });
 
             ws.send(msgpack.encode({
                 type: 'levelsList',
@@ -3914,13 +3919,17 @@ function handleWebSocketConnection(ws, req) {
             if (!stage) {
                 const campaignLevel = await db.getCampaignLevelBySlug(slug);
                 if (campaignLevel) {
+                    // times: from campaign_levels.times column, or fallback to level data.times (if stored inside stage JSON)
+                    const colTimes = Array.isArray(campaignLevel.times) ? campaignLevel.times : [];
+                    const dataTimes = campaignLevel.data && Array.isArray(campaignLevel.data.times) ? campaignLevel.data.times : [];
+                    const times = colTimes.length > 0 ? colTimes : dataTimes;
                     // Convert campaign level to stage format (include times = target times to beat, in seconds)
                     stage = {
                         name: campaignLevel.name,
                         data: campaignLevel.data,
                         uploadedBy: campaignLevel.uploadedBy,
                         uploadedAt: campaignLevel.uploadedAt,
-                        times: campaignLevel.times || []
+                        times
                     };
                 }
             }
@@ -3949,6 +3958,27 @@ function handleWebSocketConnection(ws, req) {
             } else {
                 ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to load level' }));
             }
+        }
+      } else if (data.type === 'submitLeaderboard') {
+        try {
+          const slug = typeof data.slug === 'string' ? data.slug.trim().toLowerCase() : '';
+          const time = typeof data.time === 'number' ? Math.max(0, Math.floor(data.time)) : NaN;
+          if (!slug || Number.isNaN(time)) {
+            return;
+          }
+          const username = ws.username || '';
+          await db.insertLeaderboardEntry(slug, time, username);
+        } catch (err) {
+          console.error('submitLeaderboard error:', err?.message);
+        }
+      } else if (data.type === 'getLeaderboard') {
+        try {
+          const slug = typeof data.slug === 'string' ? data.slug.trim().toLowerCase() : '';
+          const entries = slug ? await db.getLeaderboardTop10(slug) : [];
+          ws.send(msgpack.encode({ type: 'leaderboardTop10', slug, entries }));
+        } catch (err) {
+          console.error('getLeaderboard error:', err?.message);
+          ws.send(msgpack.encode({ type: 'leaderboardTop10', slug: '', entries: [] }));
         }
       } else if (data.type === 'gameReady') {
         // No longer used: ready is determined by server from positions (gamePlayerPosition). Ignore client-sent gameReady.
@@ -4348,6 +4378,45 @@ function handleWebSocketConnection(ws, req) {
         } catch (error) {
             console.error('Failed to get forum thread', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to get forum thread' }));
+        }
+      } else if (data.type === 'getForumThreadForLevelSlug') {
+        const sendSlugResponse = (found, threadId, categoryId) => {
+            const payload = { type: 'forumThreadForLevelSlug', found: !!found };
+            if (found && threadId != null && categoryId != null) {
+                payload.threadId = threadId;
+                payload.categoryId = categoryId;
+            }
+            ws.send(msgpack.encode(payload));
+        };
+        if (!data.slug || typeof data.slug !== 'string') {
+            console.log('[ForumLevelSlug] Server getForumThreadForLevelSlug: no slug, sending found: false');
+            sendSlugResponse(false);
+            return;
+        }
+        try {
+            const raw = data.slug.trim();
+            console.log('[ForumLevelSlug] Server getForumThreadForLevelSlug', { slug: raw });
+            let found = await db.findForumPostByLevelSlug(raw);
+            if ((!found || !found.threadId) && !raw.endsWith('.json')) {
+                console.log('[ForumLevelSlug] Server trying slug with .json');
+                found = await db.findForumPostByLevelSlug(raw + '.json');
+            }
+            if (!found || !found.threadId) {
+                console.log('[ForumLevelSlug] Server no thread found for slug', raw);
+                sendSlugResponse(false);
+                return;
+            }
+            const thread = await db.getForumThread(found.threadId);
+            if (!thread || thread.category_id == null) {
+                console.log('[ForumLevelSlug] Server thread missing or no category_id', { threadId: found.threadId });
+                sendSlugResponse(false);
+                return;
+            }
+            console.log('[ForumLevelSlug] Server sending forumThreadForLevelSlug', { found: true, threadId: found.threadId, categoryId: thread.category_id });
+            sendSlugResponse(true, found.threadId, thread.category_id);
+        } catch (error) {
+            console.error('[ForumLevelSlug] Server getForumThreadForLevelSlug error', error);
+            sendSlugResponse(false);
         }
       } else if (data.type === 'verifySharedCode') {
         // Verify shared forum code via OpenAI (server-side only)

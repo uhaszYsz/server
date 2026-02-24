@@ -4,19 +4,22 @@
 export const specialKeywordsHelp = [
     {
         name: 'background',
-        content: `Bakes all draws into a vertex buffer stored under the name given as argument. Use drawBackground(x, y, "name") to draw it. Runs once at compilation.
+        content: `Creates a background. [b]background("name")[/b] = static (baked once into a vertex buffer). [b]background("name", true)[/b] = dynamic (runs each frame; only drawSprite/drawSheetSprite, fast sprite batch). Use drawBackground(x, y, "name") to draw either kind.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]name[/color][/b] - [i]Buffer name to store draws under. Use with drawBackground(x, y, "name").[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Buffer name. Use with drawBackground(x, y, "name").[/i]
+[color=#9acd32]dynamic[/color] - [i]Optional. [b]true[/b] = dynamic (only drawSprite/drawSheetSprite each frame; e.g. use getTime() for motion). Omit or false = static bake.[/i]
 
-[b]Example:[/b]
+[b]Example (static):[/b]
 [code]background("bg1")
 #drawCircle(90, 160, 4, 0, "#FF0000")
 #drawText(50, 100, "Hello", "#FFFFFF", 12)
-
-// Later in code:
 drawBackground(0, 0, "bg1")[/code]
-[i]Creates a background with a red circle and white text, then draws it at position (0, 0).[/i]`
+
+[b]Example (dynamic):[/b]
+[code]background("parallax", true)
+#drawSprite(90 + getTime()*10, 160, "@cloud.png", 1, 1, 0)
+drawBackground(0, 0, "parallax")[/code]`
     },
     {
         name: 'def',
@@ -642,6 +645,20 @@ drawText(5, 5, "Wave: " + w);[/code]`
 [code]if (didReleased()) { /* handle release */ }[/code]`
     },
     {
+        name: 'getPixelColor',
+        threadTitle: 'getPixelColor(x, y)',
+        content: `Returns the color of the pixel at world coordinates (x, y) — what is visible there (e.g. bullet, background, sprites). Uses the last drawn frame. Does not include DOM overlays (e.g. YouTube iframe) due to browser security.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]x[/color][/b] - [i]World x.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]World y.[/i]
+
+[b][color=#ffa500]Returns: hex string "#rrggbb" or "#rrggbbaa". Returns "#000000" if out of bounds or read fails.[/color][/b]
+
+[b]Example:[/b]
+[code]var c = getPixelColor(90, 160); // color at center[/code]`
+    },
+    {
         name: 'sync',
         threadTitle: 'sync(disableVariables)',
         content: `Marks this object for multiplayer sync. The party leader sends this object's state to other clients (with delay); other clients display it from the buffer.
@@ -1063,34 +1080,38 @@ if (other !== null) { other.hp -= 1; }[/code]`
     },
     {
         name: 'background',
-        threadTitle: 'background(name)',
-        content: `Creates a static background that is baked into a vertex buffer at compilation time.
+        threadTitle: 'background(name, dynamic)',
+        content: `Creates a background. [b]background("name")[/b] = static (baked once, no performance drop no matter how many things you draw on it). [b]background("name", true)[/b] = dynamic (runs each frame; only drawSprite/drawSheetSprite). Use drawBackground(x, y, "name") to draw.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]name[/color][/b] - [i]Buffer name. Use with drawBackground(x, y, "name") to draw it.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Buffer name. Use with drawBackground(x, y, "name").[/i]
+[color=#9acd32]dynamic[/color] - [i]Optional. [b]true[/b] = dynamic (only drawSprite/drawSheetSprite; e.g. getTime() for motion). Omit or false = static.[/i]
 
-[b]Example:[/b]
+[b]Example (static):[/b]
 [code]background("bg1")
 #drawCircle(90, 160, 4)
-// Later:
-drawBackground(0, 0, "bg1")[/code]`
+drawBackground(0, 0, "bg1")[/code]
+
+[b]Example (dynamic):[/b]
+[code]background("parallax", true)
+#drawSprite(90 + getTime()*10, 160, "@cloud.png", 1, 1, 0)
+drawBackground(0, 0, "parallax")[/code]`
     },
     {
         name: 'drawBackground',
-        threadTitle: 'drawBackground(x, y, name, angle, color)',
-        content: `Draws a background buffer at specified position.
+        threadTitle: 'drawBackground(x, y, backgroundName, angle, color)',
+        content: `Draws a background (static or dynamic) at specified position.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]x position to draw at.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]y position to draw at.[/i]
-[b][color=#90ee90]name[/color][/b] - [i]Name of the background buffer (from background("name")).[/i]
+[b][color=#90ee90]backgroundName[/color][/b] - [i]Name from background("name") or background("name", true).[/i]
 [color=#9acd32]angle[/color] - [i]Optional rotation in degrees around (x,y).[/i]
 [color=#9acd32]color[/color] - [i]Optional tint (hex or RGBA).[/i]
 
 [b]Example:[/b]
 [code]background("myBg")
 #drawCircle(0, 0, 4)
-// Later:
 drawBackground(90, 160, "myBg")
 drawBackground(0, 0, "myBg", 45, "#FF0000")[/code]`
     },
