@@ -3342,32 +3342,40 @@ function handleWebSocketConnection(ws, req) {
 
         try {
             const { filename, data: fileData, folderPath, description } = data;
-            
+            console.log('[uploadSprite] Received', { filename: typeof filename === 'string' ? filename : '(not string)', filenameLength: typeof filename === 'string' ? filename.length : 0, fileDataType: typeof fileData, fileDataLength: typeof fileData === 'string' ? fileData.length : 0 });
+
             if (!filename || !fileData) {
+                console.log('[uploadSprite] FAIL: missing filename or fileData');
                 throw new Error('Filename and file data are required');
             }
 
             // Validate filename (PNG only; GIF not supported)
             if (!filename.toLowerCase().endsWith('.png')) {
+                console.log('[uploadSprite] FAIL: filename does not end with .png', { filename });
                 throw new Error('Only PNG files are allowed');
             }
 
             // Validate filename format (alphanumeric, underscore, hyphen, dot)
             if (!/^[a-zA-Z0-9_.-]+\.png$/i.test(filename)) {
+                console.log('[uploadSprite] FAIL: invalid filename format (regex)', { filename });
                 throw new Error('Invalid filename format');
             }
-            
+
             // Decode base64 data first (needed for validation)
             const buffer = Buffer.from(fileData, 'base64');
             const fileSize = buffer.length;
+            const first4 = buffer.length >= 4 ? [buffer[0], buffer[1], buffer[2], buffer[3]].map(b => '0x' + b.toString(16).toUpperCase()).join(' ') : 'n/a';
+            console.log('[uploadSprite] Decoded buffer', { fileSize, first4Bytes: first4, expectedPNG: '0x89 0x50 0x4E 0x47' });
 
             // Check file size (1 KB max)
             if (fileSize > MAX_SPRITE_SIZE) {
+                console.log('[uploadSprite] FAIL: file size exceeds limit', { fileSize, max: MAX_SPRITE_SIZE });
                 throw new Error(`File size exceeds ${MAX_SPRITE_SIZE} bytes limit`);
             }
 
             // Validate PNG signature
             if (buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4E || buffer[3] !== 0x47) {
+                console.log('[uploadSprite] FAIL: invalid PNG signature', { first4Bytes: first4 });
                 throw new Error('Invalid PNG file format');
             }
             // Reject 1x1 (or tiny) PNGs so sprites don't appear as a single color when drawn
@@ -3427,7 +3435,7 @@ function handleWebSocketConnection(ws, req) {
             // Save to sprites database with base64 data
             await spritesDb.createSprite(filename, ws.username, fileSize, fileData, finalFolderPath);
             
-            console.log(`[uploadSprite] User ${ws.username} uploaded sprite "${filename}" to folder "${finalFolderPath}"`);
+            console.log('[uploadSprite] OK:', { username: ws.username, filename, finalFolderPath, fileSize });
 
             ws.send(msgpack.encode({
                 type: 'uploadSpriteSuccess',
@@ -3436,7 +3444,7 @@ function handleWebSocketConnection(ws, req) {
                 fileSize
             }));
         } catch (error) {
-            console.error(`[uploadSprite] Error uploading sprite:`, error);
+            console.error('[uploadSprite] Error:', error.message, error);
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to upload sprite' }));
         }
       } else if (data.type === 'listSprites') {
