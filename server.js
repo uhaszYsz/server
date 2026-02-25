@@ -1361,7 +1361,6 @@ setInterval(() => {
         if (!roomData.clients) continue;
         const toRemove = [];
         for (const client of roomData.clients) {
-            if (client.isBot) continue; // Bots are managed separately
             if (client.readyState !== OPEN) toRemove.push(client);
         }
         for (const client of toRemove) {
@@ -1371,144 +1370,12 @@ setInterval(() => {
             if (roomData.type === 'lobby' && roomData.clients) {
                 const leavePayload = msgpack.encode({ type: 'playerDisconnect', id: client.id });
                 for (const remaining of roomData.clients) {
-                    if (remaining.isBot) continue; // Bots don't receive
                     if (remaining.readyState === OPEN) remaining.send(leavePayload);
                 }
             }
         }
     }
 }, 10000);
-
-// ---- Lobby bots (server-side only) ----
-const BOT_LOBBY_MIN = 1;
-const BOT_LOBBY_MAX = 3;
-const BOT_LOBBY_X_MIN = 30;
-const BOT_LOBBY_X_MAX = 150;
-const BOT_LOBBY_Y_MIN = 30;
-const BOT_LOBBY_Y_MAX = 120;
-let nextBotId = -1; // Negative IDs for bots (distinct from real clients)
-let nextBotNumber = 1; // For Bot_001, Bot_002, etc.
-
-function createLobbyBot() {
-    const id = nextBotId--;
-    const name = `Bot_${String(nextBotNumber++).padStart(3, '0')}`;
-    const outfit = OUTFIT_LIST[Math.floor(Math.random() * OUTFIT_LIST.length)];
-    const bot = {
-        id,
-        username: name,
-        equippedOutfitCharacterIndex: outfit.characterIndex,
-        room: null,
-        readyState: OPEN,
-        isBot: true,
-        nextActionAt: 0,
-        send: () => {} // No-op; bots don't receive messages
-    };
-    return bot;
-}
-
-function getBotsInRoom(roomData) {
-    if (!roomData || !roomData.clients) return [];
-    return [...roomData.clients].filter(c => c.isBot);
-}
-
-function addBotToLobby(roomName) {
-    const room = rooms.get(roomName);
-    if (!room || room.type !== 'lobby' || !room.clients || !room.lobbyPositions) return null;
-    const bot = createLobbyBot();
-    const x = BOT_LOBBY_X_MIN + Math.random() * (BOT_LOBBY_X_MAX - BOT_LOBBY_X_MIN);
-    const y = BOT_LOBBY_Y_MIN + Math.random() * (BOT_LOBBY_Y_MAX - BOT_LOBBY_Y_MIN);
-    room.clients.add(bot);
-    room.lobbyPositions.set(bot.id, { x, y });
-    bot.room = roomName;
-    const DEFAULT_X = 90;
-    const DEFAULT_Y = 80;
-    const newPlayerPayload = [{ id: bot.id, username: bot.username, x, y, outfitCharacterIndex: bot.equippedOutfitCharacterIndex }];
-    for (const client of room.clients) {
-        if (client.isBot) continue;
-        if (client.readyState === OPEN) {
-            client.send(msgpack.encode({ type: 'lobbyPlayersPositions', players: newPlayerPayload }));
-        }
-    }
-    bot.nextActionAt = globalTimer + 500 + Math.random() * 1500; // First action in 0.5–2s
-    return bot;
-}
-
-function removeBotFromLobby(bot) {
-    const roomName = bot.room;
-    if (!roomName) return;
-    const room = rooms.get(roomName);
-    if (!room) return;
-    room.clients.delete(bot);
-    if (room.lobbyPositions) room.lobbyPositions.delete(bot.id);
-    bot.room = null;
-    const leavePayload = msgpack.encode({ type: 'playerDisconnect', id: bot.id });
-    for (const client of room.clients) {
-        if (client.isBot) continue;
-        if (client.readyState === OPEN) client.send(leavePayload);
-    }
-}
-
-function broadcastBotMove(bot, destX, destY) {
-    const room = rooms.get(bot.room);
-    if (!room || !room.clients) return;
-    const roomData = room;
-    const pos = roomData.lobbyPositions?.get(bot.id);
-    const startX = (pos && typeof pos.x === 'number') ? pos.x : 90;
-    const startY = (pos && typeof pos.y === 'number') ? pos.y : 80;
-    if (roomData.lobbyPositions) roomData.lobbyPositions.set(bot.id, { x: destX, y: destY });
-    const payload = { startX, startY, destX, destY, outfitCharacterIndex: bot.equippedOutfitCharacterIndex };
-    payload.startTime = globalTimer;
-    const targetTime = globalTimer + 1000;
-    const msg = msgpack.encode({ type: 'playerUpdate', id: bot.id, username: bot.username, data: payload, targetTime });
-    for (const client of room.clients) {
-        if (client.isBot) continue;
-        if (client.readyState === OPEN) client.send(msg);
-    }
-}
-
-function runBotPopulationManager() {
-    for (const [roomName, roomData] of rooms) {
-        if (roomData.type !== 'lobby' || !roomData.clients) continue;
-        const bots = getBotsInRoom(roomData);
-        const targetCount = BOT_LOBBY_MIN + Math.floor(Math.random() * (BOT_LOBBY_MAX - BOT_LOBBY_MIN + 1));
-        if (bots.length < targetCount) {
-            const toAdd = targetCount - bots.length;
-            for (let i = 0; i < toAdd; i++) addBotToLobby(roomName);
-        } else if (bots.length > targetCount) {
-            const toRemove = bots.length - targetCount;
-            for (let i = 0; i < toRemove; i++) {
-                const currentBots = getBotsInRoom(rooms.get(roomName));
-                if (currentBots.length === 0) break;
-                const pick = currentBots[Math.floor(Math.random() * currentBots.length)];
-                removeBotFromLobby(pick);
-            }
-        }
-    }
-}
-
-// Bot population manager: ensure 1–3 bots per lobby, with connect/disconnect churn
-setInterval(runBotPopulationManager, 60000); // Every 60s adjust bot count
-// Initial population after lobbies are ready
-setTimeout(runBotPopulationManager, 2000);
-
-// Bot behavior: move to random position or wait 1–15 seconds
-setInterval(() => {
-    const now = globalTimer;
-    for (const [roomName, roomData] of rooms) {
-        if (roomData.type !== 'lobby' || !roomData.clients) continue;
-        for (const bot of getBotsInRoom(roomData)) {
-            if (now < bot.nextActionAt) continue;
-            if (Math.random() < 0.5) {
-                // Move to random position
-                const x = BOT_LOBBY_X_MIN + Math.random() * (BOT_LOBBY_X_MAX - BOT_LOBBY_X_MIN);
-                const y = BOT_LOBBY_Y_MIN + Math.random() * (BOT_LOBBY_Y_MAX - BOT_LOBBY_Y_MIN);
-                broadcastBotMove(bot, x, y);
-            }
-            // Next action: 1–15 seconds
-            bot.nextActionAt = now + 1000 + Math.random() * 14000;
-        }
-    }
-}, 500);
 
 // Helper function to join player to "main" campaign lobby
 async function joinFirstCampaignLobby(ws) {
@@ -2849,12 +2716,6 @@ function handleWebSocketConnection(ws, req) {
 
         if (normalizedTarget === ws.username) {
             ws.send(msgpack.encode({ type: 'partyInviteError', message: 'You cannot invite yourself.' }));
-            return;
-        }
-
-        // Bots always reject party invitations
-        if (normalizedTarget.startsWith('Bot_')) {
-            ws.send(msgpack.encode({ type: 'partyInviteError', message: 'Bots cannot receive party invitations.' }));
             return;
         }
 
