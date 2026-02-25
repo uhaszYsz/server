@@ -327,7 +327,7 @@ async function verifyMultipleCodesWithOpenAI(codes) {
 const MAX_LEVEL_NAME_LENGTH = 64;
 const MAX_LEVEL_DATA_BYTES = 256 * 1024; // 256 KB
 const LEVEL_SLUG_REGEX = /^[a-z0-9]+[a-z0-9-_]*$/;
-const MAX_SPRITE_SIZE = 1024; // 1 KB max sprite size
+const MAX_SPRITE_SIZE = 4096; // 4 KB max sprite size
 
 await Promise.all([
     fs.mkdir(levelsDirectory, { recursive: true }),
@@ -1996,6 +1996,63 @@ function handleWebSocketConnection(ws, req) {
         } else {
             console.log(`[DebugGiveLoot] Added ${itemDesc} to ${ws.username || ws.googleId}'s inventory`);
         }
+      } else if (data.type === 'addLoot') {
+        // Interpreter/utils: add one loot item to player inventory (lootData = stringified JSON from loot generator format)
+        // Only allowed when user is in a quest (game) room playing a campaign level (room.level set); not in lobby or custom/browse levels.
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in', fromAddLoot: true }));
+            return;
+        }
+        const room = ws.room ? rooms.get(ws.room) : null;
+        if (!room || room.type !== 'game' || room.level == null || room.level === '') {
+            ws.send(msgpack.encode({ type: 'error', message: 'Loot can only be added while playing a campaign level.', fromAddLoot: true }));
+            return;
+        }
+        const user = await db.getUserByGoogleId(ws.googleId);
+        if (!user) {
+            ws.send(msgpack.encode({ type: 'error', message: 'User not found', fromAddLoot: true }));
+            return;
+        }
+        const item = data.item;
+        if (!item || typeof item !== 'object' || !item.name || typeof item.name !== 'string') {
+            ws.send(msgpack.encode({ type: 'error', message: 'Invalid loot item (need object with name)', fromAddLoot: true }));
+            return;
+        }
+        if (!user.inventory) user.inventory = [];
+        const lootItem = {
+            name: String(item.name).trim().toLowerCase() || 'item',
+            displayName: typeof item.displayName === 'string' ? item.displayName : (item.displayName || item.name),
+            stats: Array.isArray(item.stats) ? item.stats : []
+        };
+        if (typeof item.weaponFile === 'string' && item.weaponFile.trim()) {
+            try {
+                lootItem.weaponFile = createLevelSlug(item.weaponFile.trim());
+            } catch {
+                lootItem.weaponFile = lootItem.name === 'weapon' ? 'playa' : 'test';
+            }
+        } else if (lootItem.name === 'weapon') {
+            lootItem.weaponFile = (lootItem.displayName === 'Sword' || lootItem.name === 'weapon') ? 'playa' : 'test';
+        }
+        if (typeof item.activeAbility === 'string' && item.activeAbility.trim()) {
+            lootItem.activeAbility = item.activeAbility.trim();
+        }
+        if (typeof item.characterIndex === 'number') {
+            lootItem.characterIndex = item.characterIndex;
+        }
+        user.inventory.push(lootItem);
+        await db.updateUser(ws.googleId, user);
+        console.log(`[addLoot] Added ${lootItem.displayName} (${lootItem.name}) to ${ws.username || ws.googleId}'s inventory`);
+        ws.send(msgpack.encode({
+            type: 'lootAdded',
+            playerData: {
+                username: user.name,
+                name: user.name,
+                stats: user.stats,
+                inventory: user.inventory,
+                equipment: user.equipment
+            },
+            addedItem: lootItem
+        }));
       } else if (data.type === 'npcGiveSpellcards') {
         // Spellcard NPC (client-rendered) - add all 3 spellcards to user inventory
         if (!ws.googleId) {
@@ -3342,40 +3399,32 @@ function handleWebSocketConnection(ws, req) {
 
         try {
             const { filename, data: fileData, folderPath, description } = data;
-            console.log('[uploadSprite] Received', { filename: typeof filename === 'string' ? filename : '(not string)', filenameLength: typeof filename === 'string' ? filename.length : 0, fileDataType: typeof fileData, fileDataLength: typeof fileData === 'string' ? fileData.length : 0 });
-
+            
             if (!filename || !fileData) {
-                console.log('[uploadSprite] FAIL: missing filename or fileData');
                 throw new Error('Filename and file data are required');
             }
 
             // Validate filename (PNG only; GIF not supported)
             if (!filename.toLowerCase().endsWith('.png')) {
-                console.log('[uploadSprite] FAIL: filename does not end with .png', { filename });
                 throw new Error('Only PNG files are allowed');
             }
 
             // Validate filename format (alphanumeric, underscore, hyphen, dot)
             if (!/^[a-zA-Z0-9_.-]+\.png$/i.test(filename)) {
-                console.log('[uploadSprite] FAIL: invalid filename format (regex)', { filename });
                 throw new Error('Invalid filename format');
             }
-
+            
             // Decode base64 data first (needed for validation)
             const buffer = Buffer.from(fileData, 'base64');
             const fileSize = buffer.length;
-            const first4 = buffer.length >= 4 ? [buffer[0], buffer[1], buffer[2], buffer[3]].map(b => '0x' + b.toString(16).toUpperCase()).join(' ') : 'n/a';
-            console.log('[uploadSprite] Decoded buffer', { fileSize, first4Bytes: first4, expectedPNG: '0x89 0x50 0x4E 0x47' });
 
-            // Check file size (1 KB max)
+            // Check file size (4 KB max)
             if (fileSize > MAX_SPRITE_SIZE) {
-                console.log('[uploadSprite] FAIL: file size exceeds limit', { fileSize, max: MAX_SPRITE_SIZE });
                 throw new Error(`File size exceeds ${MAX_SPRITE_SIZE} bytes limit`);
             }
 
             // Validate PNG signature
             if (buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4E || buffer[3] !== 0x47) {
-                console.log('[uploadSprite] FAIL: invalid PNG signature', { first4Bytes: first4 });
                 throw new Error('Invalid PNG file format');
             }
             // Reject 1x1 (or tiny) PNGs so sprites don't appear as a single color when drawn
@@ -3435,7 +3484,7 @@ function handleWebSocketConnection(ws, req) {
             // Save to sprites database with base64 data
             await spritesDb.createSprite(filename, ws.username, fileSize, fileData, finalFolderPath);
             
-            console.log('[uploadSprite] OK:', { username: ws.username, filename, finalFolderPath, fileSize });
+            console.log(`[uploadSprite] User ${ws.username} uploaded sprite "${filename}" to folder "${finalFolderPath}"`);
 
             ws.send(msgpack.encode({
                 type: 'uploadSpriteSuccess',
@@ -3444,7 +3493,7 @@ function handleWebSocketConnection(ws, req) {
                 fileSize
             }));
         } catch (error) {
-            console.error('[uploadSprite] Error:', error.message, error);
+            console.error(`[uploadSprite] Error uploading sprite:`, error);
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to upload sprite' }));
         }
       } else if (data.type === 'listSprites') {
