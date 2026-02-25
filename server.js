@@ -2984,7 +2984,7 @@ function handleWebSocketConnection(ws, req) {
 
             const payloadToStore = {
                 ...sanitizedWeapon,
-                uploadedBy: uploaderGoogleId,
+                uploadedBy: db.hashGoogleId(uploaderGoogleId), // never store raw Google ID on disk
                 uploadedAt: new Date().toISOString()
             };
 
@@ -3107,9 +3107,10 @@ function handleWebSocketConnection(ws, req) {
 
             // Check if level already exists and is owned by this user
             const existingLevel = await db.getStageBySlug(fileName);
-            console.log(`[uploadedLevel] Level "${fileName}": existingLevel=${!!existingLevel}, ownedBy=${existingLevel?.uploadedBy}, uploader=${uploaderGoogleId}, overwrite=${!!data.overwrite}, description="${data.description || ''}"`);
+            console.log(`[uploadedLevel] Level "${fileName}": existingLevel=${!!existingLevel}, ownedByHash=${existingLevel?.uploadedBy?.substring?.(0, 12)}..., overwrite=${!!data.overwrite}, description="${data.description || ''}"`);
             
-            if (existingLevel && existingLevel.uploadedBy === uploaderGoogleId) {
+            const uploaderHash = db.hashGoogleId(uploaderGoogleId);
+            if (existingLevel && existingLevel.uploadedBy === uploaderHash) {
                 // Level exists and is owned by this user - ask for confirmation unless overwrite flag is set
                 if (!data.overwrite) {
                     ws.send(msgpack.encode({
@@ -3286,7 +3287,7 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({
                 type: 'uploadedLevelSuccess',
                 name: sanitizedPayload.name,
-                uploadedBy: ws.name || uploaderGoogleId, // Display name in response
+                uploadedBy: ws.name || 'Unknown', // Display name only (never send raw Google ID)
                 slug: fileName,
                 forumThreadId: forumThreadId || null,
                 forumPostId: forumPostId || null
@@ -3318,7 +3319,8 @@ function handleWebSocketConnection(ws, req) {
 
             // Check if level already exists and is owned by this user
             const existingLevel = await db.getCampaignLevelBySlug(fileName);
-            if (existingLevel && existingLevel.uploadedBy === uploaderGoogleId) {
+            const uploaderHash = db.hashGoogleId(uploaderGoogleId);
+            if (existingLevel && existingLevel.uploadedBy === uploaderHash) {
                 // Level exists and is owned by this user - ask for confirmation unless overwrite flag is set
                 if (!data.overwrite) {
                     ws.send(msgpack.encode({
@@ -3353,7 +3355,7 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({
                 type: 'uploadedLevelSuccess',
                 name: sanitizedPayload.name,
-                uploadedBy: ws.name || uploaderGoogleId, // Display name in response
+                uploadedBy: ws.name || 'Unknown', // Display name only (never send raw Google ID)
                 campaign: true
             }));
         } catch (error) {
@@ -3367,7 +3369,7 @@ function handleWebSocketConnection(ws, req) {
         }
 
         try {
-            // Get levels from database
+            // Get levels from database (uploadedBy is hashed Google ID)
             const stages = await db.getAllStages();
             const levels = stages.map(stage => ({
                 name: stage.name,
@@ -3383,9 +3385,18 @@ function handleWebSocketConnection(ws, req) {
                 return tb - ta;
             });
 
+            // Resolve hashed uploadedBy to display names for client (never send raw Google ID)
+            const uniqueHashes = [...new Set(levels.map(l => l.uploadedBy).filter(Boolean))];
+            const userIdToUsername = {};
+            await Promise.all(uniqueHashes.map(async (hash) => {
+                const user = await db.getUserByGoogleIdHash(hash);
+                userIdToUsername[hash] = user ? user.name : null;
+            }));
+
             ws.send(msgpack.encode({
                 type: 'levelsList',
-                levels
+                levels,
+                userIdToUsername
             }));
         } catch (error) {
             console.error('Failed to list levels', error);
@@ -3856,12 +3867,18 @@ function handleWebSocketConnection(ws, req) {
                 throw new Error('Level not found on server');
             }
 
-            // Format level data to match expected structure
+            // Resolve uploadedBy (hash) to display name so client never needs raw Google ID
+            let uploadedByUsername = null;
+            if (stage.uploadedBy) {
+                const user = await db.getUserByGoogleIdHash(stage.uploadedBy);
+                uploadedByUsername = user ? user.name : null;
+            }
             const levelData = {
                 name: stage.name,
                 data: stage.data,
                 uploadedBy: stage.uploadedBy,
-                uploadedAt: stage.uploadedAt
+                uploadedAt: stage.uploadedAt,
+                uploadedByUsername
             };
             if (Array.isArray(stage.times)) levelData.times = stage.times;
 
@@ -4999,13 +5016,13 @@ function handleWebSocketConnection(ws, req) {
             }
             
             // Check permissions: admin can delete any thread, others can only delete their own
-            // Note: thread.author stores googleId, not display name
+            // thread.author stores hashed Google ID
             const isAdmin = ws.rank === 'admin';
-            const threadAuthor = String(thread.author || '').trim();
-            const userGoogleId = String(ws.googleId || '').trim();
-            const isOwner = threadAuthor === userGoogleId && threadAuthor !== '';
+            const threadAuthorHash = String(thread.author || '').trim();
+            const userHash = db.hashGoogleId(String(ws.googleId || ''));
+            const isOwner = threadAuthorHash === userHash && threadAuthorHash !== '';
             
-            console.log(`[deleteForumThread] Thread ID: ${data.threadId}, Thread author: "${threadAuthor}", User googleId: "${userGoogleId}", isOwner: ${isOwner}, isAdmin: ${isAdmin}, ws.rank: ${ws.rank}`);
+            console.log(`[deleteForumThread] Thread ID: ${data.threadId}, isOwner: ${isOwner}, isAdmin: ${isAdmin}, ws.rank: ${ws.rank}`);
             
             if (!isAdmin && !isOwner) {
                 ws.send(msgpack.encode({ type: 'error', message: 'Permission denied: You can only delete your own threads' }));
@@ -5122,7 +5139,7 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         try {
-            // Get post to check ownership (author column stores googleId)
+            // Get post to check ownership (author column stores hashed Google ID)
             const post = await db.getForumPostById(data.postId);
             if (!post) {
                 ws.send(msgpack.encode({ type: 'error', message: 'Post not found' }));
@@ -5143,13 +5160,13 @@ function handleWebSocketConnection(ws, req) {
             }
             
             // Check permissions: admin can delete any post, others can only delete their own
-            // Note: post.author stores googleId, not display name
+            // post.author stores hashed Google ID
             const isAdmin = ws.rank === 'admin';
-            const postAuthor = String(post.author || '').trim();
-            const userGoogleId = String(ws.googleId || '').trim();
-            const isOwner = postAuthor === userGoogleId && postAuthor !== '';
+            const postAuthorHash = String(post.author || '').trim();
+            const userHash = db.hashGoogleId(String(ws.googleId || ''));
+            const isOwner = postAuthorHash === userHash && postAuthorHash !== '';
             
-            console.log(`[deleteForumPost] Post ID: ${data.postId}, Post author: "${postAuthor}", User googleId: "${userGoogleId}", isOwner: ${isOwner}, isAdmin: ${isAdmin}, ws.rank: ${ws.rank}`);
+            console.log(`[deleteForumPost] Post ID: ${data.postId}, isOwner: ${isOwner}, isAdmin: ${isAdmin}, ws.rank: ${ws.rank}`);
             
             if (!isAdmin && !isOwner) {
                 ws.send(msgpack.encode({ type: 'error', message: 'Permission denied: You can only delete your own posts' }));
@@ -5159,7 +5176,7 @@ function handleWebSocketConnection(ws, req) {
             const deleted = await db.deleteForumPost(data.postId);
             if (deleted) {
                 ws.send(msgpack.encode({ type: 'forumPostDeleted', postId: data.postId, threadId: post.thread_id }));
-                console.log(`✅ Post ${data.postId} deleted by ${ws.name || ws.googleId} (${isAdmin ? 'admin' : 'owner'})`);
+                console.log(`✅ Post ${data.postId} deleted by ${ws.name || 'user'} (${isAdmin ? 'admin' : 'owner'})`);
             } else {
                 ws.send(msgpack.encode({ type: 'error', message: 'Failed to delete post' }));
             }
@@ -5365,7 +5382,7 @@ function handleWebSocketConnection(ws, req) {
             }
 
             const isAdmin = ws.rank === 'admin';
-            const isOwner = post.author === ws.googleId;
+            const isOwner = post.author === db.hashGoogleId(ws.googleId);
             const isSystemPost = post.author === 'system';
 
             // Allow edit if user is owner OR if user is admin (even for system posts)
@@ -5558,6 +5575,14 @@ rl.on('line', async (input) => {
     } catch (error) {
       console.error('❌ Password migration failed:', error);
     }
+  } else if (command === 'updategooglehash') {
+    console.log('🔄 Hashing raw Google IDs in database (stages, forum, campaign_levels, likes/dislikes)...');
+    try {
+      const result = await db.updateGoogleHashInDatabase();
+      console.log('✅ updateGoogleHash done:', result);
+    } catch (error) {
+      console.error('❌ updateGoogleHash failed:', error);
+    }
   } else if (command === 'help' || command === '?') {
     console.log('\nAvailable server console commands:');
     console.log('  rang <username> <rank>  - Set user rank (player, moderator, admin)');
@@ -5565,6 +5590,7 @@ rl.on('line', async (input) => {
     console.log('  unblockip <ip>         - Unblock an IP address');
     console.log('  listblocked            - List all blocked IPs');
     console.log('  migratepass            - Migrate all plain text passwords to bcrypt hashes');
+    console.log('  updategooglehash       - Hash raw Google IDs in DB (run once on VPS to migrate existing data)');
     console.log('  help                   - Show this help message');
     console.log('');
   } else {

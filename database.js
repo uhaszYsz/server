@@ -1261,9 +1261,9 @@ export function getForumThreads(categoryId, authorKeys = null) {
                 const rowsWithAuthors = await Promise.all(rows.map(async (row) => {
                     if (row.author && row.author !== 'system') {
                         try {
-                            const user = await getUserByGoogleId(row.author);
+                            const user = await getUserByGoogleIdHash(row.author);
                             if (!user) {
-                                console.warn(`[getForumThreads] User not found for author Google ID: ${row.author.substring(0, 20)}...`);
+                                console.warn(`[getForumThreads] User not found for author hash: ${row.author.substring(0, 20)}...`);
                             }
                             return {
                                 ...row,
@@ -1297,9 +1297,10 @@ export function getForumThreads(categoryId, authorKeys = null) {
 
 export function getForumCategoryStats(categoryId, authorGoogleId = null) {
     return new Promise((resolve, reject) => {
-        const keys = Array.isArray(authorGoogleId)
+        const rawKeys = Array.isArray(authorGoogleId)
             ? authorGoogleId.filter(Boolean)
             : (authorGoogleId ? [authorGoogleId] : []);
+        const keys = rawKeys.map(id => hashGoogleId(String(id)));
 
         if (keys.length > 0) {
             const placeholders = keys.map(() => '?').join(',');
@@ -1364,10 +1365,10 @@ export function getForumThread(threadId) {
                     return;
                 }
                 
-                // Look up author name and rank
+                // Look up author name and rank (row.author is hashed Google ID)
                 if (row.author && row.author !== 'system') {
                     try {
-                        const user = await getUserByGoogleId(row.author);
+                        const user = await getUserByGoogleIdHash(row.author);
                         resolve({
                             ...row,
                             author_name: user ? user.name : null,
@@ -1395,10 +1396,11 @@ export function getForumThread(threadId) {
     });
 }
 
-export function createForumThread(categoryId, title, author) {
+export function createForumThread(categoryId, title, authorGoogleId) {
     return new Promise((resolve, reject) => {
+        const authorHash = hashGoogleId(String(authorGoogleId));
         db.run('INSERT INTO forum_threads (category_id, title, author) VALUES (?, ?, ?)', 
-            [categoryId, title, author], function(err) {
+            [categoryId, title, authorHash], function(err) {
             if (err) {
                 reject(err);
                 return;
@@ -1426,7 +1428,7 @@ export function getForumPosts(threadId) {
                 const rowsWithAuthors = await Promise.all(rows.map(async (row) => {
                     if (row.author && row.author !== 'system') {
                         try {
-                            const user = await getUserByGoogleId(row.author);
+                            const user = await getUserByGoogleIdHash(row.author);
                             return {
                                 ...row,
                                 author_name: user ? user.name : null,
@@ -1448,7 +1450,7 @@ export function getForumPosts(threadId) {
                         };
                     }
                 }));
-                
+
                 resolve(rowsWithAuthors);
             });
         } catch (error) {
@@ -1469,15 +1471,16 @@ export function getForumPostById(postId) {
     });
 }
 
-/** Count posts by user in a category that are replies (not the first post of each thread). */
+/** Count posts by user in a category that are replies (not the first post of each thread). author is stored as hash. */
 export function countUserRepliesInCategory(googleId, categoryId) {
     return new Promise((resolve, reject) => {
+        const authorHash = hashGoogleId(String(googleId));
         db.get(`
             SELECT COUNT(*) as cnt FROM forum_posts p
             INNER JOIN forum_threads t ON p.thread_id = t.id
             WHERE t.category_id = ? AND p.author = ?
             AND p.id <> (SELECT MIN(id) FROM forum_posts WHERE thread_id = p.thread_id)
-        `, [categoryId, googleId], (err, row) => {
+        `, [categoryId, authorHash], (err, row) => {
             if (err) {
                 reject(err);
                 return;
@@ -1487,10 +1490,11 @@ export function countUserRepliesInCategory(googleId, categoryId) {
     });
 }
 
-export function createForumPost(threadId, author, content) {
+export function createForumPost(threadId, authorGoogleId, content) {
     return new Promise((resolve, reject) => {
+        const authorHash = hashGoogleId(String(authorGoogleId));
         db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)', 
-            [threadId, author, content], function(err) {
+            [threadId, authorHash, content], function(err) {
             if (err) {
                 reject(err);
                 return;
@@ -1615,10 +1619,11 @@ export function hasUserLikedPost(postId, googleId) {
     });
 }
 
-// Like a post
+// Like a post (store hashed Google ID)
 export function likePost(postId, googleId) {
     return new Promise((resolve, reject) => {
-        db.run('INSERT OR IGNORE INTO forum_post_likes (post_id, googleId) VALUES (?, ?)', [postId, googleId], function(err) {
+        const hash = hashGoogleId(String(googleId));
+        db.run('INSERT OR IGNORE INTO forum_post_likes (post_id, googleId) VALUES (?, ?)', [postId, hash], function(err) {
             if (err) {
                 reject(err);
             } else {
@@ -1631,7 +1636,8 @@ export function likePost(postId, googleId) {
 // Unlike a post
 export function unlikePost(postId, googleId) {
     return new Promise((resolve, reject) => {
-        db.run('DELETE FROM forum_post_likes WHERE post_id = ? AND googleId = ?', [postId, googleId], function(err) {
+        const hash = hashGoogleId(String(googleId));
+        db.run('DELETE FROM forum_post_likes WHERE post_id = ? AND googleId = ?', [postId, hash], function(err) {
             if (err) {
                 reject(err);
             } else {
@@ -1747,10 +1753,11 @@ export function getPostDislikeCount(postId) {
     });
 }
 
-// Check if user has disliked a post
+// Check if user has disliked a post (googleId stored as hash)
 export function hasUserDislikedPost(postId, googleId) {
     return new Promise((resolve, reject) => {
-        db.get('SELECT * FROM forum_post_dislikes WHERE post_id = ? AND googleId = ?', [postId, googleId], (err, row) => {
+        const hash = hashGoogleId(String(googleId));
+        db.get('SELECT * FROM forum_post_dislikes WHERE post_id = ? AND googleId = ?', [postId, hash], (err, row) => {
             if (err) {
                 reject(err);
             } else {
@@ -1760,10 +1767,11 @@ export function hasUserDislikedPost(postId, googleId) {
     });
 }
 
-// Dislike a post
+// Dislike a post (store hashed Google ID)
 export function dislikePost(postId, googleId) {
     return new Promise((resolve, reject) => {
-        db.run('INSERT OR IGNORE INTO forum_post_dislikes (post_id, googleId) VALUES (?, ?)', [postId, googleId], function(err) {
+        const hash = hashGoogleId(String(googleId));
+        db.run('INSERT OR IGNORE INTO forum_post_dislikes (post_id, googleId) VALUES (?, ?)', [postId, hash], function(err) {
             if (err) {
                 reject(err);
             } else {
@@ -1808,9 +1816,10 @@ export function getPostDislikeInfo(postIds, googleId) {
                 counts[row.post_id] = row.count;
             });
             
-            // Get user dislikes if googleId provided
+            // Get user dislikes if googleId provided (store uses hash)
             if (googleId) {
-                db.all(`SELECT post_id FROM forum_post_dislikes WHERE post_id IN (${placeholders}) AND googleId = ?`, [...postIds, googleId], (err, dislikeRows) => {
+                const hash = hashGoogleId(String(googleId));
+                db.all(`SELECT post_id FROM forum_post_dislikes WHERE post_id IN (${placeholders}) AND googleId = ?`, [...postIds, hash], (err, dislikeRows) => {
                     if (err) {
                         reject(err);
                         return;
@@ -1833,9 +1842,10 @@ export function getPostDislikeInfo(postIds, googleId) {
     });
 }
 
-// Stage functions
-export function createStage(slug, name, data, uploadedBy) {
+// Stage functions - store hashed Google ID in uploaded_by (never store raw Google ID)
+export function createStage(slug, name, data, uploaderGoogleId) {
     return new Promise((resolve, reject) => {
+        const uploadedByHash = hashGoogleId(String(uploaderGoogleId));
         const stmt = db.prepare(`
             INSERT INTO stages (slug, name, data, uploaded_by, uploaded_at)
             VALUES (?, ?, ?, ?, ?)
@@ -1845,7 +1855,7 @@ export function createStage(slug, name, data, uploadedBy) {
             slug,
             name,
             JSON.stringify(data),
-            uploadedBy,
+            uploadedByHash,
             new Date().toISOString(),
             function(err) {
                 if (err) {
@@ -1874,6 +1884,7 @@ export function getStageBySlug(slug) {
             }
 
             // Parse JSON data
+            // uploaded_by stores hashed Google ID (return as-is for client; server uses it for userIdToUsername lookup)
             const stage = {
                 id: row.id,
                 slug: row.slug,
@@ -1948,10 +1959,11 @@ export function deleteStage(slug) {
     });
 }
 
-// Campaign level functions
+// Campaign level functions - store hashed Google ID in uploaded_by
 // times: array of target times in seconds to beat (e.g. [155, 110, 90] for 2:35, 1:50, 1:30)
-export function createCampaignLevel(slug, name, data, uploadedBy, times = null) {
+export function createCampaignLevel(slug, name, data, uploaderGoogleId, times = null) {
     return new Promise((resolve, reject) => {
+        const uploadedByHash = hashGoogleId(String(uploaderGoogleId));
         const timesJson = JSON.stringify(Array.isArray(times) ? times : []);
         const stmt = db.prepare(`
             INSERT INTO campaign_levels (slug, name, data, uploaded_by, uploaded_at, times)
@@ -1962,7 +1974,7 @@ export function createCampaignLevel(slug, name, data, uploadedBy, times = null) 
             slug,
             name,
             JSON.stringify(data),
-            uploadedBy,
+            uploadedByHash,
             new Date().toISOString(),
             timesJson,
             function(err) {
@@ -2118,6 +2130,117 @@ export function getLeaderboardTop10(stageSlug) {
                 })));
             }
         );
+    });
+}
+
+/** Returns true if value looks like a raw Google ID (long numeric string), not a hash or sentinel. */
+function isLikelyRawGoogleId(value) {
+    if (value == null || typeof value !== 'string') return false;
+    if (value === 'system' || value === 'Guest') return false;
+    if (/^[a-f0-9]{64}$/i.test(value)) return false; // already hash
+    return value.length >= 10 && /^\d+$/.test(value);
+}
+
+/**
+ * One-time migration: replace raw Google IDs with hashes in stages, forum_threads, forum_posts, forum_post_likes, forum_post_dislikes.
+ * Only run via explicit updateGoogleHash command; never called on startup.
+ */
+export function updateGoogleHashInDatabase() {
+    return new Promise(async (resolve, reject) => {
+        try {
+            let stagesUpdated = 0, threadsUpdated = 0, postsUpdated = 0, likesUpdated = 0, dislikesUpdated = 0;
+
+            // stages.uploaded_by
+            const stageRows = await new Promise((res, rej) => {
+                db.all('SELECT id, uploaded_by FROM stages', [], (err, rows) => { err ? rej(err) : res(rows || []); });
+            });
+            for (const row of stageRows) {
+                if (isLikelyRawGoogleId(row.uploaded_by)) {
+                    const hashed = hashGoogleId(row.uploaded_by);
+                    await new Promise((res, rej) => {
+                        db.run('UPDATE stages SET uploaded_by = ? WHERE id = ?', [hashed, row.id], err => err ? rej(err) : res());
+                    });
+                    stagesUpdated++;
+                }
+            }
+
+            // forum_threads.author (skip system/Guest)
+            const threadRows = await new Promise((res, rej) => {
+                db.all('SELECT id, author FROM forum_threads', [], (err, rows) => { err ? rej(err) : res(rows || []); });
+            });
+            for (const row of threadRows) {
+                if (isLikelyRawGoogleId(row.author)) {
+                    const hashed = hashGoogleId(row.author);
+                    await new Promise((res, rej) => {
+                        db.run('UPDATE forum_threads SET author = ? WHERE id = ?', [hashed, row.id], err => err ? rej(err) : res());
+                    });
+                    threadsUpdated++;
+                }
+            }
+
+            // forum_posts.author
+            const postRows = await new Promise((res, rej) => {
+                db.all('SELECT id, author FROM forum_posts', [], (err, rows) => { err ? rej(err) : res(rows || []); });
+            });
+            for (const row of postRows) {
+                if (isLikelyRawGoogleId(row.author)) {
+                    const hashed = hashGoogleId(row.author);
+                    await new Promise((res, rej) => {
+                        db.run('UPDATE forum_posts SET author = ? WHERE id = ?', [hashed, row.id], err => err ? rej(err) : res());
+                    });
+                    postsUpdated++;
+                }
+            }
+
+            // forum_post_likes.googleId
+            const likeRows = await new Promise((res, rej) => {
+                db.all('SELECT id, post_id, googleId FROM forum_post_likes', [], (err, rows) => { err ? rej(err) : res(rows || []); });
+            });
+            for (const row of likeRows) {
+                if (isLikelyRawGoogleId(row.googleId)) {
+                    const hashed = hashGoogleId(row.googleId);
+                    await new Promise((res, rej) => {
+                        db.run('UPDATE forum_post_likes SET googleId = ? WHERE id = ?', [hashed, row.id], err => err ? rej(err) : res());
+                    });
+                    likesUpdated++;
+                }
+            }
+
+            // forum_post_dislikes.googleId
+            const dislikeRows = await new Promise((res, rej) => {
+                db.all('SELECT id, post_id, googleId FROM forum_post_dislikes', [], (err, rows) => { err ? rej(err) : res(rows || []); });
+            });
+            for (const row of dislikeRows) {
+                if (isLikelyRawGoogleId(row.googleId)) {
+                    const hashed = hashGoogleId(row.googleId);
+                    await new Promise((res, rej) => {
+                        db.run('UPDATE forum_post_dislikes SET googleId = ? WHERE id = ?', [hashed, row.id], err => err ? rej(err) : res());
+                    });
+                    dislikesUpdated++;
+                }
+            }
+
+            // campaign_levels.uploaded_by
+            let campaignUpdated = 0;
+            const campaignRows = await new Promise((res, rej) => {
+                db.all('SELECT id, uploaded_by FROM campaign_levels', [], (err, rows) => { err ? rej(err) : res(rows || []); });
+            });
+            for (const row of campaignRows) {
+                if (isLikelyRawGoogleId(row.uploaded_by)) {
+                    const hashed = hashGoogleId(row.uploaded_by);
+                    await new Promise((res, rej) => {
+                        db.run('UPDATE campaign_levels SET uploaded_by = ? WHERE id = ?', [hashed, row.id], err => err ? rej(err) : res());
+                    });
+                    campaignUpdated++;
+                }
+            }
+
+            console.log('[updateGoogleHash] Done. stages:', stagesUpdated, 'forum_threads:', threadsUpdated, 'forum_posts:', postsUpdated, 'likes:', likesUpdated, 'dislikes:', dislikesUpdated, 'campaign_levels:', campaignUpdated);
+            resolve({ stagesUpdated, threadsUpdated, postsUpdated, likesUpdated, dislikesUpdated, campaignUpdated });
+        } catch (err) {
+            console.error('[updateGoogleHash] Error:', err);
+            reject(err);
+        }
     });
 }
 
