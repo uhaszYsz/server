@@ -1298,12 +1298,19 @@ export function getForumThreads(categoryId, authorKeys = null) {
 export function getForumFeedThreads(limit = 20, offset = 0) {
     return new Promise(async (resolve, reject) => {
         try {
+            // Exclude Manuals category and all its subcategories (Keywords, Built-in Variables, etc.)
             db.all(`
                 SELECT t.*, 
                        (SELECT content FROM forum_posts WHERE thread_id = t.id ORDER BY created_at ASC LIMIT 1) as first_post_content,
                        (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id AND author != 'system') as post_count,
                        (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date
                 FROM forum_threads t
+                INNER JOIN forum_categories c ON t.category_id = c.id
+                WHERE t.category_id NOT IN (
+                    SELECT id FROM forum_categories WHERE name = 'Manuals' AND parent_id IS NULL
+                    UNION
+                    SELECT id FROM forum_categories WHERE parent_id = (SELECT id FROM forum_categories WHERE name = 'Manuals' AND parent_id IS NULL)
+                )
                 ORDER BY t.updated_at DESC
                 LIMIT ? OFFSET ?
             `, [limit, offset], async (err, rows) => {
