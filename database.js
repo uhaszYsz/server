@@ -1295,6 +1295,57 @@ export function getForumThreads(categoryId, authorKeys = null) {
     });
 }
 
+export function getForumFeedThreads(limit = 20, offset = 0) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            db.all(`
+                SELECT t.*, 
+                       (SELECT content FROM forum_posts WHERE thread_id = t.id ORDER BY created_at ASC LIMIT 1) as first_post_content,
+                       (SELECT COUNT(*) FROM forum_posts WHERE thread_id = t.id AND author != 'system') as post_count,
+                       (SELECT MAX(created_at) FROM forum_posts WHERE thread_id = t.id) as last_post_date
+                FROM forum_threads t
+                ORDER BY t.updated_at DESC
+                LIMIT ? OFFSET ?
+            `, [limit, offset], async (err, rows) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                
+                // Look up author names and ranks for each thread
+                const rowsWithAuthors = await Promise.all(rows.map(async (row) => {
+                    if (row.author && row.author !== 'system') {
+                        try {
+                            const user = await getUserByGoogleIdHash(row.author);
+                            return {
+                                ...row,
+                                author_name: user ? user.name : null,
+                                author_rank: user ? (user.rank || 'player') : 'player'
+                            };
+                        } catch (err) {
+                            return {
+                                ...row,
+                                author_name: null,
+                                author_rank: 'player'
+                            };
+                        }
+                    } else {
+                        return {
+                            ...row,
+                            author_name: row.author === 'system' ? 'System' : null,
+                            author_rank: 'player'
+                        };
+                    }
+                }));
+                
+                resolve(rowsWithAuthors);
+            });
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
 export function getForumCategoryStats(categoryId, authorGoogleId = null) {
     return new Promise((resolve, reject) => {
         const rawKeys = Array.isArray(authorGoogleId)

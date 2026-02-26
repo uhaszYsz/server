@@ -4280,6 +4280,30 @@ function handleWebSocketConnection(ws, req) {
             console.error('Failed to get forum threads', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to get forum threads' }));
         }
+      } else if (data.type === 'getForumFeedThreads') {
+        try {
+            const limit = Math.min(Math.max(parseInt(data.limit) || 20, 1), 50);
+            const offset = Math.max(parseInt(data.offset) || 0, 0);
+
+            const threads = await db.getForumFeedThreads(limit, offset);
+            
+            // Get like counts for the first post of each thread
+            const threadsWithLikes = await Promise.all(threads.map(async (thread) => {
+                // Get first post (oldest) for this thread
+                const posts = await db.getForumPosts(thread.id);
+                if (posts && posts.length > 0) {
+                    const firstPost = posts[0]; // First post is the main thread post
+                    const likeCount = await db.getPostLikeCount(firstPost.id);
+                    return { ...thread, likeCount };
+                }
+                return { ...thread, likeCount: 0 };
+            }));
+            
+            ws.send(msgpack.encode({ type: 'forumFeedThreads', threads: threadsWithLikes, offset }));
+        } catch (error) {
+            console.error('Failed to get forum feed threads', error);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to get forum feed threads' }));
+        }
       } else if (data.type === 'getForumThread') {
         if (!data.threadId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Thread ID required' }));
