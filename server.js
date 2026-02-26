@@ -109,7 +109,6 @@ const msgpack = new Encoder({
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const levelsDirectory = path.join(__dirname, 'levels');
-const weaponsDirectory = path.join(__dirname, 'weapons');
 const DEFAULT_CAMPAIGN_LEVEL_FILE = 'lev.json'; // Default slug for campaign level
 
 const OPENAI_KEY_FILE = path.join(__dirname, 'oak.txt');
@@ -330,8 +329,7 @@ const LEVEL_SLUG_REGEX = /^[a-z0-9]+[a-z0-9-_]*$/;
 const MAX_SPRITE_SIZE = 4096; // 4 KB max sprite size
 
 await Promise.all([
-    fs.mkdir(levelsDirectory, { recursive: true }),
-    fs.mkdir(weaponsDirectory, { recursive: true })
+    fs.mkdir(levelsDirectory, { recursive: true })
 ]);
 
 // Equipment slots
@@ -533,13 +531,6 @@ function getSpellcardDisplayName(abilityId) {
 
 // Initialize inventory and equipment for new players
 function initializeInventoryAndEquipment() {
-    const starterWeapon = {
-        name: 'weapon',
-        displayName: 'Sword',
-        weaponFile: 'playa',
-        stats: [] // Empty stats array
-    };
-
     // Give new user one random outfit (stores characterIndex for sprite)
     const randomOutfit = OUTFIT_LIST[Math.floor(Math.random() * OUTFIT_LIST.length)];
     const starterOutfit = {
@@ -550,15 +541,14 @@ function initializeInventoryAndEquipment() {
     };
 
     return {
-        inventory: [starterWeapon, starterOutfit],
+        inventory: [starterOutfit],
         equipment: {
             weapon: null,
             armor: null,
             amulet: null,
-            outfit: starterOutfit, // Equip starter outfit so sprite shows
+            outfit: starterOutfit,
             spellcard: null
-        },
-        weaponData: null
+        }
     };
 }
 
@@ -705,76 +695,6 @@ function sanitizeLevelPayload(payload) {
     };
 }
 
-function sanitizeWeaponPayload(payload) {
-    if (!payload || typeof payload !== 'object') {
-        throw new Error('Invalid weapon payload');
-    }
-
-    const rawName = typeof payload.name === 'string' ? payload.name : 'Weapon';
-    const normalizedName = normalizeLevelName(rawName);
-
-    const weaponSection = (payload.weapon && typeof payload.weapon === 'object')
-        ? payload.weapon
-        : {};
-
-    const emitters = Array.isArray(weaponSection.emitters) ? weaponSection.emitters : [];
-    if (emitters.length > 500) {
-        throw new Error('Weapon has too many emitters');
-    }
-
-    const sanitizedEmitters = emitters.map(emitter => {
-        if (!emitter || typeof emitter !== 'object') {
-            return null;
-        }
-
-        const x = Number(emitter.x);
-        const y = Number(emitter.y);
-
-        return {
-            id: emitter.id ?? null,
-            x: Number.isFinite(x) ? x : 0,
-            y: Number.isFinite(y) ? y : 0,
-            autoCycles: Array.isArray(emitter.autoCycles) ? emitter.autoCycles : [],
-            cycleCounters: (emitter.cycleCounters && typeof emitter.cycleCounters === 'object') ? emitter.cycleCounters : { onShoot: {}, onShotgun: {}, onStream: {} },
-            start: emitter.start || null,
-            current: emitter.current || null,
-            loadedFrom: typeof emitter.loadedFrom === 'string' ? emitter.loadedFrom : null
-        };
-    }).filter(Boolean);
-
-    const sanitized = {
-        name: normalizedName,
-        weapon: {
-            emitters: sanitizedEmitters
-        },
-        timestamp: typeof payload.timestamp === 'string' ? payload.timestamp : new Date().toISOString()
-    };
-
-    const serialized = JSON.stringify(sanitized);
-    if (Buffer.byteLength(serialized, 'utf8') > 200 * 1024) {
-        throw new Error('Weapon data is too large');
-    }
-
-    return sanitized;
-}
-
-async function loadWeaponDataBySlug(slug) {
-    try {
-        const validSlug = createLevelSlug(slug);
-        const weaponPath = path.resolve(weaponsDirectory, `${validSlug}.json`);
-        const relative = path.relative(weaponsDirectory, weaponPath);
-        if (relative.startsWith('..') || path.isAbsolute(relative)) {
-            throw new Error('Invalid weapon path');
-        }
-        const contents = await fs.readFile(weaponPath, 'utf8');
-        const parsed = JSON.parse(contents);
-        return parsed.weapon || parsed;
-    } catch (error) {
-        console.error('Failed to load weapon data for slug', slug, error);
-        return null;
-    }
-}
-
 async function buildRoomWeaponData(clientsCollection) {
     const data = [];
     if (!clientsCollection) return data;
@@ -784,45 +704,27 @@ async function buildRoomWeaponData(clientsCollection) {
         const user = await db.getUserByGoogleId(client.googleId);
         if (!user) continue;
 
-        let userModified = false;
-
-        // Migrate Sword items from 'test' to 'playa' before loading weapon data
-        if (user.equipment && user.equipment.weapon) {
-            if (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon')) {
-                user.equipment.weapon.weaponFile = 'playa';
-                userModified = true;
-                console.log(`[buildRoomWeaponData] Migrated ${user.name || client.googleId}'s Sword from 'test' to 'playa'`);
-            }
-        }
-        // Always reload weapon data if equipment weaponFile doesn't match weaponData slug
-        if (user.equipment && user.equipment.weapon && user.equipment.weapon.weaponFile) {
-            const slug = user.equipment.weapon.weaponFile;
-            // Reload if weaponData doesn't exist, is empty, or slug doesn't match
-            if (!user.weaponData || !user.weaponData.emitters || user.weaponData.emitters.length === 0 || user.weaponData.slug !== slug) {
-                const weaponData = await loadWeaponDataBySlug(slug);
-                if (weaponData) {
-                    user.weaponData = { ...weaponData, slug };
-                    userModified = true;
-                    console.log(`[buildRoomWeaponData] Reloaded weapon data for ${user.name || client.googleId}: slug="${slug}", emitters=${weaponData.emitters?.length || 0}`);
-                } else {
-                    console.error(`[buildRoomWeaponData] Failed to load weapon data for ${user.name || client.googleId}: slug="${slug}"`);
-                }
+        let weaponCodeChildren = null;
+        let weaponItemName = null;
+        const weapon = user.equipment && user.equipment.weapon;
+        const itemId = weapon && (weapon.itemId ?? weapon.item_id);
+        if (itemId != null) {
+            const item = await db.getItemById(itemId);
+            if (item && item.codeChildren && item.codeChildren.length > 0) {
+                weaponCodeChildren = item.codeChildren;
+                weaponItemName = item.name;
             }
         }
 
         data.push({
-            username: user.name || client.googleId, // Use name for display
+            username: user.name || client.googleId,
             playerId: client.id,
-            weaponData: user.weaponData || null,
+            weaponCodeChildren: weaponCodeChildren,
+            weaponItemName: weaponItemName || null,
             outfitCharacterIndex: (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
                 ? user.equipment.outfit.characterIndex
                 : null
         });
-        
-        // Save user if it was modified
-        if (userModified) {
-            await db.updateUser(client.googleId, user);
-        }
     }
 
     return data;
@@ -863,35 +765,17 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
 
         // entry already set above (id + displayName)
 
-        let userModified = false;
-
-        // Only include weaponData and stats if in the same party
+        // Only include weaponCodeChildren and stats if in the same party
         if (isInSameParty) {
-            // Migrate Sword items from 'test' to 'playa' before loading weapon data
-            if (user.equipment && user.equipment.weapon) {
-                if (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon')) {
-                    user.equipment.weapon.weaponFile = 'playa';
-                    userModified = true;
-                    console.log(`[buildPlayerInitData] Migrated ${client.username}'s Sword from 'test' to 'playa'`);
+            const weapon = user.equipment && user.equipment.weapon;
+            const itemId = weapon && (weapon.itemId ?? weapon.item_id);
+            if (itemId != null) {
+                const item = await db.getItemById(itemId);
+                if (item && item.codeChildren && item.codeChildren.length > 0) {
+                    entry.weaponCodeChildren = item.codeChildren;
+                    entry.weaponItemName = item.name;
                 }
             }
-            // Always reload weapon data if equipment weaponFile doesn't match weaponData slug
-            if (user.equipment && user.equipment.weapon && user.equipment.weapon.weaponFile) {
-                const slug = user.equipment.weapon.weaponFile;
-                // Reload if weaponData doesn't exist, is empty, or slug doesn't match
-                if (!user.weaponData || !user.weaponData.emitters || user.weaponData.emitters.length === 0 || user.weaponData.slug !== slug) {
-                    const weaponData = await loadWeaponDataBySlug(slug);
-                    if (weaponData) {
-                        user.weaponData = { ...weaponData, slug };
-                        userModified = true;
-                        console.log(`[buildPlayerInitData] Reloaded weapon data for ${client.username}: slug="${slug}", emitters=${weaponData.emitters?.length || 0}`);
-                    } else {
-                        console.error(`[buildPlayerInitData] Failed to load weapon data for ${client.username}: slug="${slug}"`);
-                    }
-                }
-            }
-
-            entry.weaponData = user.weaponData || null;
             entry.stats = user.stats || null;
             entry.outfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
                 ? user.equipment.outfit.characterIndex
@@ -902,16 +786,11 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
             clientId: client.id,
             username: client.username,
             isInSameParty: isInSameParty,
-            hasWeaponData: !!(entry.weaponData && entry.weaponData.emitters && entry.weaponData.emitters.length),
+            hasWeaponCodeChildren: !!(entry.weaponCodeChildren && entry.weaponCodeChildren.length),
             hasStats: !!entry.stats
         });
 
         payload.push(entry);
-        
-        // Save user if it was modified
-        if (userModified) {
-            await db.updateUser(client.googleId, user);
-        }
     }
 
     return payload;
@@ -1798,34 +1677,9 @@ function handleWebSocketConnection(ws, req) {
         if (user) {
             let userDataChanged = false;
             // Migrate Sword items from 'test' to 'playa' on login
-            if (user.equipment && user.equipment.weapon) {
-                if (user.equipment.weapon.weaponFile === 'starter-sword' || 
-                    (user.equipment.weapon.weaponFile === 'test' && (user.equipment.weapon.displayName === 'Sword' || user.equipment.weapon.name === 'weapon'))) {
-                    user.equipment.weapon.weaponFile = 'playa';
-                    userDataChanged = true;
-                    console.log(`[Login] Migrated ${user.name || ws.googleId}'s equipped Sword from '${user.equipment.weapon.weaponFile === 'starter-sword' ? 'starter-sword' : 'test'}' to 'playa'`);
-                }
-                if (!user.equipment.weapon.displayName) {
-                    user.equipment.weapon.displayName = 'Sword';
-                    userDataChanged = true;
-                }
-                const slug = user.equipment.weapon.weaponFile || 'playa';
-                if (!user.weaponData || user.weaponData.slug !== slug) {
-                    let weaponData = await loadWeaponDataBySlug(slug);
-                    if (!weaponData && slug !== 'playa') {
-                        console.log(`[Login] Failed to load weapon "${slug}" for ${user.name || ws.googleId}, trying 'playa'`);
-                        weaponData = await loadWeaponDataBySlug('playa');
-                        user.equipment.weapon.weaponFile = 'playa';
-                        userDataChanged = true;
-                    }
-                    if (weaponData) {
-                        user.weaponData = { ...weaponData, slug: user.equipment.weapon.weaponFile || 'playa' };
-                        userDataChanged = true;
-                        console.log(`[Login] Loaded weapon data for ${user.name || ws.googleId}: slug="${user.equipment.weapon.weaponFile}", emitters=${weaponData.emitters?.length || 0}`);
-                    } else {
-                        console.error(`[Login] Failed to load weapon data for ${user.name || ws.googleId}: slug="${slug}"`);
-                    }
-                }
+            if (user.equipment && user.equipment.weapon && !user.equipment.weapon.displayName) {
+                user.equipment.weapon.displayName = user.equipment.weapon.name || 'Weapon';
+                userDataChanged = true;
             }
             if (userDataChanged) {
                 await db.updateUser(ws.googleId, user);
@@ -2024,14 +1878,9 @@ function handleWebSocketConnection(ws, req) {
             displayName: typeof item.displayName === 'string' ? item.displayName : (item.displayName || item.name),
             stats: Array.isArray(item.stats) ? item.stats : []
         };
-        if (typeof item.weaponFile === 'string' && item.weaponFile.trim()) {
-            try {
-                lootItem.weaponFile = createLevelSlug(item.weaponFile.trim());
-            } catch {
-                lootItem.weaponFile = lootItem.name === 'weapon' ? 'playa' : 'test';
-            }
-        } else if (lootItem.name === 'weapon') {
-            lootItem.weaponFile = (lootItem.displayName === 'Sword' || lootItem.name === 'weapon') ? 'playa' : 'test';
+        if (lootItem.name === 'weapon' && item.itemId != null) {
+            lootItem.itemId = parseInt(item.itemId, 10);
+            if (!Number.isInteger(lootItem.itemId) || lootItem.itemId < 1) delete lootItem.itemId;
         }
         if (typeof item.activeAbility === 'string' && item.activeAbility.trim()) {
             lootItem.activeAbility = item.activeAbility.trim();
@@ -2133,41 +1982,12 @@ function handleWebSocketConnection(ws, req) {
             user.inventory.push(oldItem);
         }
         
-        // Sanitize weapon file slug if present
-        if (item.weaponFile && typeof item.weaponFile === 'string') {
-            try {
-                item.weaponFile = createLevelSlug(item.weaponFile);
-            } catch {
-                // If it's a Sword, default to 'playa', otherwise 'test'
-                const isSword = item.displayName === 'Sword' || item.name === 'weapon';
-                item.weaponFile = createLevelSlug(isSword ? 'playa' : 'test');
-            }
-        } else if (slotName === 'weapon') {
-            // If weapon slot and no weaponFile, set based on displayName
-            const isSword = item.displayName === 'Sword' || item.name === 'weapon';
-            item.weaponFile = isSword ? 'playa' : 'test';
-        }
-
-        // If Sword item has 'test' weaponFile, change to 'playa' BEFORE equipping
-        if (slotName === 'weapon' && (item.displayName === 'Sword' || item.name === 'weapon')) {
-            if (!item.weaponFile || item.weaponFile === 'test') {
-                item.weaponFile = 'playa';
-            }
-        }
-
-        // Equip the new item (after all weaponFile updates)
+        // Equip the new item
         user.equipment[slotName] = item;
 
-        if (slotName === 'weapon') {
-            const weaponFile = item.weaponFile || 'playa';
-            // Always reload weapon data when equipping a weapon to ensure it matches the weaponFile
-            const weaponData = await loadWeaponDataBySlug(weaponFile);
-            if (weaponData) {
-                user.weaponData = { ...weaponData, slug: weaponFile };
-                console.log(`[EquipItem] User ${ws.username} equipped weapon with file "${weaponFile}", loaded ${weaponData.emitters?.length || 0} emitters`);
-            } else {
-                console.error(`[EquipItem] Failed to load weapon data for slug "${weaponFile}"`);
-            }
+        if (slotName === 'weapon' && (item.itemId != null || item.item_id != null)) {
+            const id = item.itemId ?? item.item_id;
+            console.log(`[EquipItem] User ${ws.username} equipped weapon (itemId=${id})`);
         }
         
         // Recalculate stats (base stats + equipment bonuses)
@@ -2896,168 +2716,59 @@ function handleWebSocketConnection(ws, req) {
                 }
             }
         }
-      } else if (data.type === 'loadWeapon') {
-        // Handle weapon loading - store weapon data in user profile
-        if (!ws.username) {
+      } else if (data.type === 'uploadAsWeapon') {
+        // Admin only: create item from shared object (name + code) and add to admin's inventory
+        if (ws.rank !== 'admin') {
+            ws.send(msgpack.encode({ type: 'error', message: 'Only administrators can upload as weapon' }));
+            return;
+        }
+        if (!ws.username || !ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
-        
-        const user = await db.getUserByGoogleId(ws.googleId);
-        if (!user) {
-            ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+        const objectName = typeof data.objectName === 'string' ? data.objectName.trim() : '';
+        const code = typeof data.code === 'string' ? data.code : '';
+        if (!objectName) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Object name is required' }));
             return;
         }
-        
-        // Store weapon data
-        const incomingWeapon = data.weaponData ? { ...data.weaponData } : null;
-        if (!incomingWeapon || !Array.isArray(incomingWeapon.emitters)) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Invalid weapon data payload' }));
-            return;
-        }
-
-        let incomingSlug = incomingWeapon.slug || (incomingWeapon.name ? createLevelSlug(incomingWeapon.name) : null);
-        if (!incomingSlug && user.equipment?.weapon?.weaponFile) {
-            incomingSlug = user.equipment.weapon.weaponFile;
-        }
-        if (incomingSlug) {
-            incomingWeapon.slug = incomingSlug;
-        }
-        if (!incomingWeapon.name && user.equipment?.weapon?.displayName) {
-            incomingWeapon.name = user.equipment.weapon.displayName;
-        }
-
-        user.weaponData = incomingWeapon;
-
-        if (user.equipment && user.equipment.weapon) {
-            user.equipment.weapon.weaponFile = incomingSlug || user.equipment.weapon.weaponFile || null;
-            if (!user.equipment.weapon.displayName && incomingWeapon.name) {
-                user.equipment.weapon.displayName = incomingWeapon.name;
-            }
-        }
-        
-        // Save to database
-        await db.updateUser(ws.googleId, user);
-        
-        // Send success response
-        ws.send(msgpack.encode({
-            type: 'loadWeaponSuccess',
-            weaponData: user.weaponData
-        }));
-        
-        console.log(`User ${ws.username} loaded weapon: ${data.weaponData.name}`);
-
-        // Broadcast updated party weapon data to current room if in game
-        if (ws.room) {
-            const roomEntry = rooms.get(ws.room);
-            if (roomEntry && roomEntry.type === 'game' && roomEntry.clients) {
-                const weaponPayload = await buildRoomWeaponData(roomEntry.clients ? [...roomEntry.clients] : []);
-                if (weaponPayload.length > 0) {
-                    const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
-                    for (const client of roomEntry.clients) {
-                        if (client && client.readyState === openState) {
-                            client.send(msgpack.encode({
-                                type: 'roomWeaponData',
-                                roomWeaponData: weaponPayload
-                            }));
-                        }
-                    }
-                }
-            }
-        }
-      } else if (data.type === 'uploadedWeapon') {
-        if (!ws.username) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
-            return;
-        }
-
         try {
-            const sanitizedWeapon = sanitizeWeaponPayload(data.weapon);
-            const uploaderGoogleId = ws.googleId;
-            const weaponSlug = createLevelSlug(sanitizedWeapon.name);
-            const targetPath = path.resolve(weaponsDirectory, `${weaponSlug}.json`);
-            const relativePath = path.relative(weaponsDirectory, targetPath);
-
-            if (relativePath.startsWith('..') || relativePath.includes(`${path.sep}..`)) {
-                throw new Error('Invalid weapon name');
+            const codeChildren = [{ objectName, code }];
+            const itemId = await db.createItem(objectName, 'weapon', codeChildren);
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+                return;
             }
-
-            const payloadToStore = {
-                ...sanitizedWeapon,
-                uploadedBy: db.hashGoogleId(uploaderGoogleId), // never store raw Google ID on disk
-                uploadedAt: new Date().toISOString()
+            if (!user.inventory) user.inventory = [];
+            const weaponItem = {
+                name: 'weapon',
+                displayName: objectName,
+                itemId: itemId,
+                stats: []
             };
-
-            await fs.writeFile(targetPath, JSON.stringify(payloadToStore, null, 2));
-
+            user.inventory.push(weaponItem);
+            await db.updateUser(ws.googleId, user);
             ws.send(msgpack.encode({
-                type: 'uploadedWeaponSuccess',
-                name: sanitizedWeapon.name
+                type: 'uploadAsWeaponSuccess',
+                itemId,
+                name: objectName,
+                playerData: { inventory: user.inventory, equipment: user.equipment, stats: user.stats }
             }));
-
-            console.log(`User ${ws.username} uploaded weapon "${sanitizedWeapon.name}" to server`);
+            console.log(`[uploadAsWeapon] Admin ${ws.username} created weapon item "${objectName}" (id=${itemId}) and added to inventory`);
         } catch (error) {
-            console.error('Weapon upload failed:', error);
-            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to upload weapon' }));
+            console.error('uploadAsWeapon failed:', error);
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to upload as weapon' }));
         }
       } else if (data.type === 'listWeapons') {
         if (!ws.username) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
-
         try {
-            const files = await fs.readdir(weaponsDirectory);
-            const weapons = [];
-
-            for (const fileName of files) {
-                if (!fileName.endsWith('.json')) continue;
-
-                const slug = path.parse(fileName).name;
-                let safeSlug;
-
-                try {
-                    safeSlug = ensureValidSlug(slug);
-                } catch {
-                    continue;
-                }
-
-                const filePath = path.resolve(weaponsDirectory, fileName);
-                const relative = path.relative(weaponsDirectory, filePath);
-                if (relative.startsWith('..') || path.isAbsolute(relative)) {
-                    continue;
-                }
-
-                try {
-                    const [fileContents, stats] = await Promise.all([
-                        fs.readFile(filePath, 'utf8'),
-                        fs.stat(filePath)
-                    ]);
-
-                    const parsed = JSON.parse(fileContents);
-                    const weaponName = typeof parsed.name === 'string' ? parsed.name : safeSlug;
-                    const emitters = Array.isArray(parsed.weapon?.emitters) ? parsed.weapon.emitters.length : 0;
-                    const uploadedBy = typeof parsed.uploadedBy === 'string' ? parsed.uploadedBy : null;
-                    const uploadedAt = typeof parsed.uploadedAt === 'string' ? parsed.uploadedAt : stats.mtime.toISOString();
-
-                    weapons.push({
-                        name: weaponName,
-                        slug: safeSlug,
-                        emitters,
-                        uploadedBy,
-                        uploadedAt
-                    });
-                } catch (error) {
-                    console.error('Failed to process weapon file', fileName, error);
-                }
-            }
-
-            weapons.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-
-            ws.send(msgpack.encode({
-                type: 'weaponsList',
-                weapons
-            }));
+            const items = await db.getItemsBySlot('weapon');
+            const weapons = items.map(i => ({ id: i.id, name: i.name }));
+            ws.send(msgpack.encode({ type: 'weaponsList', weapons }));
         } catch (error) {
             console.error('Failed to list weapons', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to list weapons' }));
@@ -3067,34 +2778,26 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
-
+        const id = data.id != null ? parseInt(data.id, 10) : NaN;
+        if (!Number.isInteger(id) || id < 1) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Valid item id is required' }));
+            return;
+        }
         try {
-            const identifier = typeof data.slug === 'string' ? data.slug : data.name;
-            const slug = ensureValidSlug(identifier);
-            const targetPath = path.resolve(weaponsDirectory, `${slug}.json`);
-            const relative = path.relative(weaponsDirectory, targetPath);
-
-            if (relative.startsWith('..') || path.isAbsolute(relative)) {
-                throw new Error('Invalid weapon identifier');
+            const item = await db.getItemById(id);
+            if (!item || item.slot !== 'weapon') {
+                ws.send(msgpack.encode({ type: 'error', message: 'Weapon not found' }));
+                return;
             }
-
-            const fileContents = await fs.readFile(targetPath, 'utf8');
-            const parsed = JSON.parse(fileContents);
-
             ws.send(msgpack.encode({
                 type: 'weaponData',
-                name: parsed.name || slug,
-                weapon: parsed.weapon || { emitters: [] },
-                uploadedBy: parsed.uploadedBy || null,
-                uploadedAt: parsed.uploadedAt || null
+                itemId: item.id,
+                name: item.name,
+                codeChildren: item.codeChildren || []
             }));
         } catch (error) {
-            console.error('Failed to load weapon', error);
-            if (error.code === 'ENOENT') {
-                ws.send(msgpack.encode({ type: 'error', message: 'Weapon not found on server' }));
-            } else {
-                ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to load weapon' }));
-            }
+            console.error('Failed to get weapon', error);
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to load weapon' }));
         }
       } else if (data.type === 'uploadedLevel') {
         try {
@@ -4552,7 +4255,7 @@ function handleWebSocketConnection(ws, req) {
                 // User doesn't exist, create new user with random username
                 try {
                     const defaultStats = getDefaultStats();
-                    const { inventory, equipment, weaponData } = initializeInventoryAndEquipment();
+                    const { inventory, equipment } = initializeInventoryAndEquipment();
                     
                     // Generate a unique random username
                     const randomName = await generateUniqueRandomUsername();
@@ -4563,7 +4266,7 @@ function handleWebSocketConnection(ws, req) {
                         stats: defaultStats,
                         inventory: inventory,
                         equipment: equipment,
-                        weaponData: weaponData
+                        weaponData: null
                     });
                     console.log(`✅ Created new Google user: ${verifiedGoogleId} with random name: ${randomName}`);
                     

@@ -281,6 +281,20 @@ export function initDatabase() {
                                 db.run(`CREATE INDEX IF NOT EXISTS idx_leaderboards_stage_time ON leaderboards(stage_slug, time_seconds)`, (err) => {
                                     if (err) console.warn('Leaderboards index:', err?.message);
                                 });
+                                db.run(`
+                                    CREATE TABLE IF NOT EXISTS items (
+                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        name TEXT NOT NULL,
+                                        slot TEXT NOT NULL,
+                                        codeChildren TEXT NOT NULL DEFAULT '[]'
+                                    )
+                                `, (err) => {
+                                    if (err) {
+                                        console.error('Error creating items table:', err);
+                                    } else {
+                                        console.log('✅ Items table initialized');
+                                    }
+                                });
                                 
                                 // Initialize default categories
                                 initForumCategories().then(() => {
@@ -2141,6 +2155,87 @@ export function deleteCampaignLevel(slug) {
             } else {
                 resolve(this.changes > 0);
             }
+        });
+    });
+}
+
+// Items table: weapon/equipment definitions with codeChildren (JSON array of { objectName, code })
+export function getItemById(id) {
+    return new Promise((resolve, reject) => {
+        const numId = parseInt(id, 10);
+        if (!Number.isInteger(numId) || numId < 1) {
+            resolve(null);
+            return;
+        }
+        db.get('SELECT id, name, slot, codeChildren FROM items WHERE id = ?', [numId], (err, row) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            if (!row) {
+                resolve(null);
+                return;
+            }
+            let codeChildren = [];
+            try {
+                codeChildren = typeof row.codeChildren === 'string' ? JSON.parse(row.codeChildren) : (row.codeChildren || []);
+            } catch (e) {
+                // invalid JSON
+            }
+            resolve({
+                id: row.id,
+                name: row.name,
+                slot: row.slot,
+                codeChildren: Array.isArray(codeChildren) ? codeChildren : []
+            });
+        });
+    });
+}
+
+export function createItem(name, slot, codeChildren) {
+    return new Promise((resolve, reject) => {
+        const nameStr = typeof name === 'string' ? name.trim() : '';
+        const slotStr = typeof slot === 'string' ? slot.trim() : 'weapon';
+        const codeJson = Array.isArray(codeChildren) ? JSON.stringify(codeChildren) : '[]';
+        if (!nameStr) {
+            reject(new Error('Item name is required'));
+            return;
+        }
+        db.run(
+            'INSERT INTO items (name, slot, codeChildren) VALUES (?, ?, ?)',
+            [nameStr, slotStr, codeJson],
+            function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.lastID);
+                }
+            }
+        );
+    });
+}
+
+export function getItemsBySlot(slot) {
+    return new Promise((resolve, reject) => {
+        const slotStr = typeof slot === 'string' ? slot.trim() : 'weapon';
+        db.all('SELECT id, name, slot, codeChildren FROM items WHERE slot = ? ORDER BY name', [slotStr], (err, rows) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            const items = (rows || []).map(row => {
+                let codeChildren = [];
+                try {
+                    codeChildren = typeof row.codeChildren === 'string' ? JSON.parse(row.codeChildren) : (row.codeChildren || []);
+                } catch (e) {}
+                return {
+                    id: row.id,
+                    name: row.name,
+                    slot: row.slot,
+                    codeChildren: Array.isArray(codeChildren) ? codeChildren : []
+                };
+            });
+            resolve(items);
         });
     });
 }
