@@ -509,6 +509,21 @@ direction = turnTowards(direction, getDirection(target.x, target.y), 5);[/code]`
 [code]direction = turnTowardsPlayer(5);[/code]`
     },
     {
+        name: 'directionBounce',
+        threadTitle: 'directionBounce(direction, horizontal)',
+        content: `Returns the direction after bouncing off a wall (does not change any variable by itself).
+
+[b]Arguments:[/b]
+[b][color=#90ee90]direction[/color][/b] - [i]The current direction in degrees.[/i]
+[b][color=#90ee90]horizontal[/color][/b] - [i]true = bounce off a vertical wall (left/right; flips vx). false = bounce off a horizontal wall (top/bottom; flips vy).[/i]
+
+[b][color=#ffa500]Returns: the new direction in degrees (0–360).[/color][/b]
+
+[b]Example:[/b]
+[code]direction = directionBounce(direction, true);  // hit left or right wall
+direction = directionBounce(direction, false); // hit top or bottom wall[/code]`
+    },
+    {
         name: 'waveStart',
         threadTitle: 'waveStart(id)',
         content: `Starts the wave with the given number from the stage editor.
@@ -738,8 +753,8 @@ sync(["x", "y", "hp"]); // sync but exclude x, y, hp[/code]`
 [b]Align grid:[/b] 1=top-left, 2=top-center, 3=top-right, 4=mid-left, 5=center, 6=mid-right, 7=bottom-left, 8=bottom-center, 9=bottom-right.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the anchor point.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the anchor point.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
 [b][color=#90ee90]name[/color][/b] - [i]The image name (must start with @).[/i]
 [b][color=#90ee90]scaleX[/color][/b] - [i]Horizontal scale (1 is normal size).[/i]
 [b][color=#90ee90]scaleY[/color][/b] - [i]Vertical scale (1 is normal size).[/i]
@@ -957,7 +972,7 @@ drawBlendReset();[/code]`
     {
         name: 'drawSetAlign',
         threadTitle: 'drawSetAlign(align)',
-        content: `Sets the default anchor point (1–9, e.g. 1=top-left, 5=center, 9=bottom-right) for later drawSprite, drawBackground, and drawSurface; pass null to clear.`
+        content: `Sets the default alignment (1–9, e.g. 1=top-left, 5=center, 9=bottom-right) for later drawSprite, drawBackground, and drawSurface; pass null to clear.`
     },
     {
         name: 'drawSurface',
@@ -968,7 +983,7 @@ drawBlendReset();[/code]`
 
 [b]Arguments:[/b]
 [b][color=#90ee90]surfaceName[/color][/b] - [i]The name of the layer to draw.[/i]
-[color=#9acd32]x, y[/color] - [i]Optional position of the anchor point (default 0).[/i]
+[color=#9acd32]x, y[/color] - [i]Optional position (default 0).[/i]
 [color=#9acd32]angle[/color] - [i]Optional rotation in degrees (default 0).[/i]
 [color=#9acd32]xscale, yscale[/color] - [i]Optional scale (default 1).[/i]
 [color=#9acd32]alpha[/color] - [i]Optional opacity from 0 to 1 (default 1).[/i]
@@ -1155,13 +1170,13 @@ drawBackground(90, 160, "ui", 0, null, 5)[/code]`
     {
         name: 'drawBackground',
         threadTitle: 'drawBackground(x, y, backgroundName, angle, color, align)',
-        content: `Draws a background you created with background() at a position with optional rotation, color tint, and anchor point (1–9, default 7 is bottom-left).
+        content: `Draws a background you created with background() at a position with optional rotation, color tint, and alignment (1–9, default 7 is bottom-left).
 
 [b]Align grid:[/b] 1=top-left, 2=top-center, 3=top-right, 4=mid-left, 5=center, 6=mid-right, 7=bottom-left, 8=bottom-center, 9=bottom-right.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the anchor point.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the anchor point.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
 [b][color=#90ee90]backgroundName[/color][/b] - [i]The name you gave the background when you created it.[/i]
 [color=#9acd32]angle[/color] - [i]Optional rotation in degrees.[/i]
 [color=#9acd32]color[/color] - [i]Optional color tint.[/i]
