@@ -4,11 +4,12 @@
 export const specialKeywordsHelp = [
     {
         name: 'background',
-        content: `Creates a background. [b]background("name")[/b] = static (baked once into a vertex buffer). [b]background("name", true)[/b] = dynamic (runs each frame; only drawSprite/drawSheetSprite, fast sprite batch). Use drawBackground(x, y, "name") to draw either kind.
+        content: `Creates a named scene you can draw once (static) or every frame (dynamic), then show with drawBackground.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]name[/color][/b] - [i]Buffer name. Use with drawBackground(x, y, "name").[/i]
-[color=#9acd32]dynamic[/color] - [i]Optional. [b]true[/b] = dynamic (only drawSprite/drawSheetSprite each frame; e.g. use getTime() for motion). Omit or false = static bake.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]The name you use when drawing this background with drawBackground.[/i]
+[color=#9acd32]dynamic[/color] - [i]Set to true if the background should be redrawn every frame (e.g. for moving parts); leave out or false for a one-time drawn scene.[/i]
+[color=#9acd32]width, height[/color] - [i]Optional; for dynamic backgrounds, the size of the drawing area in numbers (e.g. 200, 400).[/i]
 
 [b]Example (static):[/b]
 [code]background("bg1")
@@ -18,12 +19,17 @@ drawBackground(0, 0, "bg1")[/code]
 
 [b]Example (dynamic):[/b]
 [code]background("parallax", true)
-#drawSprite(90 + getTime()*10, 160, "@cloud.png", 1, 1, 0)
-drawBackground(0, 0, "parallax")[/code]`
+#drawSprite(90 + getTime()*10, 160, "@cloud", 1, 1, 0)
+drawBackground(0, 0, "parallax")[/code]
+
+[b]Example (dynamic with size):[/b]
+[code]background("ui", true, 200, 400)
+#drawRectangle(0, 0, 200, 400, "#112233")
+drawBackground(90, 160, "ui", 0, null, 5)[/code]`
     },
     {
         name: 'def',
-        content: `Defines a variable with an initial value. The variable persists across frames.
+        content: `Defines a variable with a starting value that is kept from frame to frame.
 
 [b]Example:[/b]
 [code]def myVar = 10;
@@ -32,7 +38,7 @@ def myString = "hello";[/code]
     },
     {
         name: 'globalvar',
-        content: `Define a global variable with initial value. Initialized only once, shared across ALL codeChildren (all objects).
+        content: `Defines a variable that is set once and then shared by every object in the game.
 
 [b]Example:[/b]
 [code]globalvar score = 0;
@@ -44,10 +50,10 @@ score += 1;[/code]
     {
         name: 'inBullet',
         threadTitle: 'inBullet(id)',
-        content: `Lets you change bullet parameters. Accepts a single bullet ID or an array of IDs.
+        content: `Lets you change properties of one or more bullets by their ID.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]id[/color][/b] - [i]Bullet ID or array of bullet IDs to modify.[/i]
+[b][color=#90ee90]id[/color][/b] - [i]The bullet or list of bullets you want to change.[/i]
 
 [b]Example:[/b]
 [code]var Id = createBullet(x, y, 5, direction, 2)
@@ -57,10 +63,10 @@ inBullet(Id)
     },
     {
         name: 'repeat',
-        content: `Repeats a block of code n times. Use indentation (#) to define the block.
+        content: `Runs a block of code a set number of times (use # to indent the block).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]n[/color][/b] - [i]Number of times to repeat the block.[/i]
+[b][color=#90ee90]n[/color][/b] - [i]How many times the block should run.[/i]
 
 [b]Example:[/b]
 [code]var i = 0
@@ -71,86 +77,89 @@ repeat(5)
     },
     {
         name: 'interval',
-        threadTitle: 'interval(frames)',
-        content: `Runs a block every N frames. Frame-based timer (NOT like JavaScript setInterval). Synchronous and deterministic.
+        threadTitle: 'interval(frames, initTime?)',
+        content: `Runs a block every so many frames, with an optional delay before the first run.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]frames[/color][/b] - [i]Number of frames between each execution of the block.[/i]
+[b][color=#90ee90]frames[/color][/b] - [i]How many frames to wait between each run.[/i]
+[color=#9acd32]initTime[/color] - [i]Optional; the first run happens after this many frames, then every frames after that.[/i]
 
 [b]Example:[/b]
 [code]if interval(20)
 #if x > 20
-##hp++[/code]
-[i]Runs the block every 20 frames. Use [color=#90ee90]if interval(frames)[/color] followed by an indented block. Equivalent to: def timer = 20; timer--; if (timer <= 0) { timer = 20; ... }[/i]`
+##hp++
+if interval(10, 4)
+#createBullet(x, y, 2, 0, 1)[/code]
+[i]First block every 20 frames. Second: first fire in 4 frames, then every 10.[/i]`
     }
 ];
 
 export const builtInVariablesHelp = [
     {
         name: 'player',
-        content: `Player object. 
+        content: `The player object you can read from (position, health, knockback, etc). 
 [b]Properties:[/b] [color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]hp[/color], [color=#ffa500]knockbackTime[/color], [color=#ffa500]knockbackPower[/color], [color=#ffa500]knockbackDirection[/color]`
     },
     {
         name: 'bulletData',
-        content: `Array of all existing bullets and their parameters. Use [color=#90ee90]inBullet()[/color] to iterate. When looping, [color=#ffa500]Type[/color] is in [color=#ffa500]bulletTypes[i][/color] ([color=#90ee90]0 = player, 1 = enemy[/color]). Bullets are removed by the engine (collision, out of bounds).
+        content: `List of all bullets on screen; use inBullet() to change them, and the game removes bullets when they hit or leave the play area.
 
 [b]Properties:[/b]
-[color=#ffa500]Id[/color] - [i]Unique bullet ID. Use with [color=#90ee90]deleteBullet(id)[/color] or [color=#90ee90]inBullet(id)[/color].[/i]
-[color=#ffa500]X[/color], [color=#ffa500]Y[/color] - [i]Position in [color=#90ee90]world coordinates[/color].[/i]
-[color=#ffa500]Vx[/color], [color=#ffa500]Vy[/color] - [i](Internal) Don't use; use [color=#90ee90]Speed[/color] and [color=#90ee90]Direction[/color] instead.[/i]
-[color=#ffa500]Speed[/color] - [i]Moves bullet from Direction ([color=#90ee90]pixels per frame[/color]).[/i]
-[color=#ffa500]Direction[/color] - [i]Direction of movement ([color=#90ee90]0-360[/color], 0 = right).[/i]
-[color=#ffa500]Color[/color] - [i]Bullet color as hex (e.g. [color=#90ee90]"#FF0000"[/color] for red).[/i]
-[color=#ffa500]Alpha[/color] - [i]Opacity [color=#90ee90]0-1[/color] (0=invisible, 1=opaque).[/i]
-[color=#ffa500]Size[/color] - [i]Bullet radius in [color=#90ee90]pixels[/color].[/i]
-[color=#ffa500]ScaleY[/color] - [i]Vertical scale ([color=#90ee90]1=circle[/color], &lt;1=ellipse).[/i]
-[color=#ffa500]Rotation[/color] - [i]Rotation in radians (internal, [color=#90ee90]0-3.14[/color]).[/i]
-[color=#ffa500]Lifetime[/color] - [i]Frames bullet exists ([color=#90ee90]-1 = infinite[/color]).[/i]
-[color=#ffa500]Homing[/color] - [i]Homing strength in [color=#90ee90]degrees[/color]. Bullet turns toward player.[/i]
-[color=#ffa500]Spin[/color] - [i]Spin velocity in [color=#90ee90]radians per frame[/color].[/i]
-[color=#ffa500]Shape[/color] - [i]Index: [color=#90ee90]0=circle, 1=square, 2=triangle, 3=diamond, 4=star, 5=scross[/color].[/i]
-[color=#ffa500]Type[/color] - [i]In [color=#90ee90]bulletTypes[i][/color]: 0=player bullet, 1=enemy bullet.[/i]
-[color=#ffa500]Surface[/color] - [i]Set via [color=#90ee90]Surface = "surfaceName"[/color]; [color=#90ee90]"main"[/color] is default.[/i]
-[color=#ffa500]GlowSize[/color] - [i]Glow radius ([color=#90ee90]-1=default[/color]).[/i]
-[color=#ffa500]GlowPower[/color] - [i]Glow intensity [color=#90ee90]0-1[/color] (-1=default).[/i]
-[color=#ffa500]ColorGlow[/color] - [i]Glow color as hex (e.g. [color=#90ee90]"#FF0000"[/color] for red glow).[/i]`
+[color=#ffa500]Id[/color] - [i]The bullet's unique ID for deleteBullet or inBullet.[/i]
+[color=#ffa500]X[/color], [color=#ffa500]Y[/color] - [i]Where the bullet is in the world.[/i]
+[color=#ffa500]Vx[/color], [color=#ffa500]Vy[/color] - [i]Internal; use Speed and Direction instead.[/i]
+[color=#ffa500]Speed[/color] - [i]How far the bullet moves each frame in its direction.[/i]
+[color=#ffa500]Direction[/color] - [i]Which way it moves (0–360, 0 is right).[/i]
+[color=#ffa500]Color[/color] - [i]The bullet's color (e.g. "#FF0000" for red).[/i]
+[color=#ffa500]Alpha[/color] - [i]How see-through it is from 0 (invisible) to 1 (solid).[/i]
+[color=#ffa500]Size[/color] - [i]How big the bullet is.[/i]
+[color=#ffa500]ScaleY[/color] - [i]Vertical stretch (1 is round, less than 1 is squashed).[/i]
+[color=#ffa500]Rotation[/color] - [i]How much it is rotated (internal).[/i]
+[color=#ffa500]Lifetime[/color] - [i]How many frames it lasts; -1 means forever.[/i]
+[color=#ffa500]Homing[/color] - [i]How strongly it turns toward the player.[/i]
+[color=#ffa500]Spin[/color] - [i]How fast it spins each frame.[/i]
+[color=#ffa500]Shape[/color] - [i]Shape index: circle, square, triangle, diamond, star, or cross.[/i]
+[color=#ffa500]Type[/color] - [i]Whether it is a player or enemy bullet (in bulletTypes).[/i]
+[color=#ffa500]Surface[/color] - [i]Which drawing layer it is on ("main" is default).[/i]
+[color=#ffa500]GlowSize[/color] - [i]How big the glow is (-1 uses default).[/i]
+[color=#ffa500]GlowPower[/color] - [i]How bright the glow is from 0 to 1 (-1 uses default).[/i]
+[color=#ffa500]ColorGlow[/color] - [i]The color of the glow (e.g. "#FF0000").[/i]`
     },
     {
         name: 'bulletCount',
-        content: `Number of active bullets`
+        content: `How many bullets are currently on screen.`
     },
     {
         name: 'tapX',
-        content: `Mouse/tap x position in world coordinates`
+        content: `Where the player tapped or clicked on the screen (horizontal).`
     },
     {
         name: 'tapY',
-        content: `Mouse/tap y position in world coordinates`
+        content: `Where the player tapped or clicked on the screen (vertical).`
     },
     {
         name: 'x',
-        content: `x position of the current object`
+        content: `This object's horizontal position in the world.`
     },
     {
         name: 'y',
-        content: `y position of the current object`
+        content: `This object's vertical position in the world.`
     },
     {
         name: 'speed',
-        content: `Speed of the current object`
+        content: `How fast this object is moving.`
     },
     {
         name: 'direction',
-        content: `Direction in degrees of the current object`
+        content: `Which way this object is facing (in degrees).`
     },
     {
         name: 'Id',
-        content: `Unique ID of this codeChild`
+        content: `This object's unique ID.`
     },
     {
         name: 'myBullets',
-        content: `Set of bullet IDs created by [b]this object[/b] via createBullet(). Only populated when your code references [b]myBullets[/b] at least once (e.g. inBullet(myBullets)); otherwise the list stays inactive and bullets are not tracked.
+        content: `The list of bullets this object created; use it with inBullet to change only those bullets (and reference myBullets at least once so the list is kept).
 
 [b]Use:[/b]
 [code]inBullet(myBullets)
@@ -172,9 +181,9 @@ export const danmakuHelpersHelp = [
     {
         name: 'getSelf',
         threadTitle: 'getSelf()',
-        content: `Gives a reference to the current running object (codeChild). This is NOT a copy. You can read/write properties on it (e.g. getSelf().x = 0).
+        content: `Returns the object that is running this code so you can read or change its properties.
 
-[b][color=#ffa500]Returns: a reference to the current running object.[/color][/b]
+[b][color=#ffa500]Returns: the current running object.[/color][/b]
 
 [b]Example:[/b]
 [code]var self = getSelf();
@@ -184,11 +193,11 @@ self.speed = 2;[/code]`
     {
         name: 'getDirection',
         threadTitle: 'getDirection(x, y)',
-        content: `Calculates the direction angle in degrees from current position to target point.
+        content: `Gives the angle in degrees from this object's position to a target point.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Target x position in world coordinates.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Target y position in world coordinates.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]The target's horizontal position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]The target's vertical position.[/i]
 
 [b][color=#ffa500]Returns: the angle in degrees (0-360).[/color][/b]
 
@@ -198,11 +207,11 @@ self.speed = 2;[/code]`
     {
         name: 'getDirectionFromTo',
         threadTitle: 'getDirectionFromTo(fromX, fromY, toX, toY)',
-        content: `Direction in degrees from (fromX, fromY) to (toX, toY).
+        content: `Gives the angle in degrees from one point to another.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]fromX, fromY[/color][/b] - [i]Start point.[/i]
-[b][color=#90ee90]toX, toY[/color][/b] - [i]End point.[/i]
+[b][color=#90ee90]fromX, fromY[/color][/b] - [i]The starting point.[/i]
+[b][color=#90ee90]toX, toY[/color][/b] - [i]The end point.[/i]
 
 [b]Example:[/b]
 [code]var dir = getDirectionFromTo(lx, ly, x, y);[/code]`
@@ -210,11 +219,11 @@ self.speed = 2;[/code]`
     {
         name: 'getDistanceFromTo',
         threadTitle: 'getDistanceFromTo(fromX, fromY, toX, toY)',
-        content: `Distance between (fromX, fromY) and (toX, toY).
+        content: `Gives the distance between two points.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]fromX, fromY[/color][/b] - [i]Start point.[/i]
-[b][color=#90ee90]toX, toY[/color][/b] - [i]End point.[/i]
+[b][color=#90ee90]fromX, fromY[/color][/b] - [i]The first point.[/i]
+[b][color=#90ee90]toX, toY[/color][/b] - [i]The second point.[/i]
 
 [b]Example:[/b]
 [code]var d = getDistanceFromTo(lx, ly, x, y);[/code]`
@@ -222,25 +231,25 @@ self.speed = 2;[/code]`
     {
         name: 'normalizeAngle',
         threadTitle: 'normalizeAngle(angle)',
-        content: `Normalizes numbers like -90 or 450 to 0-360 direction.
+        content: `Puts an angle into the 0–360 range (e.g. -90 becomes 270, 450 becomes 90).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]angle[/color][/b] - [i]Angle in degrees to normalize to 0-360.[/i]
+[b][color=#90ee90]angle[/color][/b] - [i]The angle in degrees to normalize.[/i]
 
-[b][color=#ffa500]Returns:[/color][/b] the normalized angle as a number.
+[b][color=#ffa500]Returns:[/color][/b] the angle as a number between 0 and 360.
 [b]Example:[/b]
 [code]direction = normalizeAngle(450); // returns 90[/code]`
     },
     {
         name: 'angleDifference',
         threadTitle: 'angleDifference(a, b)',
-        content: `Calculates the shortest angle difference between two angles in degrees.
+        content: `Gives the shortest angle between two directions in degrees.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]a[/color][/b] - [i]First angle in degrees.[/i]
-[b][color=#90ee90]b[/color][/b] - [i]Second angle in degrees.[/i]
+[b][color=#90ee90]a[/color][/b] - [i]The first angle in degrees.[/i]
+[b][color=#90ee90]b[/color][/b] - [i]The second angle in degrees.[/i]
 
-[b][color=#ffa500]Returns: the angle difference as a number (can be negative).[/color][/b]
+[b][color=#ffa500]Returns: the angle difference (can be negative).[/color][/b]
 
 [b]Example:[/b]
 [code]var diff = angleDifference(0, 270); // returns -90[/code]`
@@ -248,13 +257,13 @@ self.speed = 2;[/code]`
     {
         name: 'getDistance',
         threadTitle: 'getDistance(x, y)',
-        content: `Calculates the distance from current position to target point.
+        content: `Gives the distance from this object to a target point.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Target x position in world coordinates.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Target y position in world coordinates.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]The target's horizontal position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]The target's vertical position.[/i]
 
-[b][color=#ffa500]Returns: the distance as a number.[/color][/b]
+[b][color=#ffa500]Returns: the distance.[/color][/b]
 
 [b]Example:[/b]
 [code]var dist = getDistance(100, 200);[/code]`
@@ -262,13 +271,13 @@ self.speed = 2;[/code]`
     {
         name: 'lenDirX',
         threadTitle: 'lenDirX(len, dir)',
-        content: `Converts length and direction (angle in degrees) to x component.
+        content: `Gives the horizontal part of a distance in a given direction.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]len[/color][/b] - [i]Length/distance.[/i]
-[b][color=#90ee90]dir[/color][/b] - [i]Direction angle in degrees.[/i]
+[b][color=#90ee90]len[/color][/b] - [i]The distance or length.[/i]
+[b][color=#90ee90]dir[/color][/b] - [i]The direction in degrees.[/i]
 
-[b][color=#ffa500]Returns: the x component as a number.[/color][/b]
+[b][color=#ffa500]Returns: the horizontal offset.[/color][/b]
 
 [b]Example:[/b]
 [code]var offsetX = lenDirX(10, 90); // returns 0 (straight up)[/code]`
@@ -276,13 +285,13 @@ self.speed = 2;[/code]`
     {
         name: 'lenDirY',
         threadTitle: 'lenDirY(len, dir)',
-        content: `Converts length and direction (angle in degrees) to y component.
+        content: `Gives the vertical part of a distance in a given direction.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]len[/color][/b] - [i]Length/distance.[/i]
-[b][color=#90ee90]dir[/color][/b] - [i]Direction angle in degrees.[/i]
+[b][color=#90ee90]len[/color][/b] - [i]The distance or length.[/i]
+[b][color=#90ee90]dir[/color][/b] - [i]The direction in degrees.[/i]
 
-[b][color=#ffa500]Returns: the y component as a number.[/color][/b]
+[b][color=#ffa500]Returns: the vertical offset.[/color][/b]
 
 [b]Example:[/b]
 [code]var offsetY = lenDirY(10, 90); // returns 10 (straight up)[/code]`
@@ -290,14 +299,14 @@ self.speed = 2;[/code]`
     {
         name: 'hsvToHex',
         threadTitle: 'hsvToHex(h, s, v)',
-        content: `Converts HSV to hex color string.
+        content: `Turns hue, saturation, and brightness into a color code string.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]h[/color][/b] - [i]Hue 0-360.[/i]
-[b][color=#90ee90]s[/color][/b] - [i]Saturation 0-1 or 0-100.[/i]
-[b][color=#90ee90]v[/color][/b] - [i]Value 0-1 or 0-100.[/i]
+[b][color=#90ee90]h[/color][/b] - [i]Hue from 0 to 360.[/i]
+[b][color=#90ee90]s[/color][/b] - [i]Saturation from 0 to 1 or 0 to 100.[/i]
+[b][color=#90ee90]v[/color][/b] - [i]Brightness from 0 to 1 or 0 to 100.[/i]
 
-[b][color=#ffa500]Returns: "#rrggbb" hex string.[/color][/b]
+[b][color=#ffa500]Returns: a color code string.[/color][/b]
 
 [b]Example:[/b]
 [code]var color = hsvToHex(200, 0.8, 1); // blue[/code]`
@@ -305,23 +314,23 @@ self.speed = 2;[/code]`
     {
         name: 'move',
         threadTitle: 'move(len, dir)',
-        content: `Moves the instance by the given length in the given direction (angle in degrees). Modifies x and y positions directly.
+        content: `Moves this object a given distance in a given direction and updates its position.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]len[/color][/b] - [i]Distance to move in pixels.[/i]
-[b][color=#90ee90]dir[/color][/b] - [i]Direction angle in degrees.[/i]
+[b][color=#90ee90]len[/color][/b] - [i]How far to move.[/i]
+[b][color=#90ee90]dir[/color][/b] - [i]The direction in degrees.[/i]
 
 [b]Example:[/b]
-[code]move(5, 90); // moves 5 pixels upward
-move(10, 0); // moves 10 pixels to the right[/code]`
+[code]move(5, 90); // moves 5 units upward
+move(10, 0); // moves 10 units to the right[/code]`
     },
     {
         name: 'isUndef',
         threadTitle: 'isUndef(v)',
-        content: `Checks if a variable is undefined or not declared.
+        content: `Tells you whether a value or variable is undefined or not set.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]v[/color][/b] - [i]Variable or expression to check.[/i]
+[b][color=#90ee90]v[/color][/b] - [i]The value or variable to check.[/i]
 
 [b][color=#ffa500]Returns:[/color][/b] true if undefined, false otherwise.
 [b]Example:[/b]
@@ -330,13 +339,13 @@ move(10, 0); // moves 10 pixels to the right[/code]`
     {
         name: 'rand',
         threadTitle: 'rand(min, max)',
-        content: `Generates a random number between min and max.
+        content: `Picks a random number between the minimum and maximum (both included).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]min[/color][/b] - [i]Minimum value (inclusive).[/i]
-[b][color=#90ee90]max[/color][/b] - [i]Maximum value (inclusive).[/i]
+[b][color=#90ee90]min[/color][/b] - [i]The smallest possible value.[/i]
+[b][color=#90ee90]max[/color][/b] - [i]The largest possible value.[/i]
 
-[b][color=#ffa500]Returns: a random number.[/color][/b]
+[b][color=#ffa500]Returns: a random number in that range.[/color][/b]
 
 [b]Example:[/b]
 [code]var value = rand(-100, 100); // random number between -100 and 100[/code]`
@@ -344,12 +353,12 @@ move(10, 0); // moves 10 pixels to the right[/code]`
     {
         name: 'choose',
         threadTitle: 'choose(...values)',
-        content: `Returns one random value from the given arguments. Each argument has equal chance of being selected.
+        content: `Picks one value at random from the values you pass in (each has equal chance).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]values[/color][/b] - [i]Any number of values (numbers, strings, etc.).[/i]
+[b][color=#90ee90]values[/color][/b] - [i]Any list of values (numbers, text, etc.).[/i]
 
-[b][color=#ffa500]Returns: one of the given values, chosen at random.[/color][/b]
+[b][color=#ffa500]Returns: one of those values, chosen at random.[/color][/b]
 
 [b]Example:[/b]
 [code]var dir = choose(0, 90, 180, 270); // random direction
@@ -358,12 +367,12 @@ var speed = choose(3, 5, 8); // random speed[/code]`
     {
         name: 'listShuffle',
         threadTitle: 'listShuffle(arr)',
-        content: `Shuffles an array in place using Fisher-Yates algorithm. Modifies the array and returns it.
+        content: `Randomly reorders the items in a list and returns that same list.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]arr[/color][/b] - [i]Array to shuffle.[/i]
+[b][color=#90ee90]arr[/color][/b] - [i]The list to shuffle.[/i]
 
-[b][color=#ffa500]Returns: the same array (shuffled in place).[/color][/b]
+[b][color=#ffa500]Returns: the same list in random order.[/color][/b]
 
 [b]Example:[/b]
 [code]var items = [1, 2, 3, 4, 5];
@@ -372,13 +381,13 @@ listShuffle(items); // items is now randomly ordered[/code]`
     {
         name: 'listFilterOut',
         threadTitle: 'listFilterOut(array, value)',
-        content: `Removes all occurrences of value from array. Modifies array in place.
+        content: `Removes every copy of a value from a list and returns the list.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]array[/color][/b] - [i]Array to modify.[/i]
-[b][color=#90ee90]value[/color][/b] - [i]Value to remove (all occurrences).[/i]
+[b][color=#90ee90]array[/color][/b] - [i]The list to change.[/i]
+[b][color=#90ee90]value[/color][/b] - [i]The value to remove everywhere.[/i]
 
-[b][color=#ffa500]Returns: the same array (modified in place).[/color][/b]
+[b][color=#ffa500]Returns: the same list with those values gone.[/color][/b]
 
 [b]Example:[/b]
 [code]var list = [1, 22, 3, 22];
@@ -387,13 +396,13 @@ listFilterOut(list, 22); // list is now [1, 3][/code]`
     {
         name: 'listAdd',
         threadTitle: 'listAdd(array, value)',
-        content: `Pushes value to end of array. Modifies array in place.
+        content: `Adds a value to the end of a list and returns the list.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]array[/color][/b] - [i]Array to modify.[/i]
-[b][color=#90ee90]value[/color][/b] - [i]Value to add.[/i]
+[b][color=#90ee90]array[/color][/b] - [i]The list to add to.[/i]
+[b][color=#90ee90]value[/color][/b] - [i]The value to add.[/i]
 
-[b][color=#ffa500]Returns: the same array (modified in place).[/color][/b]
+[b][color=#ffa500]Returns: the same list with the value at the end.[/color][/b]
 
 [b]Example:[/b]
 [code]var list = [1, 2]; listAdd(list, 3); // list is now [1, 2, 3][/code]`
@@ -401,13 +410,13 @@ listFilterOut(list, 22); // list is now [1, 3][/code]`
     {
         name: 'listFind',
         threadTitle: 'listFind(array, value)',
-        content: `Returns first index of value in array.
+        content: `Finds the first position of a value in a list.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]array[/color][/b] - [i]Array to search.[/i]
-[b][color=#90ee90]value[/color][/b] - [i]Value to find.[/i]
+[b][color=#90ee90]array[/color][/b] - [i]The list to search.[/i]
+[b][color=#90ee90]value[/color][/b] - [i]The value to look for.[/i]
 
-[b][color=#ffa500]Returns: index (0-based) or -1 if not found.[/color][/b]
+[b][color=#ffa500]Returns: the position (0-based) or -1 if not found.[/color][/b]
 
 [b]Example:[/b]
 [code]var i = listFind([1, 22, 3], 22); // returns 1[/code]`
@@ -415,12 +424,12 @@ listFilterOut(list, 22); // list is now [1, 3][/code]`
     {
         name: 'listPop',
         threadTitle: 'listPop(array)',
-        content: `Removes and returns the last element of array.
+        content: `Removes the last item from a list and returns that item.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]array[/color][/b] - [i]Array to pop from.[/i]
+[b][color=#90ee90]array[/color][/b] - [i]The list to take from.[/i]
 
-[b][color=#ffa500]Returns: the removed element, or undefined if empty.[/color][/b]
+[b][color=#ffa500]Returns: the last item, or undefined if the list is empty.[/color][/b]
 
 [b]Example:[/b]
 [code]var last = listPop(list); // removes last, returns it[/code]`
@@ -428,13 +437,13 @@ listFilterOut(list, 22); // list is now [1, 3][/code]`
     {
         name: 'listRemove',
         threadTitle: 'listRemove(array, value)',
-        content: `Removes all occurrences of value from array. Modifies array in place.
+        content: `Removes every copy of a value from a list and returns the list.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]array[/color][/b] - [i]Array to modify.[/i]
-[b][color=#90ee90]value[/color][/b] - [i]Value to remove (all occurrences).[/i]
+[b][color=#90ee90]array[/color][/b] - [i]The list to change.[/i]
+[b][color=#90ee90]value[/color][/b] - [i]The value to remove everywhere.[/i]
 
-[b][color=#ffa500]Returns: the same array (modified in place).[/color][/b]
+[b][color=#ffa500]Returns: the same list with those values gone.[/color][/b]
 
 [b]Example:[/b]
 [code]listRemove(list, 22); // removes all 22s[/code]`
@@ -442,7 +451,7 @@ listFilterOut(list, 22); // list is now [1, 3][/code]`
     {
         name: 'isEnemy',
         threadTitle: 'isEnemy()',
-        content: `Marks the current object as an enemy. When called, the object will have isEnemy=true and will be added to the global enemyList.
+        content: `Marks this object as an enemy so it appears in the global enemy list.
 
 [b]Example:[/b]
 [code]isEnemy(); // mark this object as an enemy[/code]`
@@ -450,9 +459,9 @@ listFilterOut(list, 22); // list is now [1, 3][/code]`
     {
         name: 'enemyList',
         threadTitle: 'enemyList()',
-        content: `Provides a global array of all active objects marked as enemies.
+        content: `Returns a list of all objects currently marked as enemies.
 
-[b][color=#ffa500]Returns: a global array of all active objects marked as enemies.[/color][/b]
+[b][color=#ffa500]Returns: the list of all active enemies.[/color][/b]
 
 [b]Example:[/b]
 [code]var enemies = enemyList();
@@ -463,9 +472,9 @@ for(var i=0; i<enemies.length; i++) {
     },
     {
         name: 'init',
-        content: `Use to run code only once when the instance is created.
+        content: `Use this to run code only once when the object is first created.
 
-[b][color=#ffa500]Returns: true on instance create and stays false forever.[/color][/b]
+[b][color=#ffa500]Returns: true only on the first frame, then false from then on.[/color][/b]
 
 [b]Example:[/b]
 [code]if (init()) { /* danmakuINIT is undefined */ }[/code]`
@@ -473,14 +482,14 @@ for(var i=0; i<enemies.length; i++) {
     {
         name: 'turnTowards',
         threadTitle: 'turnTowards(direction, targetDirection, maxTurn)',
-        content: `Pure function: returns the new direction. Does not change any variable. Clamps the turn to maxTurn degrees per step.
+        content: `Returns a new direction that turns toward a target, but only by up to maxTurn degrees (does not change any variable by itself).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]direction[/color][/b] - [i]Current direction in degrees.[/i]
-[b][color=#90ee90]targetDirection[/color][/b] - [i]Target direction angle in degrees.[/i]
-[b][color=#90ee90]maxTurn[/color][/b] - [i]Maximum degrees to turn per step.[/i]
+[b][color=#90ee90]direction[/color][/b] - [i]The current direction in degrees.[/i]
+[b][color=#90ee90]targetDirection[/color][/b] - [i]The direction you want to face.[/i]
+[b][color=#90ee90]maxTurn[/color][/b] - [i]The most degrees it can turn in one step.[/i]
 
-[b][color=#ffa500]Returns: new direction in degrees (0–360).[/color][/b]
+[b][color=#ffa500]Returns: the new direction in degrees (0–360).[/color][/b]
 
 [b]Example:[/b]
 [code]direction = turnTowards(direction, 90, 5); // turn up to 5° towards 90
@@ -489,12 +498,12 @@ direction = turnTowards(direction, getDirection(target.x, target.y), 5);[/code]`
     {
         name: 'turnTowardsPlayer',
         threadTitle: 'turnTowardsPlayer(maxTurn)',
-        content: `Pure function: returns the new direction towards the player. Does not change any variable. Uses current direction and player position.
+        content: `Returns a new direction that turns this object toward the player, limited by maxTurn degrees (does not change any variable by itself).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]maxTurn[/color][/b] - [i]Maximum degrees to turn per step.[/i]
+[b][color=#90ee90]maxTurn[/color][/b] - [i]The most degrees it can turn in one step.[/i]
 
-[b][color=#ffa500]Returns: new direction in degrees (0–360).[/color][/b]
+[b][color=#ffa500]Returns: the new direction in degrees (0–360).[/color][/b]
 
 [b]Example:[/b]
 [code]direction = turnTowardsPlayer(5);[/code]`
@@ -502,12 +511,12 @@ direction = turnTowards(direction, getDirection(target.x, target.y), 5);[/code]`
     {
         name: 'waveStart',
         threadTitle: 'waveStart(id)',
-        content: `Selects a wave by its id/number (stage editor waves).
+        content: `Starts the wave with the given number from the stage editor.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]id[/color][/b] - [i]Wave id/number from the stage editor.[/i]
+[b][color=#90ee90]id[/color][/b] - [i]The wave number from the stage editor.[/i]
 
-[b][color=#ffa500]Returns: true if the wave exists and was selected, false otherwise.[/color][/b]
+[b][color=#ffa500]Returns: true if that wave exists and was started, false otherwise.[/color][/b]
 
 [b]Example:[/b]
 [code]waveStart(1); // select Wave 1
@@ -516,7 +525,7 @@ waveStart(2); // select Wave 2[/code]`
     {
         name: 'waveGetCurrent',
         threadTitle: 'waveGetCurrent()',
-        content: `Gets the current wave number (stage editor wave id).
+        content: `Tells you which wave number is currently active.
 
 [b][color=#ffa500]Returns: the current wave number.[/color][/b]
 
@@ -527,9 +536,9 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'waveStartNext',
         threadTitle: 'waveStartNext()',
-        content: `Selects the next wave in the stage editor.
+        content: `Switches to the next wave in the stage editor.
 
-[b][color=#ffa500]Returns: true if it switched to the next wave, false otherwise.[/color][/b]
+[b][color=#ffa500]Returns: true if it switched, false otherwise.[/color][/b]
 
 [b]Example:[/b]
 [code]waveStartNext();[/code]`
@@ -537,14 +546,14 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'drawCircle',
         threadTitle: 'drawCircle(x, y, r, outline, color)',
-        content: `Draws a circle at specified position with optional outline and color.
+        content: `Draws a circle at a position with optional outline thickness and color.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]x position (center).[/i]
-[b][color=#90ee90]y[/color][/b] - [i]y position (center).[/i]
-[b][color=#90ee90]r[/color][/b] - [i]Radius.[/i]
-[color=#9acd32]outline[/color] - [i]Outline width (0 = filled). Optional.[/i]
-[color=#9acd32]color[/color] - [i]Hex color (e.g. "#ff0000") or RGBA array. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the center.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the center.[/i]
+[b][color=#90ee90]r[/color][/b] - [i]The radius (size) of the circle.[/i]
+[color=#9acd32]outline[/color] - [i]Optional; use 0 for filled, or a number for outline thickness.[/i]
+[color=#9acd32]color[/color] - [i]Optional color (e.g. "#ff0000" for red).[/i]
 
 [b]Example:[/b]
 [code]drawCircle(100, 200, 5); // filled white circle
@@ -554,14 +563,14 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'drawRectangle',
         threadTitle: 'drawRectangle(x, y, w, h, color)',
-        content: `Draws a rectangle at specified position with optional color. x, y: bottom-left corner position. w, h: width and height.
+        content: `Draws a rectangle with its bottom-left corner at the given position and optional color.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Bottom-left corner x.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Bottom-left corner y.[/i]
-[b][color=#90ee90]w[/color][/b] - [i]Width.[/i]
-[b][color=#90ee90]h[/color][/b] - [i]Height.[/i]
-[color=#9acd32]color[/color] - [i]Hex color or RGBA array. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the bottom-left corner.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the bottom-left corner.[/i]
+[b][color=#90ee90]w[/color][/b] - [i]Width of the rectangle.[/i]
+[b][color=#90ee90]h[/color][/b] - [i]Height of the rectangle.[/i]
+[color=#9acd32]color[/color] - [i]Optional color (e.g. "#ff0000").[/i]
 
 [b]Example:[/b]
 [code]drawRectangle(10, 20, 50, 30); // white rectangle
@@ -571,15 +580,15 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'drawLine',
         threadTitle: 'drawLine(x1, y1, x2, y2, width, color)',
-        content: `Draws a line from (x1, y1) to (x2, y2) with optional width and color.
+        content: `Draws a line from one point to another with optional thickness and color.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x1[/color][/b] - [i]Start x position.[/i]
-[b][color=#90ee90]y1[/color][/b] - [i]Start y position.[/i]
-[b][color=#90ee90]x2[/color][/b] - [i]End x position.[/i]
-[b][color=#90ee90]y2[/color][/b] - [i]End y position.[/i]
-[color=#9acd32]width[/color] - [i]Line width in pixels. Optional, default 1.[/i]
-[color=#9acd32]color[/color] - [i]Hex color or RGBA array. Optional.[/i]
+[b][color=#90ee90]x1[/color][/b] - [i]Horizontal position of the start.[/i]
+[b][color=#90ee90]y1[/color][/b] - [i]Vertical position of the start.[/i]
+[b][color=#90ee90]x2[/color][/b] - [i]Horizontal position of the end.[/i]
+[b][color=#90ee90]y2[/color][/b] - [i]Vertical position of the end.[/i]
+[color=#9acd32]width[/color] - [i]Optional line thickness (default 1).[/i]
+[color=#9acd32]color[/color] - [i]Optional color.[/i]
 
 [b]Example:[/b]
 [code]drawLine(10, 20, 100, 150); // white line
@@ -587,30 +596,51 @@ drawText(5, 5, "Wave: " + w);[/code]`
 // or drawLine(10, 20, 100, 150, 1, "#ff0000"); // red line[/code]`
     },
     {
-        name: 'drawGround',
-        threadTitle: 'drawGround(cellW, cellH, color)',
-        content: `Draws a grid of rectangles covering the whole world. cellWidth and cellHeight are the dimensions of each grid cell.
+        name: 'inverseKinematics',
+        threadTitle: 'inverseKinematics(x, y, xTar, yTar, links)',
+        content: `Builds a chain from a start point to a target and draws it as segments and joints, returning the position and angle of each segment.
 
 [b]Arguments:[/b]
-[color=#9acd32]cellW[/color] - [i]Width of each grid cell. Optional.[/i]
-[color=#9acd32]cellH[/color] - [i]Height of each grid cell. Optional.[/i]
-[color=#9acd32]color[/color] - [i]Hex color or RGBA array. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the start of the chain.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the start of the chain.[/i]
+[b][color=#90ee90]xTar[/color][/b] - [i]Horizontal position of the target (end of chain).[/i]
+[b][color=#90ee90]yTar[/color][/b] - [i]Vertical position of the target.[/i]
+[b][color=#90ee90]links[/color][/b] - [i]Number of segments (same length) or a list of segment lengths.[/i]
+
+[b]Returns:[/b] A list of objects with x, y, and direction for each segment.
 
 [b]Example:[/b]
-[code]drawGround(10, 10, [1.0, 0.0, 0.0, 1.0]); // red grid with 10x10 cells
-// or drawGround(5, 5, "#0000ff"); // blue grid with 5x5 cells
-// or drawGround(); // default white grid with 10x10 cells[/code]`
+[code]var bones = inverseKinematics(x, y, 100, 80, 5);
+// 8 bones with custom lengths:
+var bones = inverseKinematics(x, y, xTar, yTar, [10, 12, 14, 16, 18, 14, 12, 10]);
+// use: bones[i].x, bones[i].y, bones[i].direction[/code]`
+    },
+    {
+        name: 'drawGround',
+        threadTitle: 'drawGround(x, y, w, h, cellW, cellH, color)',
+        content: `Draws a grid of tiles; use three arguments for the whole world or seven for a specific area.
+
+[b]Arguments (full world):[/b]
+[color=#9acd32]cellW[/color] - [i]Optional width of each tile.[/i]
+[color=#9acd32]cellH[/color] - [i]Optional height of each tile.[/i]
+[color=#9acd32]color[/color] - [i]Optional color.[/i]
+
+[b]Arguments (region):[/b] [color=#90ee90]x, y, w, h[/color] - [i]Left, bottom, width, and height of the area, then cell size and color.[/i]
+
+[b]Example:[/b]
+[code]drawGround(10, 10, "#003E29"); // full world, 10x10 cells
+drawGround(0, 0, 90, 160, 4, 4, "#ff0000"); // red grid in left half[/code]`
     },
     {
         name: 'drawLight',
         threadTitle: 'drawLight(x, y, radius, power)',
-        content: `Adds a light source that makes ground squares lighter based on distance. Closer squares become lighter. x and y are the light position. radius is the effect radius (optional, default: 50). power is the light intensity 0-1 (optional, default: 1.0).
+        content: `Adds a light at a position that brightens nearby ground tiles (closer tiles get brighter).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Light x position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Light y position.[/i]
-[color=#9acd32]radius[/color] - [i]Effect radius. Optional, default 50.[/i]
-[color=#9acd32]power[/color] - [i]Light intensity 0-1. Optional, default 1.0.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the light.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the light.[/i]
+[color=#9acd32]radius[/color] - [i]Optional how far the light reaches (default 50).[/i]
+[color=#9acd32]power[/color] - [i]Optional brightness from 0 to 1 (default 1).[/i]
 
 [b]Example:[/b]
 [code]drawLight(90, 160, 50, 1.0); // bright light at center
@@ -619,7 +649,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'clearLights',
         threadTitle: 'clearLights()',
-        content: `Clears all light sources. Call at the start of each frame to reset lighting.
+        content: `Removes all lights you added this frame (call at the start of each frame to reset).
 
 [b]Example:[/b]
 [code]clearLights(); // remove all lights[/code]`
@@ -627,7 +657,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'didTapped',
         threadTitle: 'didTapped()',
-        content: `Checks if screen was just touched.
+        content: `Tells you whether the screen was just tapped or clicked this frame.
 
 [b][color=#ffa500]Returns: true if tapped this frame, false otherwise.[/color][/b]
 
@@ -637,7 +667,7 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'didReleased',
         threadTitle: 'didReleased()',
-        content: `Checks if touch on screen was just released.
+        content: `Tells you whether the player just lifted their finger or released the mouse this frame.
 
 [b][color=#ffa500]Returns: true if released this frame, false otherwise.[/color][/b]
 
@@ -647,13 +677,13 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'getPixelColor',
         threadTitle: 'getPixelColor(x, y)',
-        content: `Returns the color of the pixel at world coordinates (x, y) — what is visible there (e.g. bullet, background, sprites). Uses the last drawn frame. Does not include DOM overlays (e.g. YouTube iframe) due to browser security.
+        content: `Returns the color currently visible at a point in the world (based on what was drawn last frame).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]World x.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]World y.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position in the world.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position in the world.[/i]
 
-[b][color=#ffa500]Returns: hex string "#rrggbb" or "#rrggbbaa". Returns "#000000" if out of bounds or read fails.[/color][/b]
+[b][color=#ffa500]Returns: a color code string, or black if the point is off-screen or unreadable.[/color][/b]
 
 [b]Example:[/b]
 [code]var c = getPixelColor(90, 160); // color at center[/code]`
@@ -661,10 +691,10 @@ drawText(5, 5, "Wave: " + w);[/code]`
     {
         name: 'sync',
         threadTitle: 'sync(disableVariables)',
-        content: `Marks this object for multiplayer sync. The party leader sends this object's state to other clients (with delay); other clients display it from the buffer.
+        content: `Marks this object so its state is shared with other players in multiplayer (the host sends it to others).
 
 [b]Optional argument:[/b]
-[color=#9acd32]disableVariables[/color] - [i]Array of variable names (strings) to exclude from syncing. E.g. sync(["hp", "x"]) does not sync hp and x.[/i]
+[color=#9acd32]disableVariables[/color] - [i]A list of variable names to leave out of syncing (e.g. ["hp", "x"]).[/i]
 
 [b]Example:[/b]
 [code]sync(); // mark for MP sync, sync all variables
@@ -674,14 +704,14 @@ sync(["x", "y", "hp"]); // sync but exclude x, y, hp[/code]`
     {
         name: 'drawText',
         threadTitle: 'drawText(x, y, text, color, size)',
-        content: `Draws text at specified position with optional color and size.
+        content: `Draws text at a position with optional color and font size.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]x position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]y position.[/i]
-[b][color=#90ee90]text[/color][/b] - [i]Text to draw.[/i]
-[color=#9acd32]color[/color] - [i]Hex color or RGB/RGBA array. Optional.[/i]
-[color=#9acd32]size[/color] - [i]Font size. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
+[b][color=#90ee90]text[/color][/b] - [i]The text to show.[/i]
+[color=#9acd32]color[/color] - [i]Optional color.[/i]
+[color=#9acd32]size[/color] - [i]Optional font size.[/i]
 
 [b]Example:[/b]
 [code]drawText(50, 100, "Hello", [255, 0, 0], 12);[/code]`
@@ -689,12 +719,12 @@ sync(["x", "y", "hp"]); // sync but exclude x, y, hp[/code]`
     {
         name: 'soundPlay',
         threadTitle: 'soundPlay(sound, volume, pitch)',
-        content: `Plays an MP3 sound effect from the sfx folder. Sound: filename without .mp3 extension. Volume: 0.0 to 1.0 (default 1.0). Pitch: 1.0 = normal.
+        content: `Plays a sound from the sound effects folder (use the name without the file extension).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]sound[/color][/b] - [i]Filename without .mp3 extension (from sfx folder).[/i]
-[color=#9acd32]volume[/color] - [i]Volume 0.0 to 1.0. Optional, default 1.0.[/i]
-[color=#9acd32]pitch[/color] - [i]Pitch multiplier, 1.0 = normal. Optional.[/i]
+[b][color=#90ee90]sound[/color][/b] - [i]The sound name from the sound effects folder.[/i]
+[color=#9acd32]volume[/color] - [i]Optional volume from 0 to 1 (default 1).[/i]
+[color=#9acd32]pitch[/color] - [i]Optional pitch (1 is normal).[/i]
 
 [b]Example:[/b]
 [code]soundPlay("explosion", 1.0, 1.0);
@@ -702,53 +732,55 @@ sync(["x", "y", "hp"]); // sync but exclude x, y, hp[/code]`
     },
     {
         name: 'drawSprite',
-        threadTitle: 'drawSprite(x, y, name, scaleX, scaleY, rotation, color)',
-        content: `Draws a sprite from the server. spriteName must start with @ and end with .png. xScale and yScale are scale factors. color: optional hex color string or RGBA array to tint/blend the sprite.
+        threadTitle: 'drawSprite(x, y, name, scaleX, scaleY, rotation, color, align)',
+        content: `Draws an image at a position with optional size, rotation, color tint, and which point of the image is at (x,y).
+
+[b]Align grid:[/b] 1=top-left, 2=top-center, 3=top-right, 4=mid-left, 5=center, 6=mid-right, 7=bottom-left, 8=bottom-center, 9=bottom-right.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]x position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]y position.[/i]
-[b][color=#90ee90]name[/color][/b] - [i]Sprite filename; must start with @ and end with .png.[/i]
-[b][color=#90ee90]scaleX[/color][/b] - [i]Horizontal scale factor.[/i]
-[b][color=#90ee90]scaleY[/color][/b] - [i]Vertical scale factor.[/i]
-[color=#9acd32]rotation[/color] - [i]Rotation in degrees. Optional.[/i]
-[color=#9acd32]color[/color] - [i]Hex color or RGBA array to tint. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the anchor point.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the anchor point.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]The image name (must start with @).[/i]
+[b][color=#90ee90]scaleX[/color][/b] - [i]Horizontal scale (1 is normal size).[/i]
+[b][color=#90ee90]scaleY[/color][/b] - [i]Vertical scale (1 is normal size).[/i]
+[color=#9acd32]rotation[/color] - [i]Optional rotation in degrees.[/i]
+[color=#9acd32]color[/color] - [i]Optional color tint.[/i]
+[color=#9acd32]align[/color] - [i]Optional 1–9 for which point of the image is at (x,y); default 5 is center.[/i]
 
 [b]Example:[/b]
-[code]drawSprite(90, 160, "@sprite.png", 1, 1, 45); // 1:1 scale, 45° rotation
-drawSprite(90, 160, "@sprite.png", 2, 1); // 2x width, 1x height
-drawSprite(90, 160, "@sprite.png", 1, 1, 0, "#FF0000"); // Red tinted sprite[/code]`
+[code]drawSprite(90, 160, "@sprite", 1, 1, 45); // center at (90,160), 45° rotation
+drawSprite(0, 321, "@ui", 1, 1, 0, null, 1); // top-left at (0,321)[/code]`
     },
     {
         name: 'drawSheetSprite',
         threadTitle: 'drawSheetSprite(x, y, name, frame, maxCellsX, maxCellsY)',
-        content: `Draws a frame from a spritesheet. spriteName must start with @ and end with .png. frame: frame index (0-based). maxCellsX: number of cells horizontally. maxCellsY: number of cells vertically.
+        content: `Draws one frame from an image that contains multiple frames in a grid.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]x position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]y position.[/i]
-[b][color=#90ee90]name[/color][/b] - [i]Spritesheet filename; must start with @ and end with .png.[/i]
-[b][color=#90ee90]frame[/color][/b] - [i]Frame index (0-based).[/i]
-[b][color=#90ee90]maxCellsX[/color][/b] - [i]Number of cells horizontally in the sheet.[/i]
-[b][color=#90ee90]maxCellsY[/color][/b] - [i]Number of cells vertically in the sheet.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]The sheet image name (must start with @).[/i]
+[b][color=#90ee90]frame[/color][/b] - [i]Which frame to show (first is 0).[/i]
+[b][color=#90ee90]maxCellsX[/color][/b] - [i]How many frames fit across the sheet.[/i]
+[b][color=#90ee90]maxCellsY[/color][/b] - [i]How many frames fit down the sheet.[/i]
 
 [b]Example:[/b]
-[code]drawSheetSprite(90, 160, "@spriteSheet.png", 0, 4, 3); // Draw first frame
-drawSheetSprite(90, 160, "@spriteSheet.png", 5, 4, 3); // Draw frame 5[/code]`
+[code]drawSheetSprite(90, 160, "@spriteSheet", 0, 4, 3); // Draw first frame
+drawSheetSprite(90, 160, "@spriteSheet", 5, 4, 3); // Draw frame 5[/code]`
     },
     {
         name: 'drawHealthbar',
         threadTitle: 'drawHealthbar(x, y, width, height, hp, maxHp, depth)',
-        content: `Draws a healthbar in world coordinates. Depth is optional (default 0), same z-order as drawSprite.
+        content: `Draws a health bar in the world that fills based on current health over max health.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Bottom-left x in world units.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Bottom-left y in world units.[/i]
-[b][color=#90ee90]width[/color][/b] - [i]Bar width in world units.[/i]
-[b][color=#90ee90]height[/color][/b] - [i]Bar height in world units.[/i]
-[b][color=#90ee90]hp[/color][/b] - [i]Current health.[/i]
-[b][color=#90ee90]maxHp[/color][/b] - [i]Max health (fill ratio = hp/maxHp).[/i]
-[color=#9acd32]depth[/color] - [i]Optional z-order (default 0).[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the bottom-left corner.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the bottom-left corner.[/i]
+[b][color=#90ee90]width[/color][/b] - [i]Width of the bar.[/i]
+[b][color=#90ee90]height[/color][/b] - [i]Height of the bar.[/i]
+[b][color=#90ee90]hp[/color][/b] - [i]Current health value.[/i]
+[b][color=#90ee90]maxHp[/color][/b] - [i]Maximum health (bar fill = hp divided by maxHp).[/i]
+[color=#9acd32]depth[/color] - [i]Optional draw order (default 0).[/i]
 
 [b]Example:[/b]
 [code]drawHealthbar(80, 150, 20, 3, 70, 100); // Bar at (80,150), 20x3, 70% full
@@ -757,15 +789,15 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     {
         name: 'drawHealthbarUI',
         threadTitle: 'drawHealthbarUI(x, y, width, height, hp, maxHp)',
-        content: `Draws a healthbar in world coordinates on the UI layer (on top of everything, including bullets). Camera-relative: moves when the camera moves. x, y, width, height are in world units (same as drawHealthbar).
+        content: `Draws a health bar on the UI layer so it appears on top and moves with the camera.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]x position in world units.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]y position in world units.[/i]
-[b][color=#90ee90]width[/color][/b] - [i]Bar width in world units.[/i]
-[b][color=#90ee90]height[/color][/b] - [i]Bar height in world units.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
+[b][color=#90ee90]width[/color][/b] - [i]Width of the bar.[/i]
+[b][color=#90ee90]height[/color][/b] - [i]Height of the bar.[/i]
 [b][color=#90ee90]hp[/color][/b] - [i]Current health.[/i]
-[b][color=#90ee90]maxHp[/color][/b] - [i]Max health.[/i]
+[b][color=#90ee90]maxHp[/color][/b] - [i]Maximum health.[/i]
 
 [b]Example:[/b]
 [code]drawHealthbarUI(80, 150, 20, 3, 70, 100); // World bar at (80,150), 20x3, 70% full[/code]`
@@ -773,14 +805,14 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     {
         name: 'youtubePlay',
         threadTitle: 'youtubePlay(x, y, w, h, url)',
-        content: `Embeds a YouTube video at specified world coordinates. x, y: world coordinates for top-left corner. w, h: width and height. url: YouTube URL or video ID.
+        content: `Shows a YouTube video at a position and size in the world.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Top-left x in world coordinates.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Top-left y in world coordinates.[/i]
-[b][color=#90ee90]w[/color][/b] - [i]Width.[/i]
-[b][color=#90ee90]h[/color][/b] - [i]Height.[/i]
-[b][color=#90ee90]url[/color][/b] - [i]YouTube URL or video ID.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the top-left corner.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the top-left corner.[/i]
+[b][color=#90ee90]w[/color][/b] - [i]Width of the video area.[/i]
+[b][color=#90ee90]h[/color][/b] - [i]Height of the video area.[/i]
+[b][color=#90ee90]url[/color][/b] - [i]The YouTube link or video ID.[/i]
 
 [b]Example:[/b]
 [code]youtubePlay(50, 200, 80, 60, "dQw4w9WgXcQ");[/code]`
@@ -788,7 +820,7 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     {
         name: 'youtubeStop',
         threadTitle: 'youtubeStop()',
-        content: `Stops and removes all YouTube video players.
+        content: `Stops and removes all YouTube videos that are playing.
 
 [b]Example:[/b]
 [code]youtubeStop(); // Stops all YouTube players[/code]`
@@ -796,15 +828,15 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     {
         name: 'createObject',
         threadTitle: 'createObject(x, y, name, type)',
-        content: `Creates a new instance of a coded object. If typeName is provided, calls the object's type function on creation.
+        content: `Creates a new object of a given name at a position, with an optional type to run on creation.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]x position for the new instance.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]y position for the new instance.[/i]
-[b][color=#90ee90]name[/color][/b] - [i]Object name (codeChild name from the editor).[/i]
-[color=#9acd32]type[/color] - [i]Type function to call on creation. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position for the new object.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position for the new object.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]The object name from the editor.[/i]
+[color=#9acd32]type[/color] - [i]Optional type to run when the object is created.[/i]
 
-[b][color=#ffa500]Returns: the created object or null if failed.[/color][/b]
+[b][color=#ffa500]Returns: the created object or null if it failed.[/color][/b]
 
 [b]Example:[/b]
 [code]createObject(90, 160, "myObject");
@@ -813,12 +845,12 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     {
         name: 'typeSet',
         threadTitle: 'typeSet(typename)',
-        content: `Sets the type of the current (already running) object and runs that type's code. Use on an object that was already spawned to apply type codes at runtime (e.g. createObject without typeName, or to switch type). Type function runs at the start of the next frame.
+        content: `Switches this object to a different type so that type's code runs starting next frame.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]typename[/color][/b] - [i]Name of the type (type function) to apply to this object.[/i]
+[b][color=#90ee90]typename[/color][/b] - [i]The name of the type to switch to.[/i]
 
-[b][color=#ffa500]Returns: true if pending type was set, false otherwise.[/color][/b]
+[b][color=#ffa500]Returns: true if the type was set, false otherwise.[/color][/b]
 
 [b]Example:[/b]
 [code]typeSet("myType"); // Apply type "myType" to this object next frame[/code]`
@@ -826,7 +858,7 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     {
         name: 'makeDraggable',
         threadTitle: 'makeDraggable()',
-        content: `Makes the current codeChild draggable (like the player). The object must call this function each frame to remain draggable.
+        content: `Makes this object draggable with the mouse or touch (call every frame to keep it draggable).
 
 [b]Example:[/b]
 [code]makeDraggable(); // Makes this object draggable[/code]`
@@ -834,15 +866,15 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     {
         name: 'createBullet',
         threadTitle: 'createBullet(x, y, speed, dir, size, ...)',
-        content: `Creates a bullet at specified position with given properties (x, y, speed, direction, size required).
+        content: `Creates a bullet at a position with the given speed, direction, and size (and optional extra properties).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]x position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]y position.[/i]
-[b][color=#90ee90]speed[/color][/b] - [i]Bullet speed.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
+[b][color=#90ee90]speed[/color][/b] - [i]How fast the bullet moves.[/i]
 [b][color=#90ee90]dir[/color][/b] - [i]Direction in degrees.[/i]
-[b][color=#90ee90]size[/color][/b] - [i]Bullet size.[/i]
-[color=#9acd32]...[/color] - [i]Optional: [R,G,B], Alpha, ScaleY, Rotation, Lifetime, Homing, Spin, Shape, GlowSize, GlowPower, [GlowR,GlowG,GlowB].[/i]
+[b][color=#90ee90]size[/color][/b] - [i]How big the bullet is.[/i]
+[color=#9acd32]...[/color] - [i]Optional: color, opacity, scale, rotation, lifetime, homing, spin, shape, glow.[/i]
 
 [b][color=#ffa500]Returns: the bullet's unique ID.[/color][/b]
 
@@ -852,12 +884,12 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     {
         name: 'deleteBullet',
         threadTitle: 'deleteBullet(id)',
-        content: `Removes a bullet by its ID (from createBullet or inBullet).
+        content: `Removes a bullet from the game using its ID.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]id[/color][/b] - [i]Bullet ID to remove.[/i]
+[b][color=#90ee90]id[/color][/b] - [i]The bullet's ID (from createBullet or inBullet).[/i]
 
-[b][color=#ffa500]Returns:[/color][/b] true if bullet was removed, false if not found.
+[b][color=#ffa500]Returns:[/color][/b] true if the bullet was removed, false if not found.
 
 [b]Example:[/b]
 [code]var bid = createBullet(x, y, 5, 90, 2);
@@ -868,10 +900,10 @@ if interval(60)
     {
         name: 'surfaceSet',
         threadTitle: 'surfaceSet(surfaceName)',
-        content: `Sets the current surface for subsequent createBullet and draw calls (drawCircle, drawLine, drawSprite, etc.). Creates the surface if it doesn't exist. Main surface is drawn by default; other surfaces only when you call drawSurface().
+        content: `Switches drawing to a named layer so bullets and shapes go there until you reset (other layers only show when you draw them with drawSurface).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]surfaceName[/color][/b] - [i]Surface name (e.g. "main" or "test").[/i]
+[b][color=#90ee90]surfaceName[/color][/b] - [i]The name of the layer (e.g. "main" or "test").[/i]
 
 [b]Example:[/b]
 [code]surfaceSet("test");
@@ -883,7 +915,7 @@ createBullet(x, y, 3, 0, 2);[/code]`
     {
         name: 'surfaceReset',
         threadTitle: 'surfaceReset()',
-        content: `Resets the current surface to main. Equivalent to surfaceSet("main").
+        content: `Switches drawing back to the main layer (same as surfaceSet("main")).
 
 [b]Example:[/b]
 [code]surfaceSet("back");
@@ -893,12 +925,12 @@ surfaceReset();[/code]`
     {
         name: 'drawBlendSet',
         threadTitle: 'drawBlendSet(mode)',
-        content: `Sets the blend mode for subsequent draw calls (drawCircle, drawLine, drawSprite, drawBackground). Use drawBlendReset() to restore normal.
+        content: `Changes how new drawings combine with what is already on screen (normal, additive for glow, or subtract for cutouts); use drawBlendReset() to go back to normal.
 
 [b]Modes:[/b]
-[color=#90ee90]normal[/color] - [i]Default alpha blending.[/i]
-[color=#90ee90]additive[/color] - [i]Additive blending (glow, light effects).[/i]
-[color=#90ee90]subtract[/color] - [i]Subtract blending (cutout/hole - punches through current surface to reveal layers below).[/i]
+[color=#90ee90]normal[/color] - [i]Default blending.[/i]
+[color=#90ee90]additive[/color] - [i]Adds light (good for glow effects).[/i]
+[color=#90ee90]subtract[/color] - [i]Cuts a hole to show layers below.[/i]
 
 [b]Example:[/b]
 [code]surfaceSet("top");
@@ -910,41 +942,58 @@ drawBlendReset();[/code]`
     {
         name: 'drawBlendReset',
         threadTitle: 'drawBlendReset()',
-        content: `Resets blend mode to normal. Equivalent to drawBlendSet("normal").`
+        content: `Restores normal blending (same as drawBlendSet("normal")).`
+    },
+    {
+        name: 'drawSetAlpha',
+        threadTitle: 'drawSetAlpha(alpha)',
+        content: `Sets the default see-through amount (0 to 1) for later draw calls that do not specify it; use drawSetAlpha(1) to reset.`
+    },
+    {
+        name: 'drawSetColor',
+        threadTitle: 'drawSetColor(color)',
+        content: `Sets the default color for later draw calls that do not pass a color (e.g. "#ff8080"); pass null to clear it.`
+    },
+    {
+        name: 'drawSetAlign',
+        threadTitle: 'drawSetAlign(align)',
+        content: `Sets the default anchor point (1–9, e.g. 1=top-left, 5=center, 9=bottom-right) for later drawSprite, drawBackground, and drawSurface; pass null to clear.`
     },
     {
         name: 'drawSurface',
-        threadTitle: 'drawSurface(surfaceName, x, y, angle, xscale, yscale, alpha, depth)',
-        content: `Draws a surface's bullets, shapes (drawCircle, drawLine), sprites (drawSprite, drawSheetSprite), and backgrounds (drawBackground) at position (x,y) with scale (xscale,yscale), alpha, depth, and angle for z-ordering. Surfaces other than "main" are NOT drawn automatically.
+        threadTitle: 'drawSurface(surfaceName, x, y, angle, xscale, yscale, alpha, depth, align)',
+        content: `Draws a named layer (its bullets, shapes, and images) at a position with optional scale, rotation, opacity, and draw order; layers other than main only show when you call this.
+
+[b]Align grid:[/b] 1=top-left, 2=top-center, 3=top-right, 4=mid-left, 5=center, 6=mid-right, 7=bottom-left, 8=bottom-center, 9=bottom-right.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]surfaceName[/color][/b] - [i]Surface name to draw.[/i]
-[color=#9acd32]x, y[/color] - [i]Position offset. Default 0.[/i]
-[color=#9acd32]angle[/color] - [i]Rotation in degrees around (x,y). Default 0.[/i]
-[color=#9acd32]xscale, yscale[/color] - [i]Scale factors. Default 1.[/i]
-[color=#9acd32]alpha[/color] - [i]Opacity 0-1. Default 1.[/i]
-[color=#9acd32]depth[/color] - [i]Z-order for sorting. Default 0.[/i]
+[b][color=#90ee90]surfaceName[/color][/b] - [i]The name of the layer to draw.[/i]
+[color=#9acd32]x, y[/color] - [i]Optional position of the anchor point (default 0).[/i]
+[color=#9acd32]angle[/color] - [i]Optional rotation in degrees (default 0).[/i]
+[color=#9acd32]xscale, yscale[/color] - [i]Optional scale (default 1).[/i]
+[color=#9acd32]alpha[/color] - [i]Optional opacity from 0 to 1 (default 1).[/i]
+[color=#9acd32]depth[/color] - [i]Optional draw order (default 0).[/i]
+[color=#9acd32]align[/color] - [i]Optional 1–9 for which point (x,y) is (default 7 is bottom-left).[/i]
 
 [b]Example:[/b]
 [code]drawSurface("back", 0, 0, 0, 1, 1, 0.5, -10);
-drawSurface("front", 0, 0, 45, 1, 1, 1, -1);[/code]
-[i]Draws "back" at 50% alpha; "front" rotated 45°.[/i]`
+drawSurface("front", 90, 160, 45, 1, 1, 1, -1, 5); // center at (90,160)[/code]`
     },
     {
         name: 'drawAnimated',
         threadTitle: 'drawAnimated(x, y, name, anim, bones, scaleX, scaleY)',
-        content: `Displays an animated character sprite at specified position.
+        content: `Shows an animated character at a position and returns a handle so you can control it.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]x position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]y position.[/i]
-[b][color=#90ee90]name[/color][/b] - [i]DragonBones armature name (asset name).[/i]
-[b][color=#90ee90]anim[/color][/b] - [i]Animation name to play.[/i]
-[color=#9acd32]bones[/color] - [i]Array of bone names to hide. Optional.[/i]
-[color=#9acd32]scaleX[/color] - [i]Horizontal scale. Optional.[/i]
-[color=#9acd32]scaleY[/color] - [i]Vertical scale. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]The character or skeleton asset name.[/i]
+[b][color=#90ee90]anim[/color][/b] - [i]The name of the animation to play.[/i]
+[color=#9acd32]bones[/color] - [i]Optional list of bone names to hide.[/i]
+[color=#9acd32]scaleX[/color] - [i]Optional horizontal scale.[/i]
+[color=#9acd32]scaleY[/color] - [i]Optional vertical scale.[/i]
 
-[b][color=#ffa500]Returns: a handle object that allows control of the animation.[/color][/b]
+[b][color=#ffa500]Returns: a handle you can use to control the animation.[/color][/b]
 
 [b]Example:[/b]
 [code]var animX = 90;
@@ -955,12 +1004,12 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     {
         name: 'destroy',
         threadTitle: 'destroy(id)',
-        content: `Removes the specified instance or self if no id provided.
+        content: `Removes an object from the game (or this object if you do not pass an ID).
 
 [b]Arguments:[/b]
-[color=#9acd32]id[/color] - [i]Instance/codeChild ID to remove. Omit to remove self.[/i]
+[color=#9acd32]id[/color] - [i]Optional ID of the object to remove; leave out to remove this object.[/i]
 
-[b][color=#ffa500]Returns: true if removal was successful, false otherwise.[/color][/b]
+[b][color=#ffa500]Returns: true if it was removed, false otherwise.[/color][/b]
 
 [b]Example:[/b]
 [code]destroy(); // removes self
@@ -969,10 +1018,10 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     {
         name: 'debugMessage',
         threadTitle: 'debugMessage(msg)',
-        content: `Adds a debug message to the chat tab.
+        content: `Shows a message in the debug or chat tab.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]msg[/color][/b] - [i]Message to show in the chat/debug tab.[/i]
+[b][color=#90ee90]msg[/color][/b] - [i]The message to show.[/i]
 
 [b]Example:[/b]
 [code]debugMessage("Player HP: " + playerHp);[/code]`
@@ -980,14 +1029,14 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     {
         name: 'objectOutScreen',
         threadTitle: 'objectOutScreen(x, y, margin)',
-        content: `Checks if the object at specified position is outside screen bounds.
+        content: `Tells you whether a position is off the visible screen.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]x position to check.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]y position to check.[/i]
-[color=#9acd32]margin[/color] - [i]Extra margin (0-1 or pixels) outside the visible area. Optional.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position to check.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position to check.[/i]
+[color=#9acd32]margin[/color] - [i]Optional extra distance outside the screen to still count as out.[/i]
 
-[b][color=#ffa500]Returns: true if outside screen, false otherwise.[/color][/b]
+[b][color=#ffa500]Returns: true if off screen, false otherwise.[/color][/b]
 
 [b]Example:[/b]
 [code]if (objectOutScreen(x, y, 0.1)) { dead = true; }[/code]`
@@ -995,14 +1044,14 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
     {
         name: 'collidePlayerBullet',
         threadTitle: 'collidePlayerBullet(x, y, radius)',
-        content: `Finds all player bullet IDs within radius of (x,y) this frame.
+        content: `Returns a list of player bullet IDs that are within a given distance of a point this frame.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Center x position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Center y position.[/i]
-[b][color=#90ee90]radius[/color][/b] - [i]Search radius.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the center.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the center.[/i]
+[b][color=#90ee90]radius[/color][/b] - [i]How far to search for bullets.[/i]
 
-[b][color=#ffa500]Returns: an array of player bullet IDs; [] if none.[/color][/b]
+[b][color=#ffa500]Returns: a list of bullet IDs, or an empty list if none.[/color][/b]
 
 [b]Example:[/b]
 [code]var bids = collidePlayerBullet(x, y, 8);
@@ -1012,16 +1061,16 @@ inBullet(bids)
     {
         name: 'colideOtherObject',
         threadTitle: 'colideOtherObject(x, y, radius, tag, size)',
-        content: `Circle vs circle collision detection. Skips self.
+        content: `Checks if a circle at a position touches any other object with a given tag (ignores this object).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Center x position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Center y position.[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the center.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the center.[/i]
 [b][color=#90ee90]radius[/color][/b] - [i]Collision radius for this object.[/i]
-[b][color=#90ee90]tag[/color][/b] - [i]Tag to filter objects by. Only objects with this tag are considered.[/i]
-[b][color=#90ee90]size[/color][/b] - [i]Radius to use for the other objects (or their collision size).[/i]
+[b][color=#90ee90]tag[/color][/b] - [i]Only objects with this tag are checked.[/i]
+[b][color=#90ee90]size[/color][/b] - [i]Radius to use for the other objects.[/i]
 
-[b][color=#ffa500]Returns: the first colliding codeChild or null.[/color][/b]
+[b][color=#ffa500]Returns: the first object that is touching, or null.[/color][/b]
 
 [b]Example:[/b]
 [code]var other = colideOtherObject(x, y, 8, "enemy", 6);
@@ -1030,14 +1079,14 @@ if (other !== null) { other.hp -= 1; }[/code]`
     {
         name: 'objectNearest',
         threadTitle: 'objectNearest(x, y, objectName)',
-        content: `Returns the nearest codeChild with the given objectName to point (x,y). Skips self.
+        content: `Returns the closest object with the given name to a point (ignores this object).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]X position to measure from.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Y position to measure from.[/i]
-[b][color=#90ee90]objectName[/color][/b] - [i]Name of the code object (e.g. "enemy").[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position to measure from.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position to measure from.[/i]
+[b][color=#90ee90]objectName[/color][/b] - [i]The object name to look for (e.g. "enemy").[/i]
 
-[b][color=#ffa500]Returns: the nearest codeChild or null if none.[/color][/b]
+[b][color=#ffa500]Returns: the nearest object or null if none.[/color][/b]
 
 [b]Example:[/b]
 [code]var target = objectNearest(x, y, "enemy"); if (target) { direction = turnTowards(direction, getDirection(target.x, target.y), 5); }[/code]`
@@ -1045,10 +1094,10 @@ if (other !== null) { other.hp -= 1; }[/code]`
     {
         name: 'objectExists',
         threadTitle: 'objectExists(objectName)',
-        content: `Returns true if at least one codeChild with the given objectName exists.
+        content: `Tells you whether at least one object with the given name exists.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]objectName[/color][/b] - [i]Name of the code object (e.g. "enemy").[/i]
+[b][color=#90ee90]objectName[/color][/b] - [i]The object name to look for (e.g. "enemy").[/i]
 
 [b][color=#ffa500]Returns: true if any exist, false otherwise.[/color][/b]
 
@@ -1058,12 +1107,12 @@ if (other !== null) { other.hp -= 1; }[/code]`
     {
         name: 'objectCount',
         threadTitle: 'objectCount(objectName)',
-        content: `Returns the number of codeChildren that have the given objectName.
+        content: `Returns how many objects with the given name exist.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]objectName[/color][/b] - [i]Name of the code object (e.g. "enemy").[/i]
+[b][color=#90ee90]objectName[/color][/b] - [i]The object name to count (e.g. "enemy").[/i]
 
-[b][color=#ffa500]Returns: count (number).[/color][/b]
+[b][color=#ffa500]Returns: the count.[/color][/b]
 
 [b]Example:[/b]
 [code]var n = objectCount("enemy"); drawText(5, 5, "Enemies: " + n);[/code]`
@@ -1071,21 +1120,22 @@ if (other !== null) { other.hp -= 1; }[/code]`
     {
         name: 'playerNearest',
         threadTitle: 'playerNearest()',
-        content: `Returns the nearest player (local or other) to the current instance. Same data as player (e.g. playerNearest().x, playerNearest().y).
+        content: `Returns the closest player to this object (same kind of data as the player variable).
 
-[b][color=#ffa500]Returns: player object or null if no valid player.[/color][/b]
+[b][color=#ffa500]Returns: the player object or null if there is no valid player.[/color][/b]
 
 [b]Example:[/b]
 [code]var p = playerNearest(); if (p) { direction = turnTowards(direction, getDirection(p.x, p.y), 5); }[/code]`
     },
     {
         name: 'background',
-        threadTitle: 'background(name, dynamic)',
-        content: `Creates a background. [b]background("name")[/b] = static (baked once, no performance drop no matter how many things you draw on it). [b]background("name", true)[/b] = dynamic (runs each frame; only drawSprite/drawSheetSprite). Use drawBackground(x, y, "name") to draw.
+        threadTitle: 'background(name, dynamic, width, height)',
+        content: `Creates a named scene you draw once (static) or every frame (dynamic), then show with drawBackground; optional width and height set the drawing area size for dynamic backgrounds.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]name[/color][/b] - [i]Buffer name. Use with drawBackground(x, y, "name").[/i]
-[color=#9acd32]dynamic[/color] - [i]Optional. [b]true[/b] = dynamic (only drawSprite/drawSheetSprite; e.g. getTime() for motion). Omit or false = static.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]The name you use when drawing this background with drawBackground.[/i]
+[color=#9acd32]dynamic[/color] - [i]Optional; set true for redraw every frame, or omit/false for one-time.[/i]
+[color=#9acd32]width, height[/color] - [i]Optional; for dynamic backgrounds, the drawing area size in numbers.[/i]
 
 [b]Example (static):[/b]
 [code]background("bg1")
@@ -1094,60 +1144,66 @@ drawBackground(0, 0, "bg1")[/code]
 
 [b]Example (dynamic):[/b]
 [code]background("parallax", true)
-#drawSprite(90 + getTime()*10, 160, "@cloud.png", 1, 1, 0)
-drawBackground(0, 0, "parallax")[/code]`
+#drawSprite(90 + getTime()*10, 160, "@cloud", 1, 1, 0)
+drawBackground(0, 0, "parallax")[/code]
+
+[b]Example (dynamic with size):[/b]
+[code]background("ui", true, 200, 400)
+#drawRectangle(0, 0, 200, 400, "#112233")
+drawBackground(90, 160, "ui", 0, null, 5)[/code]`
     },
     {
         name: 'drawBackground',
-        threadTitle: 'drawBackground(x, y, backgroundName, angle, color)',
-        content: `Draws a background (static or dynamic) at specified position.
+        threadTitle: 'drawBackground(x, y, backgroundName, angle, color, align)',
+        content: `Draws a background you created with background() at a position with optional rotation, color tint, and anchor point (1–9, default 7 is bottom-left).
+
+[b]Align grid:[/b] 1=top-left, 2=top-center, 3=top-right, 4=mid-left, 5=center, 6=mid-right, 7=bottom-left, 8=bottom-center, 9=bottom-right.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]x position to draw at.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]y position to draw at.[/i]
-[b][color=#90ee90]backgroundName[/color][/b] - [i]Name from background("name") or background("name", true).[/i]
-[color=#9acd32]angle[/color] - [i]Optional rotation in degrees around (x,y).[/i]
-[color=#9acd32]color[/color] - [i]Optional tint (hex or RGBA).[/i]
+[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the anchor point.[/i]
+[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the anchor point.[/i]
+[b][color=#90ee90]backgroundName[/color][/b] - [i]The name you gave the background when you created it.[/i]
+[color=#9acd32]angle[/color] - [i]Optional rotation in degrees.[/i]
+[color=#9acd32]color[/color] - [i]Optional color tint.[/i]
+[color=#9acd32]align[/color] - [i]Optional 1–9 for which point of the background is at (x,y); default 7.[/i]
 
 [b]Example:[/b]
-[code]background("myBg")
-#drawCircle(0, 0, 4)
-drawBackground(90, 160, "myBg")
-drawBackground(0, 0, "myBg", 45, "#FF0000")[/code]`
+[code]drawBackground(90, 160, "myBg") // bottom-left at (90,160)
+drawBackground(90, 160, "myBg", 0, null, 5) // center at (90,160)[/code]`
     },
     {
         name: 'musicPlay',
         threadTitle: 'musicPlay(name, seq, vol)',
-        content: `Plays a soundtrack file from music/soundtracks/. songName must start with $.
+        content: `Starts playing a soundtrack from the music folder (name must start with $).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]name[/color][/b] - [i]Song filename; must start with $ (from music/soundtracks/).[/i]
-[color=#9acd32]seq[/color] - [i]Starting sequence/order number. Optional.[/i]
-[color=#9acd32]vol[/color] - [i]Volume 0-1. Optional.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]The song name from the music folder (must start with $).[/i]
+[color=#9acd32]seq[/color] - [i]Optional starting order or section number.[/i]
+[color=#9acd32]vol[/color] - [i]Optional volume from 0 to 1.[/i]
 
 [b]Example:[/b]
-[code]musicPlay("$lethal-weapon-level-1.xm");
-musicPlay("$song.xm", 2, 0.5);[/code]`
+[code]musicPlay("$lethal-weapon-level-1");
+musicPlay("$song", 2, 0.5);[/code]`
     },
     {
         name: 'musicStop',
         threadTitle: 'musicStop()',
-        content: `Stops the currently playing soundtrack.`
+        content: `Stops the music that is currently playing.`
     },
     {
         name: 'musicGetSequence',
         threadTitle: 'musicGetSequence()',
-        content: `Gets the current sequence/order number of the currently played soundtrack.
+        content: `Tells you which order or section number the current song is on.
 
-[b][color=#ffa500]Returns: the current sequence/order number.[/color][/b]`
+[b][color=#ffa500]Returns: the current order/section number.[/color][/b]`
     },
     {
         name: 'musicSetSequence',
         threadTitle: 'musicSetSequence(seq)',
-        content: `Instantly plays the current song from the specified sequence/order number.
+        content: `Jumps the current song to a specific order or section and plays from there.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]seq[/color][/b] - [i]Sequence/order number to jump to.[/i]
+[b][color=#90ee90]seq[/color][/b] - [i]The order or section number to jump to.[/i]
 `
     }
 ];
@@ -1155,67 +1211,27 @@ musicPlay("$song.xm", 2, 0.5);[/code]`
 export const dragonBonesHelp = [
     {
         name: 'Example: basic handle',
-        content: `[b]Example:[/b]
-[code]var ani = drawAnimated(x, y, "ForestBee", "Idle");
-
-// You can set display properties:
-ani.scale = 0.7;
-ani.alpha = 0.9;
-// ani.rotation = 0.3;[/code]`
+        content: `You can change the handle's scale and opacity (e.g. ani.scale = 0.7; ani.alpha = 0.9).`
     },
     {
         name: 'ani.armature.getBone(name)',
-        content: `Finds a bone by name on the armature.
-
-[b]Arguments:[/b]
-[b][color=#90ee90]name[/color][/b] - [i]Bone name on the armature.[/i]
-
-[b][color=#ffa500]Returns: dragonBones.Bone or null if not found.[/color][/b]
-[code]var bone = ani.armature.getBone("arm");[/code]`
+        content: `Returns a bone by its name so you can move or hide it; name is the bone name on the skeleton.`
     },
     {
         name: 'bone.visible',
-        content: `Shows or hides a bone (and typically its attached slot visuals).
-
-[b][color=#ffa500]Type: boolean[/color][/b]
-[code]bone.visible = false; // hide
-bone.visible = true;  // show[/code]`
+        content: `Set to true to show the bone and its visuals, or false to hide them.`
     },
     {
         name: 'bone.origin',
-        content: `The bone’s original/default transform (from the skeleton data). Useful as a baseline.
-[b]Note:[/b] this is different from [color=#ffa500]bone.global[/color] (current pose) and [color=#ffa500]bone.offset[/color] (your override).
-
-[b]Example:[/b]
-[code]var o = bone.origin;
-// example fields:
-// o.x, o.y, o.scaleX, o.scaleY, o.rotation[/code]`
+        content: `The bone's default position and rotation from the skeleton (different from bone.global or bone.offset).`
     },
     {
         name: 'Example: animation',
-        content: `The animation handle (ani) provides display properties (Pixi) and animation controller properties (DragonBones).
-
-[b]Example:[/b]
-[code]var ani = drawAnimated(x, y, "ForestBee", "Idle");
-
-// Display properties (Pixi):
-ani.angle = 45;           // Rotation in degrees
-ani.alpha = 0.8;          // Opacity (0-1)
-
-// Animation controller properties:
-var currentTime = ani.animation.currentTime;  // Current playback time
-var isPlaying = ani.animation.isPlaying;      // Whether animation is playing
-ani.animation.timeScale = 1.5;                // Playback speed[/code]`
+        content: `The handle lets you set angle and alpha, and the animation has currentTime, isPlaying, and timeScale for playback.`
     },
     {
         name: 'Example: bones',
-        content: `[b]Example:[/b]
-[code]var ani = drawAnimated(x, y, "ForestBee", "Idle");
-if (ani.ready) {
-  var bone = ani.armature.getBone("arm");
-  bone.offset.x += 10;
-  bone.invalidUpdate();
-}[/code]`
+        content: `When ani.ready is true, get a bone with getBone("arm"), change bone.offset, then call bone.invalidUpdate().`
     }
 ];
 
@@ -1224,106 +1240,104 @@ export const javaScriptStuffHelp = [
 ];
 
 export const mathFunctionsHelp = [
-    { name: 'abs(x)', content: `Absolute value` },
-    { name: 'atan2(y, x)', content: `Arc tangent of y/x.
-
-[b][color=#ffa500]Returns: angle in radians.[/color][/b]` },
-    { name: 'ceil(x)', content: `Round up` },
-    { name: 'cos(x)', content: `Cosine (radians)` },
-    { name: 'E', content: `Euler's number` },
-    { name: 'floor(x)', content: `Round down` },
-    { name: 'max(a, b, ...)', content: `Maximum value` },
-    { name: 'min(a, b, ...)', content: `Minimum value` },
-    { name: 'PI', content: `Pi constant (3.14159...)` },
-    { name: 'pow(x, y)', content: `x to power of y` },
-    { name: 'random()', content: `Random 0-1` },
-    { name: 'round(x)', content: `Round to nearest` },
-    { name: 'sin(x)', content: `Sine (radians)` },
-    { name: 'sqrt(x)', content: `Square root` },
-    { name: 'tan(x)', content: `Tangent (radians)` }
+    { name: 'abs(x)', content: `Returns the absolute value (removes the minus sign).` },
+    { name: 'atan2(y, x)', content: `Returns the angle from the x-axis to the point (x, y).` },
+    { name: 'ceil(x)', content: `Rounds up to the next whole number.` },
+    { name: 'cos(x)', content: `Returns the cosine of an angle.` },
+    { name: 'E', content: `Euler's number (about 2.718).` },
+    { name: 'floor(x)', content: `Rounds down to the previous whole number.` },
+    { name: 'max(a, b, ...)', content: `Returns the largest of the values.` },
+    { name: 'min(a, b, ...)', content: `Returns the smallest of the values.` },
+    { name: 'PI', content: `Pi (about 3.14159).` },
+    { name: 'pow(x, y)', content: `Returns x raised to the power of y.` },
+    { name: 'random()', content: `Returns a random number between 0 and 1.` },
+    { name: 'round(x)', content: `Rounds to the nearest whole number.` },
+    { name: 'sin(x)', content: `Returns the sine of an angle.` },
+    { name: 'sqrt(x)', content: `Returns the square root.` },
+    { name: 'tan(x)', content: `Returns the tangent of an angle.` }
 ];
 
 export const arrayMethodsHelp = [
-    { name: 'array.length', content: `Get array length` },
-    { name: 'array.push(item)', content: `Add item to end` },
-    { name: 'array.pop()', content: `Remove last item` },
-    { name: 'array.shift()', content: `Remove first item` },
-    { name: 'array.unshift(item)', content: `Add item to start` },
-    { name: 'array.indexOf(item)', content: `Find index of item` },
-    { name: 'array.includes(item)', content: `Check if contains item` },
-    { name: 'array.slice(start, end)', content: `Get sub-array` },
-    { name: 'array.splice(i, n, ...)', content: `Remove/insert items` },
-    { name: 'array.forEach(fn)', content: `Loop through items` },
-    { name: 'array.map(fn)', content: `Transform array` },
-    { name: 'array.filter(fn)', content: `Filter array` },
-    { name: 'array.find(fn)', content: `Find first match` },
-    { name: 'array.join(sep)', content: `Join to string` },
-    { name: 'listShuffle(arr)', content: `Shuffle array in place` },
-    { name: 'listFilterOut(array, value)', content: `Remove all occurrences of value` },
-    { name: 'listAdd(array, value)', content: `Push value to end` },
-    { name: 'listFind(array, value)', content: `Find first index of value` },
-    { name: 'listPop(array)', content: `Pop and return last element` },
-    { name: 'listRemove(array, value)', content: `Remove all occurrences of value` }
+    { name: 'array.length', content: `Returns how many items are in the list.` },
+    { name: 'array.push(item)', content: `Adds an item to the end of the list.` },
+    { name: 'array.pop()', content: `Removes and returns the last item.` },
+    { name: 'array.shift()', content: `Removes and returns the first item.` },
+    { name: 'array.unshift(item)', content: `Adds an item to the start of the list.` },
+    { name: 'array.indexOf(item)', content: `Returns the position of the first matching item or -1.` },
+    { name: 'array.includes(item)', content: `Returns true if the list contains the item.` },
+    { name: 'array.slice(start, end)', content: `Returns a new list from a range of positions.` },
+    { name: 'array.splice(i, n, ...)', content: `Removes or inserts items at a position.` },
+    { name: 'array.forEach(fn)', content: `Runs a function once for each item.` },
+    { name: 'array.map(fn)', content: `Returns a new list by transforming each item.` },
+    { name: 'array.filter(fn)', content: `Returns a new list with only items that pass a test.` },
+    { name: 'array.find(fn)', content: `Returns the first item that passes a test.` },
+    { name: 'array.join(sep)', content: `Joins all items into one string with a separator.` },
+    { name: 'listShuffle(arr)', content: `Randomly reorders the list and returns it.` },
+    { name: 'listFilterOut(array, value)', content: `Removes every copy of a value from the list.` },
+    { name: 'listAdd(array, value)', content: `Adds a value to the end of the list.` },
+    { name: 'listFind(array, value)', content: `Returns the first position of a value or -1.` },
+    { name: 'listPop(array)', content: `Removes and returns the last item.` },
+    { name: 'listRemove(array, value)', content: `Removes every copy of a value from the list.` }
 ];
 
 export const stringMethodsHelp = [
-    { name: 'string.length', content: `Get string length` },
-    { name: 'string.charAt(i)', content: `Get character at index` },
-    { name: 'string.indexOf(str)', content: `Find substring index` },
-    { name: 'string.includes(str)', content: `Check if contains` },
-    { name: 'string.substring(s, e)', content: `Get substring` },
-    { name: 'string.slice(s, e)', content: `Get substring` },
-    { name: 'string.split(sep)', content: `Split to array` },
-    { name: 'string.toLowerCase()', content: `Convert to lowercase` },
-    { name: 'string.toUpperCase()', content: `Convert to uppercase` },
-    { name: 'string.trim()', content: `Remove whitespace` },
-    { name: 'string.replace(a, b)', content: `Replace substring` }
+    { name: 'string.length', content: `Returns how many characters are in the text.` },
+    { name: 'string.charAt(i)', content: `Returns the character at a given position.` },
+    { name: 'string.indexOf(str)', content: `Returns the position where a piece of text first appears or -1.` },
+    { name: 'string.includes(str)', content: `Returns true if the text contains the given piece.` },
+    { name: 'string.substring(s, e)', content: `Returns the part of the text between two positions.` },
+    { name: 'string.slice(s, e)', content: `Returns the part of the text between two positions.` },
+    { name: 'string.split(sep)', content: `Splits the text into a list using a separator.` },
+    { name: 'string.toLowerCase()', content: `Returns the text with all letters in lowercase.` },
+    { name: 'string.toUpperCase()', content: `Returns the text with all letters in uppercase.` },
+    { name: 'string.trim()', content: `Returns the text with spaces removed from the start and end.` },
+    { name: 'string.replace(a, b)', content: `Returns the text with one piece replaced by another.` }
 ];
 
 export const numberMethodsHelp = [
-    { name: 'Number.parseInt(str)', content: `Parse integer` },
-    { name: 'Number.parseFloat(str)', content: `Parse float` },
-    { name: 'num.toFixed(n)', content: `Format to n decimals` },
-    { name: 'num.toString()', content: `Convert to string` },
-    { name: 'isNaN(x)', content: `Check if not a number` },
-    { name: 'isFinite(x)', content: `Check if finite number` }
+    { name: 'Number.parseInt(str)', content: `Turns a string into a whole number.` },
+    { name: 'Number.parseFloat(str)', content: `Turns a string into a decimal number.` },
+    { name: 'num.toFixed(n)', content: `Returns the number as text with a fixed number of decimal places.` },
+    { name: 'num.toString()', content: `Returns the number as text.` },
+    { name: 'isNaN(x)', content: `Returns true if the value is not a valid number.` },
+    { name: 'isFinite(x)', content: `Returns true if the value is a normal finite number.` }
 ];
 
 export const globalFunctionsHelp = [
-    { name: 'Object.keys(obj)', content: `Get object keys as array` },
-    { name: 'Object.values(obj)', content: `Get object values as array` },
-    { name: 'Object.assign(target, src)', content: `Copy properties to target` },
-    { name: 'Object.entries(obj)', content: `Get [key, value] pairs` },
-    { name: 'Object.hasOwnProperty(key)', content: `Check if property exists` },
-    { name: 'Date.now()', content: `Current timestamp (milliseconds)` },
-    { name: 'new Date()', content: `Create date object` },
-    { name: 'new Date(timestamp)', content: `Create date from timestamp` },
-    { name: 'parseInt(str)', content: `Parse string to integer` },
-    { name: 'parseFloat(str)', content: `Parse string to float` },
-    { name: 'isNaN(x)', content: `Check if not a number` },
-    { name: 'isFinite(x)', content: `Check if finite number` },
-    { name: 'encodeURIComponent(str)', content: `Encode URI component` },
-    { name: 'decodeURIComponent(str)', content: `Decode URI component` },
-    { name: 'String(x)', content: `Convert to string` },
-    { name: 'Number(x)', content: `Convert to number` },
-    { name: 'Boolean(x)', content: `Convert to boolean` },
-    { name: 'Array.isArray(x)', content: `Check if is array` }
+    { name: 'Object.keys(obj)', content: `Returns a list of the object's property names.` },
+    { name: 'Object.values(obj)', content: `Returns a list of the object's property values.` },
+    { name: 'Object.assign(target, src)', content: `Copies properties from one object into another.` },
+    { name: 'Object.entries(obj)', content: `Returns a list of name-value pairs from the object.` },
+    { name: 'Object.hasOwnProperty(key)', content: `Returns true if the object has that property.` },
+    { name: 'Date.now()', content: `Returns the current time as a number (milliseconds).` },
+    { name: 'new Date()', content: `Creates a date for the current time.` },
+    { name: 'new Date(timestamp)', content: `Creates a date from a timestamp number.` },
+    { name: 'parseInt(str)', content: `Turns a string into a whole number.` },
+    { name: 'parseFloat(str)', content: `Turns a string into a decimal number.` },
+    { name: 'isNaN(x)', content: `Returns true if the value is not a valid number.` },
+    { name: 'isFinite(x)', content: `Returns true if the value is a normal finite number.` },
+    { name: 'encodeURIComponent(str)', content: `Encodes text so it is safe to use in a URL.` },
+    { name: 'decodeURIComponent(str)', content: `Decodes text that was encoded for a URL.` },
+    { name: 'String(x)', content: `Turns a value into text.` },
+    { name: 'Number(x)', content: `Turns a value into a number.` },
+    { name: 'Boolean(x)', content: `Turns a value into true or false.` },
+    { name: 'Array.isArray(x)', content: `Returns true if the value is a list.` }
 ];
 
 export const arrayConstructorHelp = [
-    { name: 'new Array()', content: `Create empty array` },
-    { name: 'new Array(n)', content: `Create array with n elements` },
-    { name: 'new Array(a, b, c)', content: `Create array with elements` },
-    { name: '[1, 2, 3]', content: `Array literal syntax` },
-    { name: 'Array.from(obj)', content: `Create array from iterable` },
-    { name: 'Array.of(...args)', content: `Create array from arguments` }
+    { name: 'new Array()', content: `Creates an empty list.` },
+    { name: 'new Array(n)', content: `Creates a list with n empty slots.` },
+    { name: 'new Array(a, b, c)', content: `Creates a list with the given items.` },
+    { name: '[1, 2, 3]', content: `Creates a list using bracket syntax.` },
+    { name: 'Array.from(obj)', content: `Creates a list from something that can be looped over.` },
+    { name: 'Array.of(...args)', content: `Creates a list from the values you pass in.` }
 ];
 
 export const stringNumberConstructorsHelp = [
-    { name: 'new String(str)', content: `Create string object` },
-    { name: '"text" or \'text\'', content: `String literal` },
-    { name: 'template literal', content: `Template literal syntax using backticks` },
-    { name: 'new Number(n)', content: `Create number object` },
-    { name: '123 or 12.34', content: `Number literal` },
-    { name: '0x123', content: `Hexadecimal literal` }
+    { name: 'new String(str)', content: `Creates a string from the given value.` },
+    { name: '"text" or \'text\'', content: `Text in quotes is a string.` },
+    { name: 'template literal', content: `Backticks let you embed values in text.` },
+    { name: 'new Number(n)', content: `Creates a number from the given value.` },
+    { name: '123 or 12.34', content: `A number written directly is a number literal.` },
+    { name: '0x123', content: `A number starting with 0x is in base 16.` }
 ];

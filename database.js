@@ -2241,6 +2241,46 @@ export function getItemsBySlot(slot) {
 }
 
 // Leaderboards: one row per run (stage_slug = level identifier for campaign or uploaded level)
+
+/** Returns this user's best (lowest) time for the stage, or null if none. */
+export function getLeaderboardBestTimeForUser(stageSlug, username) {
+    return new Promise((resolve, reject) => {
+        if (!stageSlug) {
+            resolve(null);
+            return;
+        }
+        const slug = String(stageSlug).trim().toLowerCase();
+        const name = typeof username === 'string' ? username.trim() : '';
+        db.get(
+            'SELECT id, time_seconds FROM leaderboards WHERE stage_slug = ? AND username = ? ORDER BY time_seconds ASC LIMIT 1',
+            [slug, name],
+            (err, row) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(row ? { id: row.id, time_seconds: row.time_seconds } : null);
+            }
+        );
+    });
+}
+
+/** Deletes all leaderboard entries for this user on this stage. */
+export function deleteLeaderboardEntriesForUser(stageSlug, username) {
+    return new Promise((resolve, reject) => {
+        if (!stageSlug) {
+            resolve();
+            return;
+        }
+        const slug = String(stageSlug).trim().toLowerCase();
+        const name = typeof username === 'string' ? username.trim() : '';
+        db.run('DELETE FROM leaderboards WHERE stage_slug = ? AND username = ?', [slug, name], function(err) {
+            if (err) reject(err);
+            else resolve();
+        });
+    });
+}
+
 export function insertLeaderboardEntry(stageSlug, timeSeconds, username) {
     return new Promise((resolve, reject) => {
         if (!stageSlug || typeof timeSeconds !== 'number' || timeSeconds < 0) {

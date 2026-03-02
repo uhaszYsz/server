@@ -3605,6 +3605,13 @@ function handleWebSocketConnection(ws, req) {
             return;
           }
           const username = ws.username || '';
+          const existing = await db.getLeaderboardBestTimeForUser(slug, username);
+          if (existing != null && time >= existing.time_seconds) {
+            return;
+          }
+          if (existing != null) {
+            await db.deleteLeaderboardEntriesForUser(slug, username);
+          }
           await db.insertLeaderboardEntry(slug, time, username);
         } catch (err) {
           console.error('submitLeaderboard error:', err?.message);
