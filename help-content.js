@@ -131,6 +131,37 @@ repeat(5)
 if interval(10, 4)
 #createBullet(x, y, 2, 0, 1)[/code]
 [i]First block every 20 frames. Second: first fire in 4 frames, then every 10.[/i]`
+    },
+    {
+        name: 'timerStart',
+        threadTitle: 'timerStart(frames?, restarts?)',
+        content: `Frame-based timer: run the indented block when a countdown reaches 0. Use [b]timerRestart()[/b] inside the block to run again, or set optional [b]restarts[/b] to auto-restart a fixed number of times.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]frames[/color][/b] - [i]Number of frames until the block runs (default 30).[/i]
+[color=#9acd32]restarts[/color] - [i]Optional; how many times to auto-restart after the first run (e.g. 5 → 6 runs total).[/i]
+
+[b]Example:[/b]
+[code]timerStart(30)
+#x = 10
+#timerRestart()[/code]
+[i]Runs the block after 30 frames, then again every 30 frames because of timerRestart().[/i]
+
+[code]timerStart(60, 3)[/code]
+[i]Runs the block 4 times total (once + 3 restarts), every 60 frames.[/i]`
+    },
+    {
+        name: 'timerRestart',
+        threadTitle: 'timerRestart(frames?)',
+        content: `Only inside a [b]timerStart[/b] block. Resets the timer so the block runs again. Without arguments, uses the current period; with a number, restarts with that many frames.
+
+[b]Arguments:[/b]
+[color=#9acd32]frames[/color] - [i]Optional; next run after this many frames (e.g. timerRestart(60)).[/i]
+
+[b]Example:[/b]
+[code]timerStart(30)
+#timerRestart()    // run again in 30 frames
+#timerRestart(60)  // or run again in 60 frames[/code]`
     }
 ];
 
@@ -229,10 +260,6 @@ if (myBullets.size > 10)
         content: `[b]Read-only.[/b] Object holding the [b]initial values[/b] of this object at creation: [color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]speed[/color], [color=#ffa500]direction[/color], [color=#ffa500]depth[/color], and any [b]def[/b] variables.
 
 [b]Use:[/b] Read starting values or reset (e.g. [color=#ffa500]x = initials.x[/color], [color=#ffa500]speed = initials.speed[/color]).`
-    },
-    {
-        name: 'defaults',
-        content: `[b]Read-only.[/b] Object holding the [b]default values[/b] of your [b]def[/b] variables (captured on first run). Use to read or restore def defaults (e.g. [color=#ffa500]x = defaults.x[/color]). Only [b]def[/b] variables appear in [color=#ffa500]defaults[/color]; core vars use [color=#ffa500]initials[/color] for initial values.`
     }
 ];
 
@@ -1204,31 +1231,6 @@ if (other !== null) { other.hp -= 1; }[/code]`
 
 [b]Example:[/b]
 [code]var p = playerNearest(); if (p) { direction = turnTowards(direction, getDirection(p.x, p.y), 5); }[/code]`
-    },
-    {
-        name: 'background',
-        threadTitle: 'background(name, dynamic, width, height)',
-        content: `Creates a named scene you draw once (static) or every frame (dynamic), then show with drawBackground; optional width and height set the drawing area size for dynamic backgrounds.
-
-[b]Arguments:[/b]
-[b][color=#90ee90]name[/color][/b] - [i]The name you use when drawing this background with drawBackground.[/i]
-[color=#9acd32]dynamic[/color] - [i]Optional; set true for redraw every frame, or omit/false for one-time.[/i]
-[color=#9acd32]width, height[/color] - [i]Optional; for dynamic backgrounds, the drawing area size in numbers.[/i]
-
-[b]Example (static):[/b]
-[code]background("bg1")
-#drawCircle(90, 160, 4)
-drawBackground(0, 0, "bg1")[/code]
-
-[b]Example (dynamic):[/b]
-[code]background("parallax", true)
-#drawSprite(90 + getTime()*10, 160, "@cloud", 1, 1, 0)
-drawBackground(0, 0, "parallax")[/code]
-
-[b]Example (dynamic with size):[/b]
-[code]background("ui", true, 200, 400)
-#drawRectangle(0, 0, 200, 400, "#112233")
-drawBackground(90, 160, "ui", 0, null, 5)[/code]`
     },
     {
         name: 'drawBackground',
