@@ -203,7 +203,7 @@ batches["myBatch"].cooldown = [0, 0][/code]
         content: `Which way this object is facing (in degrees).`
     },
     {
-        name: 'Id',
+        name: 'id',
         content: `This object's unique ID.`
     },
     {
