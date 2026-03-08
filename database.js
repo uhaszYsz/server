@@ -1092,7 +1092,7 @@ function initForumCategories() {
 }
 
 // Helper to initialize help threads for a category
-// On server start: always refresh first post content from help (replies preserved). Creates missing threads.
+// On server start: refresh first post content from help (replies preserved), create missing threads, remove threads no longer in help.
 async function initHelpThreads(categoryName, categoryId) {
     const helpMap = {
         'Keywords': helpContent.specialKeywordsHelp,
@@ -1114,7 +1114,10 @@ async function initHelpThreads(categoryName, categoryId) {
     const items = helpMap[categoryName];
     if (!items) return;
 
+    const validTitles = new Set(items.map(item => (item && (item.threadTitle || item.name))));
+
     for (const item of items) {
+        if (!item) continue;
         await new Promise((resolve, reject) => {
             const titleToUse = item.threadTitle || item.name;
             db.get('SELECT id, title FROM forum_threads WHERE category_id = ? AND (title = ? OR title = ?)', [categoryId, item.name, titleToUse], (err, thread) => {
@@ -1163,6 +1166,17 @@ async function initHelpThreads(categoryName, categoryId) {
                 }
             });
         });
+    }
+
+    // Remove system threads that are no longer in help content (e.g. background() removed from Danmaku Helpers)
+    const obsolete = await new Promise((resolve, reject) => {
+        db.all('SELECT id, title FROM forum_threads WHERE category_id = ? AND author = ?', [categoryId, 'system'], (err, rows) => {
+            if (err) return reject(err);
+            resolve((rows || []).filter(t => !validTitles.has(t.title)));
+        });
+    });
+    for (const thread of obsolete) {
+        await deleteForumThread(thread.id);
     }
 }
 
