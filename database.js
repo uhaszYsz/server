@@ -1095,7 +1095,7 @@ function initForumCategories() {
 // On server start: always refresh first post content from help (replies preserved). Creates missing threads.
 async function initHelpThreads(categoryName, categoryId) {
     const helpMap = {
-        'Keywords': helpContent.specialKeywordsHelp, // Special keywords (background, def, etc.) + will add JavaScript keywords thread below
+        'Keywords': helpContent.specialKeywordsHelp,
         'Built-in Variables': helpContent.builtInVariablesHelp,
         'Danmaku Helpers': helpContent.danmakuHelpersHelp,
         'DragonBones': helpContent.dragonBonesHelp,
@@ -1110,52 +1110,6 @@ async function initHelpThreads(categoryName, categoryId) {
             ...helpContent.stringNumberConstructorsHelp
         ]
     };
-
-    // Special case: Create "Keywords" thread for Keywords subcategory (in addition to special keywords)
-    if (categoryName === 'Keywords') {
-        const keywords = ['function', 'var', 'let', 'const', 'def', 'if', 'else', 'for', 'while', 'switch', 'case', 'break', 'continue', 'return', 'true', 'false', 'null', 'undefined', 'inBullet'];
-        const keywordsContent = `[b]JavaScript Keywords:[/b]
-
-${keywords.map(kw => `[b][color=#f59e0b]${kw}[/color][/b]`).join(', ')}`;
-        
-        await new Promise((resolve, reject) => {
-            db.get('SELECT id FROM forum_threads WHERE category_id = ? AND title = ?', [categoryId, 'Keywords'], (err, thread) => {
-                if (err) return reject(err);
-
-                if (thread) {
-                    // Refresh first post content from help (preserve replies)
-                    db.get('SELECT id, author FROM forum_posts WHERE thread_id = ? ORDER BY id ASC LIMIT 1', [thread.id], (err, firstPost) => {
-                        if (err) return reject(err);
-                        if (firstPost && firstPost.author === 'system') {
-                            db.run('UPDATE forum_posts SET content = ? WHERE id = ?', [keywordsContent, firstPost.id], (err) => {
-                                if (err) reject(err);
-                                else resolve();
-                            });
-                        } else if (!firstPost) {
-                            db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)',
-                                [thread.id, 'system', keywordsContent], (err) => {
-                                    if (err) reject(err);
-                                    else resolve();
-                                });
-                        } else {
-                            resolve();
-                        }
-                    });
-                } else {
-                    db.run('INSERT INTO forum_threads (category_id, title, author) VALUES (?, ?, ?)',
-                        [categoryId, 'Keywords', 'system'], function(err) {
-                            if (err) return reject(err);
-                            const threadId = this.lastID;
-                            db.run('INSERT INTO forum_posts (thread_id, author, content) VALUES (?, ?, ?)',
-                                [threadId, 'system', keywordsContent], (err) => {
-                                    if (err) reject(err);
-                                    else resolve();
-                                });
-                        });
-                }
-            });
-        });
-    }
 
     const items = helpMap[categoryName];
     if (!items) return;

@@ -1313,9 +1313,7 @@ export const dragonBonesHelp = [
     }
 ];
 
-export const javaScriptStuffHelp = [
-    // Keywords are now handled in a separate "Keywords" subcategory under "JavaScript Stuff"
-];
+export const javaScriptStuffHelp = [];
 
 export const mathFunctionsHelp = [
     { name: 'abs(x)', content: `Returns the absolute value (removes the minus sign).` },
