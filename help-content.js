@@ -62,11 +62,51 @@ inBullet(Id)
 [i]Sets Alpha for one bullet by its Id.[/i]`
     },
     {
+        name: 'inObject',
+        threadTitle: 'inObject(id)',
+        content: `Lets you change properties of one or more objects by their ID or the object reference.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]id[/color][/b] - [i]The object or list of objects you want to change (e.g. from createObject or enemyList).[/i]
+
+[b]Example:[/b]
+[code]var obj = createObject(x, y, "Enemy")
+inObject(obj)
+#Hp = 300[/code]
+[i]Creates an Enemy at (x,y) and sets its Hp to 300.[/i]`
+    },
+    {
+        name: 'batch',
+        threadTitle: 'batch() or batch("name")',
+        content: `Runs a block multiple times with per-iteration [b]def[/b] values. Count is inferred from the def with the most comma values; shorter defs are padded. Optional [b]name[/b] exposes this batch in [color=#ffa500]batches["name"][/color].
+
+[b]Signature:[/b] [color=#90ee90]batch()[/color]  |  [color=#90ee90]batch("name")[/color]
+
+[b]Arguments:[/b]
+[color=#9acd32]name[/color] - [i]Optional string; use [color=#ffa500]batches["name"].varName[slot][/color] to read or change batch state from outside.[/i]
+
+[b]Example:[/b]
+[code]batch("myBatch"){
+def spd = 3, 5
+def cooldown = 1
+if cooldown = 0
+#createBullet(x,y,spd,270,6)
+#cooldown = 30
+cooldown--
+}[/code]
+[i]Runs 2 iterations (from spd). Use [color=#ffa500]batches["myBatch"].cooldown[0] = 0[/color] elsewhere to set a slot.[/i]`
+    },
+    {
         name: 'repeat',
-        content: `Runs a block of code a set number of times (use # to indent the block).
+        threadTitle: 'repeat(n) or repeat(n, start) or repeat(n, start, increase)',
+        content: `Runs a block of code a set number of times (use # to indent the block). Loop variable [b]i[/b]: from 0 to n-1, or from start to start+n-1, or stepped by [b]increase[/b].
+
+[b]Signature:[/b] [color=#90ee90]repeat(n)[/color]  |  [color=#90ee90]repeat(n, start)[/color]  |  [color=#90ee90]repeat(n, start, increase)[/color]
 
 [b]Arguments:[/b]
 [b][color=#90ee90]n[/color][/b] - [i]How many times the block should run.[/i]
+[color=#9acd32]start[/color] - [i]Optional; starting value for i (default 0).[/i]
+[color=#9acd32]increase[/color] - [i]Optional; add this to i each iteration (default 1).[/i]
 
 [b]Example:[/b]
 [code]var i = 0
@@ -99,6 +139,15 @@ export const builtInVariablesHelp = [
         name: 'player',
         content: `The player object you can read from (position, health, knockback, etc). 
 [b]Properties:[/b] [color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]hp[/color], [color=#ffa500]knockbackTime[/color], [color=#ffa500]knockbackPower[/color], [color=#ffa500]knockbackDirection[/color]`
+    },
+    {
+        name: 'batches',
+        content: `Map of named batch states for the current object. Each [b]batch("name")[/b] block registers its state here so you can read or change it from outside.
+
+[b]Use:[/b]
+[code]batches["myBatch"].xx[0] = 1
+batches["myBatch"].cooldown = [0, 0][/code]
+[i]Set a single slot or the whole array. Unnamed batches use id as key: [color=#ffa500]batches["0"][/color], [color=#ffa500]batches["1"][/color].[/i]`
     },
     {
         name: 'bulletData',
@@ -174,6 +223,16 @@ inBullet(myBullets)
 #Speed = 3
 if (myBullets.size > 10)
 #deleteBullet(Id)[/code]`
+    },
+    {
+        name: 'initials',
+        content: `[b]Read-only.[/b] Object holding the [b]initial values[/b] of this object at creation: [color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]speed[/color], [color=#ffa500]direction[/color], [color=#ffa500]depth[/color], and any [b]def[/b] variables.
+
+[b]Use:[/b] Read starting values or reset (e.g. [color=#ffa500]x = initials.x[/color], [color=#ffa500]speed = initials.speed[/color]).`
+    },
+    {
+        name: 'defaults',
+        content: `[b]Read-only.[/b] Object holding the [b]default values[/b] of your [b]def[/b] variables (captured on first run). Use to read or restore def defaults (e.g. [color=#ffa500]x = defaults.x[/color]). Only [b]def[/b] variables appear in [color=#ffa500]defaults[/color]; core vars use [color=#ffa500]initials[/color] for initial values.`
     }
 ];
 
@@ -854,6 +913,10 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
 [b][color=#ffa500]Returns: the created object or null if it failed.[/color][/b]
 
 [b]Example:[/b]
+[code]inObject(createObject(x, y, "Enemy"))
+#Hp = 300[/code]
+[i]Creates an Enemy at (x,y) and sets its Hp to 300.[/i]
+
 [code]createObject(90, 160, "myObject");
 // or createObject(90, 160, "myObject", "myType"); // with type[/code]`
     },
