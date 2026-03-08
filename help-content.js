@@ -4,12 +4,13 @@
 export const specialKeywordsHelp = [
     {
         name: 'background',
-        content: `Creates a named scene you can draw once (static) or every frame (dynamic), then show with drawBackground.
+        threadTitle: 'background(name, dynamic, width, height)',
+        content: `Creates a named scene you draw once (static) or every frame (dynamic), then show with drawBackground.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]name[/color][/b] - [i]The name you use when drawing this background with drawBackground.[/i]
-[color=#9acd32]dynamic[/color] - [i]Set to true if the background should be redrawn every frame (e.g. for moving parts); leave out or false for a one-time drawn scene.[/i]
-[color=#9acd32]width, height[/color] - [i]Optional; for dynamic backgrounds, the size of the drawing area in numbers (e.g. 200, 400).[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Required. The name you use when drawing this background with drawBackground.[/i]
+[color=#9acd32]dynamic[/color] - [i]Optional. Set to true to redraw every frame (e.g. moving parts); omit or false for one-time (static) scene.[/i]
+[color=#9acd32]width, height[/color] - [i]Optional. For dynamic backgrounds only; numeric literals for the drawing area size (e.g. 200, 400). Coordinates 0..width, 0..height scale to fill the world when drawn.[/i]
 
 [b]Example (static):[/b]
 [code]background("bg1")
@@ -98,22 +99,31 @@ cooldown--
     },
     {
         name: 'repeat',
-        threadTitle: 'repeat(n) or repeat(n, start) or repeat(n, start, increase)',
-        content: `Runs a block of code a set number of times (use # to indent the block). Loop variable [b]i[/b]: from 0 to n-1, or from start to start+n-1, or stepped by [b]increase[/b].
+        threadTitle: 'repeat(n) or repeat(count, indexVar, start, increment)',
+        content: `Runs a block of code a set number of times (indent the block with #).
 
-[b]Signature:[/b] [color=#90ee90]repeat(n)[/color]  |  [color=#90ee90]repeat(n, start)[/color]  |  [color=#90ee90]repeat(n, start, increase)[/color]
+[b]Signature:[/b] [color=#90ee90]repeat(n)[/color]  |  [color=#90ee90]repeat(count, indexVar, start, increment)[/color]
 
 [b]Arguments:[/b]
-[b][color=#90ee90]n[/color][/b] - [i]How many times the block should run.[/i]
-[color=#9acd32]start[/color] - [i]Optional; starting value for i (default 0).[/i]
-[color=#9acd32]increase[/color] - [i]Optional; add this to i each iteration (default 1).[/i]
+[b][color=#90ee90]n[/color][/b] - [i]How many times the block runs (1-arg form).[/i]
+[b][color=#90ee90]count[/color][/b] - [i]How many times the block runs (4-arg form).[/i]
+[b][color=#90ee90]indexVar[/color][/b] - [i]Name of the loop variable (e.g. i); starts at [b]start[/b], increases by [b]increment[/b] each iteration.[/i]
+[b][color=#90ee90]start[/color][/b] - [i]Starting value of the loop variable.[/i]
+[b][color=#90ee90]increment[/color][/b] - [i]Added to the loop variable each iteration.[/i]
 
-[b]Example:[/b]
+[b]repeat(n):[/b] No built-in index; use your own counter (e.g. [color=#ffa500]var i = 0[/color] before, [color=#ffa500]#i++[/color] inside).
+
+[b]repeat(count, indexVar, start, increment):[/b] [b]indexVar[/b] is declared for you and updated each loop.
+
+[b]Example (manual counter):[/b]
 [code]var i = 0
 repeat(5)
-#createBullet(x,y,5,direction-15*i)
+#createBullet(x, y, 5, direction - 15*i)
 #i++[/code]
-[i]Creates 5 bullets in a spread pattern using a counter variable.[/i]`
+
+[b]Example (index variable):[/b]
+[code]repeat(5, i, 0, 1)
+#createBullet(x, y, 5, direction - 15*i)[/code]`
     },
     {
         name: 'interval',
@@ -208,6 +218,18 @@ batches["myBatch"].cooldown = [0, 0][/code]
     {
         name: 'bulletCount',
         content: `How many bullets are currently on screen.`
+    },
+    {
+        name: 'worldX',
+        content: `[b]Read-only.[/b] World width in pixels (e.g. [color=#ffa500]180[/color]). Same as the play area width. Global built-in.`
+    },
+    {
+        name: 'worldY',
+        content: `[b]Read-only.[/b] World height in pixels (e.g. [color=#ffa500]321[/color]). Same as the play area height. Global built-in.`
+    },
+    {
+        name: 'timeFrames',
+        content: `[b]Read-only.[/b] Total frames elapsed since the room/run started. Use for timing (e.g. [color=#ffa500]timeFrames % 60[/color] for once per second at 60 FPS). Global built-in.`
     },
     {
         name: 'tapX',
@@ -719,18 +741,19 @@ var bones = inverseKinematics(x, y, xTar, yTar, [10, 12, 14, 16, 18, 14, 12, 10]
     {
         name: 'drawGround',
         threadTitle: 'drawGround(x, y, w, h, cellW, cellH, color)',
-        content: `Draws a grid of tiles; use three arguments for the whole world or seven for a specific area.
+        content: `Draws a grid of rectangles in a region.
 
-[b]Arguments (full world):[/b]
-[color=#9acd32]cellW[/color] - [i]Optional width of each tile.[/i]
-[color=#9acd32]cellH[/color] - [i]Optional height of each tile.[/i]
-[color=#9acd32]color[/color] - [i]Optional color.[/i]
+[b]Arguments:[/b]
+[b][color=#90ee90]x, y[/color][/b] - [i]Left and bottom of the region.[/i]
+[b][color=#90ee90]w, h[/color][/b] - [i]Width and height of the region.[/i]
+[b][color=#90ee90]cellW, cellH[/color][/b] - [i]Width and height of each grid cell.[/i]
+[b][color=#90ee90]color[/color][/b] - [i]Hex string (e.g. "#003E29") or RGBA array [r, g, b, a] (0–1).[/i]
 
-[b]Arguments (region):[/b] [color=#90ee90]x, y, w, h[/color] - [i]Left, bottom, width, and height of the area, then cell size and color.[/i]
+[b]Example (full world):[/b]
+[code]drawGround(0, 0, 180, 321, 4, 4, "#003E29");[/code]
 
-[b]Example:[/b]
-[code]drawGround(10, 10, "#003E29"); // full world, 10x10 cells
-drawGround(0, 0, 90, 160, 4, 4, "#ff0000"); // red grid in left half[/code]`
+[b]Example (region):[/b]
+[code]drawGround(0, 0, 90, 160, 4, 4, "#ff0000"); // red grid in left half[/code]`
     },
     {
         name: 'drawLight',
