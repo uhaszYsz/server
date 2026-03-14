@@ -57,7 +57,7 @@ score += 1;[/code]
 [b][color=#90ee90]id[/color][/b] - [i]The bullet or list of bullets you want to change.[/i]
 
 [b]Example:[/b]
-[code]var Id = createBullet(x, y, 5, direction, 2)
+[code]var Id = createBullet(x, y, { Speed: 5, Direction: direction, Size: 2 })
 inBullet(Id)
 #Alpha = 0.2[/code]
 [i]Sets Alpha for one bullet by its Id.[/i]`
@@ -77,58 +77,27 @@ inObject(obj)
 [i]Creates an Enemy at (x,y) and sets its Hp to 300.[/i]`
     },
     {
-        name: 'batch',
-        threadTitle: 'batch() or batch("name")',
-        content: `Runs a block multiple times with per-iteration [b]def[/b] values. Count is inferred from the def with the most comma values; shorter defs are padded. Optional [b]name[/b] exposes this batch in [color=#ffa500]batches["name"][/color].
+        name: 'repeat',
+        threadTitle: 'repeat(n)',
+        content: `Runs code inside the block multiple times in same frame.
 
-[b]Signature:[/b] [color=#90ee90]batch()[/color]  |  [color=#90ee90]batch("name")[/color]
+[b]Signature:[/b] [color=#90ee90]repeat(n)[/color]
 
 [b]Arguments:[/b]
-[color=#9acd32]name[/color] - [i]Optional string; use [color=#ffa500]batches["name"].varName[slot][/color] to read or change batch state from outside.[/i]
+[b][color=#90ee90]n[/color][/b] - [i]How many times the block runs.[/i]
+
+No built-in index; use your own counter (e.g. [color=#ffa500]var i = 0[/color] before, [color=#ffa500]#i++[/color] inside).
 
 [b]Example:[/b]
-[code]batch("myBatch"){
-def spd = 3, 5
-def cooldown = 1
-if cooldown = 0
-#createBullet(x,y,spd,270,6)
-#cooldown = 30
-cooldown--
-}[/code]
-[i]Runs 2 iterations (from spd). Use [color=#ffa500]batches["myBatch"].cooldown[0] = 0[/color] elsewhere to set a slot.[/i]`
-    },
-    {
-        name: 'repeat',
-        threadTitle: 'repeat(n) or repeat(count, indexVar, start, increment)',
-        content: `Runs a block of code a set number of times (indent the block with #).
-
-[b]Signature:[/b] [color=#90ee90]repeat(n)[/color]  |  [color=#90ee90]repeat(count, indexVar, start, increment)[/color]
-
-[b]Arguments:[/b]
-[b][color=#90ee90]n[/color][/b] - [i]How many times the block runs (1-arg form).[/i]
-[b][color=#90ee90]count[/color][/b] - [i]How many times the block runs (4-arg form).[/i]
-[b][color=#90ee90]indexVar[/color][/b] - [i]Name of the loop variable (e.g. i); starts at [b]start[/b], increases by [b]increment[/b] each iteration.[/i]
-[b][color=#90ee90]start[/color][/b] - [i]Starting value of the loop variable.[/i]
-[b][color=#90ee90]increment[/color][/b] - [i]Added to the loop variable each iteration.[/i]
-
-[b]repeat(n):[/b] No built-in index; use your own counter (e.g. [color=#ffa500]var i = 0[/color] before, [color=#ffa500]#i++[/color] inside).
-
-[b]repeat(count, indexVar, start, increment):[/b] [b]indexVar[/b] is declared for you and updated each loop.
-
-[b]Example (manual counter):[/b]
 [code]var i = 0
 repeat(5)
-#createBullet(x, y, 5, direction - 15*i)
-#i++[/code]
-
-[b]Example (index variable):[/b]
-[code]repeat(5, i, 0, 1)
-#createBullet(x, y, 5, direction - 15*i)[/code]`
+#createBullet(x, y, { Speed: 5, Direction: direction - 15*i })
+#i++[/code]`
     },
     {
         name: 'interval',
-        threadTitle: 'interval(frames, initTime?)',
-        content: `Runs a block every so many frames, with an optional delay before the first run.
+        threadTitle: 'interval(frames, initTime)',
+        content: `Runs codes each x frames.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]frames[/color][/b] - [i]How many frames to wait between each run.[/i]
@@ -139,39 +108,8 @@ repeat(5)
 #if x > 20
 ##hp++
 if interval(10, 4)
-#createBullet(x, y, 2, 0, 1)[/code]
+#createBullet(x, y, { Speed: 2, Direction: 0, Size: 1 })[/code]
 [i]First block every 20 frames. Second: first fire in 4 frames, then every 10.[/i]`
-    },
-    {
-        name: 'timerStart',
-        threadTitle: 'timerStart(frames?, restarts?)',
-        content: `Frame-based timer: run the indented block when a countdown reaches 0. Use [b]timerRestart()[/b] inside the block to run again, or set optional [b]restarts[/b] to auto-restart a fixed number of times.
-
-[b]Arguments:[/b]
-[b][color=#90ee90]frames[/color][/b] - [i]Number of frames until the block runs (default 30).[/i]
-[color=#9acd32]restarts[/color] - [i]Optional; how many times to auto-restart after the first run (e.g. 5 → 6 runs total).[/i]
-
-[b]Example:[/b]
-[code]timerStart(30)
-#x = 10
-#timerRestart()[/code]
-[i]Runs the block after 30 frames, then again every 30 frames because of timerRestart().[/i]
-
-[code]timerStart(60, 3)[/code]
-[i]Runs the block 4 times total (once + 3 restarts), every 60 frames.[/i]`
-    },
-    {
-        name: 'timerRestart',
-        threadTitle: 'timerRestart(frames?)',
-        content: `Only inside a [b]timerStart[/b] block. Resets the timer so the block runs again. Without arguments, uses the current period; with a number, restarts with that many frames.
-
-[b]Arguments:[/b]
-[color=#9acd32]frames[/color] - [i]Optional; next run after this many frames (e.g. timerRestart(60)).[/i]
-
-[b]Example:[/b]
-[code]timerStart(30)
-#timerRestart()    // run again in 30 frames
-#timerRestart(60)  // or run again in 60 frames[/code]`
     }
 ];
 
@@ -180,15 +118,6 @@ export const builtInVariablesHelp = [
         name: 'player',
         content: `The player object you can read from (position, health, knockback, etc). 
 [b]Properties:[/b] [color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]hp[/color], [color=#ffa500]knockbackTime[/color], [color=#ffa500]knockbackPower[/color], [color=#ffa500]knockbackDirection[/color]`
-    },
-    {
-        name: 'batches',
-        content: `Map of named batch states for the current object. Each [b]batch("name")[/b] block registers its state here so you can read or change it from outside.
-
-[b]Use:[/b]
-[code]batches["myBatch"].xx[0] = 1
-batches["myBatch"].cooldown = [0, 0][/code]
-[i]Set a single slot or the whole array. Unnamed batches use id as key: [color=#ffa500]batches["0"][/color], [color=#ffa500]batches["1"][/color].[/i]`
     },
     {
         name: 'bulletData',
@@ -271,7 +200,7 @@ batches["myBatch"].cooldown = [0, 0][/code]
 [b]Count:[/b] Use [color=#ffa500]myBullets.size[/color] (Set has .size, not .length).
 
 [b]Example:[/b]
-[code]createBullet(x, y, 5, direction, 2)
+[code]createBullet(x, y, { Speed: 5, Direction: direction, Size: 2 })
 inBullet(myBullets)
 #Speed = 3
 if (myBullets.size > 10)
@@ -286,6 +215,37 @@ if (myBullets.size > 10)
 ];
 
 export const danmakuHelpersHelp = [
+    {
+        name: 'timerStart',
+        threadTitle: 'timerStart(frames?, restarts?)',
+        content: `Frame-based timer: run the indented block when a countdown reaches 0. Use [b]timerRestart()[/b] inside the block to run again, or set optional [b]restarts[/b] to auto-restart a fixed number of times.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]frames[/color][/b] - [i]Number of frames until the block runs (default 30).[/i]
+[color=#9acd32]restarts[/color] - [i]Optional; how many times to auto-restart after the first run (e.g. 5 → 6 runs total).[/i]
+
+[b]Example:[/b]
+[code]timerStart(30)
+#x = 10
+#timerRestart()[/code]
+[i]Runs the block after 30 frames, then again every 30 frames because of timerRestart().[/i]
+
+[code]timerStart(60, 3)[/code]
+[i]Runs the block 4 times total (once + 3 restarts), every 60 frames.[/i]`
+    },
+    {
+        name: 'timerRestart',
+        threadTitle: 'timerRestart(frames?)',
+        content: `Only inside a [b]timerStart[/b] block. Resets the timer so the block runs again. Without arguments, uses the current period; with a number, restarts with that many frames.
+
+[b]Arguments:[/b]
+[color=#9acd32]frames[/color] - [i]Optional; next run after this many frames (e.g. timerRestart(60)).[/i]
+
+[b]Example:[/b]
+[code]timerStart(30)
+#timerRestart()    // run again in 30 frames
+#timerRestart(60)  // or run again in 60 frames[/code]`
+    },
     {
         name: 'getSelf',
         threadTitle: 'getSelf()',
@@ -668,20 +628,22 @@ drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
         name: 'drawCircle',
-        threadTitle: 'drawCircle(x, y, r, outline, color)',
-        content: `Draws a circle at a position with optional outline thickness and color.
+        threadTitle: 'drawCircle(x, y, size, outlineWidth, color, gradient, yScale, angle)',
+        content: `Draws a circle or ellipse at a position with optional outline, color, gradient, vertical scale, and rotation.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the center.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]Vertical position of the center.[/i]
-[b][color=#90ee90]r[/color][/b] - [i]The radius (size) of the circle.[/i]
-[color=#9acd32]outline[/color] - [i]Optional; use 0 for filled, or a number for outline thickness.[/i]
-[color=#9acd32]color[/color] - [i]Optional color (e.g. "#ff0000" for red).[/i]
+[b][color=#90ee90]x, y[/color][/b] - [i]Center position.[/i]
+[b][color=#90ee90]size[/color][/b] - [i]Radius.[/i]
+[color=#9acd32]outlineWidth[/color] - [i]Optional; 0 = filled, or outline thickness.[/i]
+[color=#9acd32]color[/color] - [i]Optional hex or [r,g,b] (e.g. "#ff0000").[/i]
+[color=#9acd32]gradient[/color] - [i]Optional edge fade 0..1.[/i]
+[color=#9acd32]yScale[/color] - [i]Optional; 1 = circle, 2 = oval 2x taller, 0.5 = wider.[/i]
+[color=#9acd32]angle[/color] - [i]Optional rotation in degrees (e.g. 45 to rotate the oval).[/i]
 
 [b]Example:[/b]
-[code]drawCircle(100, 200, 5); // filled white circle
-// or drawCircle(100, 200, 5, 1); // outline with width 1
-// or drawCircle(100, 200, 5, 0, "#ff0000"); // red filled circle[/code]`
+[code]drawCircle(100, 200, 5);
+drawCircle(100, 200, 5, 0, "#ff0000", 0.2, 2);   // red ellipse 2x taller
+drawCircle(100, 200, 5, 0, "#ff0000", 0.2, 2, 45); // same oval rotated 45°[/code]`
     },
     {
         name: 'drawRectangle',
@@ -993,21 +955,21 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     },
     {
         name: 'createBullet',
-        threadTitle: 'createBullet(x, y, speed, dir, size, ...)',
-        content: `Creates a bullet at a position with the given speed, direction, and size (and optional extra properties).
+        threadTitle: 'createBullet(x, y, params?)',
+        content: `Creates a bullet at (x, y). Only [b]x[/b] and [b]y[/b] are arguments. Set Speed, Direction, Size, etc. via optional [b]params[/b] object or indented block.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
-[b][color=#90ee90]speed[/color][/b] - [i]How fast the bullet moves.[/i]
-[b][color=#90ee90]dir[/color][/b] - [i]Direction in degrees.[/i]
-[b][color=#90ee90]size[/color][/b] - [i]How big the bullet is.[/i]
-[color=#9acd32]...[/color] - [i]Optional: color, opacity, scale, rotation, lifetime, homing, spin, shape, glow.[/i]
+[color=#9acd32]params[/color] - [i]Optional object: { Speed, Direction, Size, Alpha, Color, Homing, ... }. Defaults: Speed 0, Direction 0, Size 4.[/i]
 
 [b][color=#ffa500]Returns: the bullet's unique ID.[/color][/b]
 
 [b]Example:[/b]
-[code]var bulletId = createBullet(x, y, 5, 90, 2, [255, 0, 0], 1, 1.0, 0, 2.0, 0.3);[/code]`
+[code]createBullet(x, y)
+#Direction = 90
+#Speed = 5
+createBullet(x, y, { Speed: 5, Direction: 90, Size: 2 });[/code]`
     },
     {
         name: 'deleteBullet',
@@ -1020,7 +982,7 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
 [b][color=#ffa500]Returns:[/color][/b] true if the bullet was removed, false if not found.
 
 [b]Example:[/b]
-[code]var bid = createBullet(x, y, 5, 90, 2);
+[code]var bid = createBullet(x, y, { Speed: 5, Direction: 90, Size: 2 });
 if interval(60)
 #deleteBullet(bid)[/code]
 [i]Creates a bullet and removes it after 60 frames.[/i]`
@@ -1035,10 +997,10 @@ if interval(60)
 
 [b]Example:[/b]
 [code]surfaceSet("test");
-createBullet(x, y, 5, 270, 5);
+createBullet(x, y, { Speed: 5, Direction: 270, Size: 5 });
 drawCircle(x, y, 3);
 surfaceReset();
-createBullet(x, y, 3, 0, 2);[/code]`
+createBullet(x, y);[/code]`
     },
     {
         name: 'surfaceReset',
@@ -1047,7 +1009,7 @@ createBullet(x, y, 3, 0, 2);[/code]`
 
 [b]Example:[/b]
 [code]surfaceSet("back");
-createBullet(x, y, 3, 0, 2);
+createBullet(x, y);
 surfaceReset();[/code]`
     },
     {
@@ -1170,19 +1132,20 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
 [code]if (objectOutScreen(x, y, 0.1)) { dead = true; }[/code]`
     },
     {
-        name: 'collidePlayerBullet',
-        threadTitle: 'collidePlayerBullet(x, y, radius)',
-        content: `Returns a list of player bullet IDs that are within a given distance of a point this frame.
+        name: 'colideBullet',
+        threadTitle: 'colideBullet(x, y, radius, type)',
+        content: `Returns a list of bullet IDs that collided with circle (x,y,radius) this frame. Optional [b]type[/b] (number): if passed, only bullets with that type are returned.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the center.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]Vertical position of the center.[/i]
 [b][color=#90ee90]radius[/color][/b] - [i]How far to search for bullets.[/i]
+[b][color=#90ee90]type[/color][/b] - [i]Optional. Bullet type number; if passed, only bullets with same type.[/i]
 
 [b][color=#ffa500]Returns: a list of bullet IDs, or an empty list if none.[/color][/b]
 
 [b]Example:[/b]
-[code]var bids = collidePlayerBullet(x, y, 8);
+[code]var bids = colideBullet(x, y, 8);
 inBullet(bids)
 # alpha = 0.2;[/code]`
     },

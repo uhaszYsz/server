@@ -2122,6 +2122,28 @@ function handleWebSocketConnection(ws, req) {
           }
         }
 
+        // Menu room: lightweight room for title screen (no level/lobby logic)
+        if (room === 'menu') {
+          if (!rooms.has(room)) {
+            rooms.set(room, { type: 'menu', clients: new Set() });
+          }
+          const menuRoom = rooms.get(room);
+          if (!menuRoom.clients) menuRoom.clients = new Set();
+          menuRoom.clients.add(ws);
+          ws.room = room;
+          ws.send(msgpack.encode({
+            type: 'roomUpdate',
+            room,
+            roomType: 'menu',
+            level: null,
+            levelName: null,
+            clientId: ws.id,
+            clientUsername: ws.username || null,
+            peerIds: []
+          }));
+          return;
+        }
+
         // Only allow joining campaign lobby rooms that exist
         // Campaign lobbies start with 'lobby_' and must have a corresponding campaign level in the database
         if (room.startsWith('lobby_')) {
