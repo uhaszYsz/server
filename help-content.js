@@ -54,7 +54,7 @@ score += 1;[/code]
         content: `Lets you change properties of one or more bullets by their ID.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]id[/color][/b] - [i]The bullet or list of bullets you want to change.[/i]
+[b][color=#90ee90]id[/color][/b] - [i]Optional. Omit it or use [color=#ffa500]myBullets[/color] for only this object's bullets. Use [color=#ffa500]bulletData[/color] to loop every bullet in the game.[/i]
 
 [b]Example:[/b]
 [code]var Id = createBullet(x, y, { Speed: 5, Direction: direction, Size: 2 })
@@ -62,20 +62,7 @@ inBullet(Id)
 #Alpha = 0.2[/code]
 [i]Sets Alpha for one bullet by its Id.[/i]`
     },
-    {
-        name: 'inObject',
-        threadTitle: 'inObject(id)',
-        content: `Lets you change properties of one or more objects by their ID or the object reference.
-
-[b]Arguments:[/b]
-[b][color=#90ee90]id[/color][/b] - [i]The object or list of objects you want to change (e.g. from createObject or enemyList).[/i]
-
-[b]Example:[/b]
-[code]var obj = createObject(x, y, "Enemy")
-inObject(obj)
-#Hp = 300[/code]
-[i]Creates an Enemy at (x,y) and sets its Hp to 300.[/i]`
-    },
+    // inObject has been removed from the language; help entry deleted.
     {
         name: 'repeat',
         threadTitle: 'repeat(n)',
@@ -96,20 +83,23 @@ repeat(5)
     },
     {
         name: 'interval',
-        threadTitle: 'interval(frames, initTime)',
+        threadTitle: 'interval(frames, runs, startTime)',
         content: `Runs codes each x frames.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]frames[/color][/b] - [i]How many frames to wait between each run.[/i]
-[color=#9acd32]initTime[/color] - [i]Optional; the first run happens after this many frames, then every frames after that.[/i]
+[color=#87ceeb]runs[/color] - [i]Optional; default -1 = infinite. Use 1 to run once, or N to run N times then stop.[/i]
+[color=#9acd32]startTime[/color] - [i]Optional; the first run happens after this many frames, then every frames after that.[/i]
 
 [b]Example:[/b]
 [code]if interval(20)
 #if x > 20
 ##hp++
-if interval(10, 4)
-#createBullet(x, y, { Speed: 2, Direction: 0, Size: 1 })[/code]
-[i]First block every 20 frames. Second: first fire in 4 frames, then every 10.[/i]`
+if interval(10, -1, 4)
+#createBullet(x, y, { Speed: 2, Direction: 0, Size: 1 })
+interval(20, 5, 0)
+#createBullet(x, y)[/code]
+[i]First block every 20 frames. Second: first fire in 4 frames, then every 10. Third: fire 5 times then stop.[/i]`
     }
 ];
 
@@ -121,7 +111,7 @@ export const builtInVariablesHelp = [
     },
     {
         name: 'bulletData',
-        content: `List of all bullets on screen; use inBullet() to change them, and the game removes bullets when they hit or leave the play area.
+        content: `Raw bullet buffer for the whole game. To loop [b]every[/b] bullet, use [color=#ffa500]inBullet(bulletData)[/color]. [color=#ffa500]inBullet()[/color] with no argument only affects [b]this object's[/b] bullets (same as [color=#ffa500]inBullet(myBullets)[/color]). The game removes bullets when they hit or leave the play area.
 
 [b]Properties:[/b]
 [color=#ffa500]Id[/color] - [i]The bullet's unique ID for deleteBullet or inBullet.[/i]
@@ -190,20 +180,20 @@ export const builtInVariablesHelp = [
     },
     {
         name: 'myBullets',
-        content: `The list of bullets this object created; use it with inBullet to change only those bullets (and reference myBullets at least once so the list is kept).
+        content: `The list of bullets this object created; use [color=#ffa500]inBullet(myBullets)[/color] or [color=#ffa500]inBullet()[/color] to change only those bullets. The list is kept when your code references [b]myBullets[/b] or uses [b]inBullet()[/b] with no argument.
 
 [b]Use:[/b]
 [code]inBullet(myBullets)
 #Alpha = 0.5[/code]
 [i]Affects only bullets created by this object.[/i]
 
-[b]Count:[/b] Use [color=#ffa500]myBullets.size[/color] (Set has .size, not .length).
+[b]Count:[/b] Use [color=#ffa500]myBullets.length[/color].
 
 [b]Example:[/b]
 [code]createBullet(x, y, { Speed: 5, Direction: direction, Size: 2 })
 inBullet(myBullets)
 #Speed = 3
-if (myBullets.size > 10)
+if (myBullets.length > 10)
 #deleteBullet(Id)[/code]`
     },
     {
@@ -215,37 +205,6 @@ if (myBullets.size > 10)
 ];
 
 export const danmakuHelpersHelp = [
-    {
-        name: 'timerStart',
-        threadTitle: 'timerStart(frames?, restarts?)',
-        content: `Frame-based timer: run the indented block when a countdown reaches 0. Use [b]timerRestart()[/b] inside the block to run again, or set optional [b]restarts[/b] to auto-restart a fixed number of times.
-
-[b]Arguments:[/b]
-[b][color=#90ee90]frames[/color][/b] - [i]Number of frames until the block runs (default 30).[/i]
-[color=#9acd32]restarts[/color] - [i]Optional; how many times to auto-restart after the first run (e.g. 5 → 6 runs total).[/i]
-
-[b]Example:[/b]
-[code]timerStart(30)
-#x = 10
-#timerRestart()[/code]
-[i]Runs the block after 30 frames, then again every 30 frames because of timerRestart().[/i]
-
-[code]timerStart(60, 3)[/code]
-[i]Runs the block 4 times total (once + 3 restarts), every 60 frames.[/i]`
-    },
-    {
-        name: 'timerRestart',
-        threadTitle: 'timerRestart(frames?)',
-        content: `Only inside a [b]timerStart[/b] block. Resets the timer so the block runs again. Without arguments, uses the current period; with a number, restarts with that many frames.
-
-[b]Arguments:[/b]
-[color=#9acd32]frames[/color] - [i]Optional; next run after this many frames (e.g. timerRestart(60)).[/i]
-
-[b]Example:[/b]
-[code]timerStart(30)
-#timerRestart()    // run again in 30 frames
-#timerRestart(60)  // or run again in 60 frames[/code]`
-    },
     {
         name: 'getSelf',
         threadTitle: 'getSelf()',
@@ -363,6 +322,22 @@ self.speed = 2;[/code]`
 
 [b]Example:[/b]
 [code]var offsetY = lenDirY(10, 90); // returns 10 (straight up)[/code]`
+    },
+    {
+        name: 'lenDir',
+        threadTitle: 'lenDir(len, dir)',
+        content: `Returns both horizontal and vertical parts of a distance in a given direction as one object.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]len[/color][/b] - [i]The distance or length.[/i]
+[b][color=#90ee90]dir[/color][/b] - [i]The direction in degrees.[/i]
+
+[b][color=#ffa500]Returns: an object with .x and .y (same as lenDirX and lenDirY).[/color][/b]
+
+[b]Example:[/b]
+[code]var ldx = lenDir(10, 90).x;
+var off = lenDir(10, 90);
+var ldy = off.y;[/code]`
     },
     {
         name: 'hsvToHex',
@@ -913,24 +888,29 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     },
     {
         name: 'createObject',
-        threadTitle: 'createObject(x, y, name, type)',
-        content: `Creates a new object of a given name at a position, with an optional type to run on creation.
+        threadTitle: 'createObject(x, y, name, args?)',
+        content: `Creates a new object of a given name at a position. Optional fourth argument is a [b]map[/b] of initial properties (merged into the new instance immediately—same as defs like [i]par[/i], [i]bullet[/i], etc.).
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position for the new object.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]Vertical position for the new object.[/i]
 [b][color=#90ee90]name[/color][/b] - [i]The object name from the editor.[/i]
-[color=#9acd32]type[/color] - [i]Optional type to run when the object is created.[/i]
+[color=#9acd32]args[/color] - [i]Optional object literal, e.g. [code]{ par: id.id, bullet: { Alpha: 0.5 } }[/code]. Use braces; [code]par: id[/code] alone is not valid syntax. In scripts, [code]id[/code] is the current instance (object); use [code]id.id[/code] for its numeric id.[/i]
 
 [b][color=#ffa500]Returns: the created object or null if it failed.[/color][/b]
 
 [b]Example:[/b]
-[code]inObject(createObject(x, y, "Enemy"))
-#Hp = 300[/code]
-[i]Creates an Enemy at (x,y) and sets its Hp to 300.[/i]
+[code]var enemy = createObject(x, y, "Enemy");
+if (enemy) {
+    enemy.hp = 300;
+}[/code]
+[i]Creates an Enemy at (x,y) and sets its hp to 300.[/i]
+
+[code]createObject(90, 160, "emitter", { par: id.id });[/code]
+[i]Spawn an emitter whose [code]par[/code] def is set to the caller's numeric id.[/i]
 
 [code]createObject(90, 160, "myObject");
-// or createObject(90, 160, "myObject", "myType"); // with type[/code]`
+// or createObject(90, 160, "myObject", "ignoredType", { speed: 2 }); // 5-arg form[/code]`
     },
     {
         name: 'typeSet',
@@ -956,7 +936,7 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     {
         name: 'createBullet',
         threadTitle: 'createBullet(x, y, params?)',
-        content: `Creates a bullet at (x, y). Only [b]x[/b] and [b]y[/b] are arguments. Set Speed, Direction, Size, etc. via optional [b]params[/b] object or indented block.
+        content: `Creates a bullet at (x, y). Only [b]x[/b] and [b]y[/b] are arguments. Set Speed, Direction, Size, etc. via optional [b]params[/b] object.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
@@ -966,10 +946,12 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
 [b][color=#ffa500]Returns: the bullet's unique ID.[/color][/b]
 
 [b]Example:[/b]
-[code]createBullet(x, y)
+[code]createBullet(x, y, { Speed: 5, Direction: 90, Size: 2 });
+
+var id = createBullet(x, y);
+inBullet(id)
 #Direction = 90
-#Speed = 5
-createBullet(x, y, { Speed: 5, Direction: 90, Size: 2 });[/code]`
+#Speed = 5[/code]`
     },
     {
         name: 'deleteBullet',
@@ -1097,13 +1079,14 @@ var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
         content: `Removes an object from the game (or this object if you do not pass an ID).
 
 [b]Arguments:[/b]
-[color=#9acd32]id[/color] - [i]Optional ID of the object to remove; leave out to remove this object.[/i]
+[color=#9acd32]id[/color] - [i]Optional. Omit to remove this object. Number or object reference: that instance. String: [b]object name[/b] — removes [b]all[/b] instances of that coded object type, and all instances of [b]child[/b] types (inheritance in the stage editor parent/child map).[/i]
 
-[b][color=#ffa500]Returns: true if it was removed, false otherwise.[/color][/b]
+[b][color=#ffa500]Returns: true if at least one instance was marked for removal, false otherwise.[/color][/b]
 
 [b]Example:[/b]
 [code]destroy(); // removes self
-// or destroy(123); // removes codeChild with id 123[/code]`
+destroy("Stream"); // every instance of Stream and child object types
+destroy(123); // removes codeChild with id 123[/code]`
     },
     {
         name: 'debugMessage',
@@ -1185,10 +1168,10 @@ if (other !== null) { other.hp -= 1; }[/code]`
     {
         name: 'objectExists',
         threadTitle: 'objectExists(objectName)',
-        content: `Tells you whether at least one object with the given name exists.
+        content: `Tells you whether at least one object exists with the given name, or with a child type under that object in the parent/child hierarchy (stage editor).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]objectName[/color][/b] - [i]The object name to look for (e.g. "enemy").[/i]
+[b][color=#90ee90]objectName[/color][/b] - [i]Object type name (e.g. "enemy"). Matches instances of that type and any descendant types.[/i]
 
 [b][color=#ffa500]Returns: true if any exist, false otherwise.[/color][/b]
 

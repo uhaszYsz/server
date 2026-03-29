@@ -4634,6 +4634,7 @@ function handleWebSocketConnection(ws, req) {
         }
         
         // Verify user exists (we already have googleId from login, just verify user exists)
+        let postingUser = null;
         try {
             if (!ws.googleId) {
                 console.error('[createForumPost] Missing googleId');
@@ -4647,6 +4648,7 @@ function handleWebSocketConnection(ws, req) {
                 ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
+            postingUser = user;
         } catch (verifyErr) {
             console.error('[createForumPost] Verification error:', verifyErr);
             ws.send(msgpack.encode({ type: 'error', message: 'Authentication failed' }));
@@ -4689,6 +4691,31 @@ function handleWebSocketConnection(ws, req) {
 
             const postId = await db.createForumPost(data.threadId, ws.googleId, sanitizedContent);
             ws.send(msgpack.encode({ type: 'forumPostCreated', postId }));
+
+            // Mention notifications: when reply contains @username, notify online mentioned users.
+            try {
+                const senderName = (postingUser && postingUser.name) ? postingUser.name : 'Someone';
+                const mentionMatches = sanitizedContent.match(/(^|\s)@([A-Za-z0-9_]{2,32})/g) || [];
+                const mentionedNames = Array.from(new Set(mentionMatches.map(m => m.replace(/(^|\s)@/, '').trim()).filter(Boolean)));
+                for (const mentionName of mentionedNames) {
+                    if (senderName && mentionName.toLowerCase() === senderName.toLowerCase()) continue;
+                    const mentionedUser = await db.getUserByName(mentionName);
+                    if (!mentionedUser || !mentionedUser.googleId || mentionedUser.googleId === ws.googleId) continue;
+                    wss.clients.forEach(client => {
+                        if (client.readyState === WebSocket.OPEN && client.googleId === mentionedUser.googleId) {
+                            client.send(msgpack.encode({
+                                type: 'forumMentionNotification',
+                                fromName: senderName,
+                                mentionName,
+                                threadId: data.threadId,
+                                threadTitle: thread && thread.title ? thread.title : 'thread'
+                            }));
+                        }
+                    });
+                }
+            } catch (mentionErr) {
+                console.warn('[createForumPost] Mention notification failed:', mentionErr && mentionErr.message ? mentionErr.message : mentionErr);
+            }
 
             if (giveFirstReplyOutfit) {
                 const user = await db.getUserByGoogleId(ws.googleId);
