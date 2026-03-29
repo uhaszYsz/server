@@ -1032,6 +1032,21 @@ drawBlendReset();[/code]`
         content: `Sets the default alignment (1–9, e.g. 1=top-left, 5=center, 9=bottom-right) for later drawSprite, drawBackground, and drawSurface; pass null to clear.`
     },
     {
+        name: 'drawDepthSet',
+        threadTitle: 'drawDepthSet(depth)',
+        content: `Sets the z-order for later draw calls (drawCircle, drawLine, drawText, drawSprite, drawSheetSprite, drawBackground, drawHealthbar when depth is omitted, drawSurface when depth is omitted). Lower values are drawn first (behind); higher values on top. Use drawDepthReset() to go back to 0.
+
+[b]Example:[/b]
+[code]drawDepthSet(-20);
+drawCircle(x, y, 8);
+drawDepthReset();[/code]`
+    },
+    {
+        name: 'drawDepthReset',
+        threadTitle: 'drawDepthReset()',
+        content: `Resets draw depth to 0 (same as drawDepthSet(0)).`
+    },
+    {
         name: 'drawSurface',
         threadTitle: 'drawSurface(surfaceName, x, y, angle, xscale, yscale, alpha, depth, align)',
         content: `Draws a named layer (its bullets, shapes, and images) at a position with optional scale, rotation, opacity, and draw order; layers other than main only show when you call this.
