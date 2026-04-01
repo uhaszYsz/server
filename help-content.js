@@ -5,23 +5,25 @@ export const specialKeywordsHelp = [
     {
         name: 'background',
         threadTitle: 'background(name, dynamic, width, height)',
-        content: `Creates a named scene you draw once (static) or every frame (dynamic), then show with drawBackground.
+        content: `Creates or updates a named background layer. Use this block to draw into that layer, then show it with drawBackground().
 
 [b]Arguments:[/b]
-[b][color=#90ee90]name[/color][/b] - [i]Required. The name you use when drawing this background with drawBackground.[/i]
-[color=#9acd32]dynamic[/color] - [i]Optional. Set to true to redraw every frame (e.g. moving parts); omit or false for one-time (static) scene.[/i]
-[color=#9acd32]width, height[/color] - [i]Optional. For dynamic backgrounds only; numeric literals for the drawing area size (e.g. 200, 400). Coordinates 0..width, 0..height scale to fill the world when drawn.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]Required. Background name used later in drawBackground(x, y, name, ...).[/i]
+[color=#9acd32]dynamic[/color] - [i]Optional. false/omitted = static cache (draw once, reuse). true = redraw every frame while this block runs.[/i]
+[color=#9acd32]width, height[/color] - [i]Optional. Local canvas size for dynamic backgrounds (for example 200, 400).[/i]
 
 [b]Example (static):[/b]
 [code]background("bg1")
 #drawCircle(90, 160, 4, 0, "#FF0000")
 #drawText(50, 100, "Hello", "#FFFFFF", 12)
 drawBackground(0, 0, "bg1")[/code]
+[i]Build once, reuse every frame.[/i]
 
 [b]Example (dynamic):[/b]
 [code]background("parallax", true)
-#drawSprite(90 + getTime()*10, 160, "@cloud", 1, 1, 0)
+#drawSprite(90 + timeFrames * 0.2, 160, "@cloud", 1, 1, 0)
 drawBackground(0, 0, "parallax")[/code]
+[i]Rebuilds each frame so moving visuals update.[/i]
 
 [b]Example (dynamic with size):[/b]
 [code]background("ui", true, 200, 400)
@@ -51,35 +53,48 @@ score += 1;[/code]
     {
         name: 'inBullet',
         threadTitle: 'inBullet(id)',
-        content: `Lets you change properties of one or more bullets by their ID.
+        content: `Selects bullets, then runs the indented block once per selected bullet so you can read/write bullet fields (Speed, Direction, Alpha, Color, etc).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]id[/color][/b] - [i]Optional. Omit it or use [color=#ffa500]myBullets[/color] for only this object's bullets. Use [color=#ffa500]bulletData[/color] to loop every bullet in the game.[/i]
+[color=#9acd32]id[/color] - [i]Optional selector.[/i]
+[i]- Omit: same as [color=#ffa500]inBullet(myBullets)[/color] (only bullets created by this object).[/i]
+[i]- Number: one bullet ID (for example the value returned by createBullet).[/i]
+[i]- List/array of IDs: affects each listed bullet.[/i]
+[i]- [color=#ffa500]bulletData[/color]: affects all bullets in the world.[/i]
 
-[b]Example:[/b]
+[b]Examples:[/b]
 [code]var Id = createBullet(x, y, { Speed: 5, Direction: direction, Size: 2 })
 inBullet(Id)
 #Alpha = 0.2[/code]
-[i]Sets Alpha for one bullet by its Id.[/i]`
+[i]Sets Alpha for one bullet by ID.[/i]
+
+[code]inBullet()
+#Speed = Speed * 0.98[/code]
+[i]Slows only this object's bullets.[/i]
+
+[code]inBullet(bulletData)
+#Color = "#66ccff"[/code]
+[i]Tints every bullet in the game.[/i]`
     },
     // inObject has been removed from the language; help entry deleted.
     {
         name: 'repeat',
         threadTitle: 'repeat(n)',
-        content: `Runs code inside the block multiple times in same frame.
+        content: `Runs the indented block [b]n[/b] times in the same frame.
 
 [b]Signature:[/b] [color=#90ee90]repeat(n)[/color]
 
 [b]Arguments:[/b]
 [b][color=#90ee90]n[/color][/b] - [i]How many times the block runs.[/i]
 
-No built-in index; use your own counter (e.g. [color=#ffa500]var i = 0[/color] before, [color=#ffa500]#i++[/color] inside).
+No built-in loop index is provided; create your own counter when needed (for example [color=#ffa500]var i = 0[/color] before the block, [color=#ffa500]#i++[/color] inside).
 
 [b]Example:[/b]
 [code]var i = 0
 repeat(5)
 #createBullet(x, y, { Speed: 5, Direction: direction - 15*i })
-#i++[/code]`
+#i++[/code]
+[i]Spawns 5 bullets this frame with angle spread.[/i]`
     },
     {
         name: 'interval',
@@ -137,6 +152,10 @@ export const builtInVariablesHelp = [
     {
         name: 'bulletCount',
         content: `How many bullets are currently on screen.`
+    },
+    {
+        name: 'fpsLimit',
+        content: `[b]Writable.[/b] Target game FPS (frames per second). Default [color=#ffa500]30[/color]. You can set it at runtime to limit or increase FPS (e.g. [color=#ffa500]fpsLimit = 60[/color] or [color=#ffa500]fpsLimit = 15[/color]). Clamped to 1-120.`
     },
     {
         name: 'worldX',
@@ -201,6 +220,18 @@ if (myBullets.length > 10)
         content: `[b]Read-only.[/b] Object holding the [b]initial values[/b] of this object at creation: [color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]speed[/color], [color=#ffa500]direction[/color], [color=#ffa500]depth[/color], and any [b]def[/b] variables.
 
 [b]Use:[/b] Read starting values or reset (e.g. [color=#ffa500]x = initials.x[/color], [color=#ffa500]speed = initials.speed[/color]).`
+    },
+    {
+        name: 'snapshoots',
+        content: `[b]Object[/b] of saved [b]def[/b] variable states (empty by default). [color=#ffa500]snapshootMake("name")[/color] saves current def vars under that name; [color=#ffa500]snapshootRestore("name")[/color] restores them. Access in interpreter: [color=#ffa500]snapshoots.myname[/color] or [color=#ffa500]snapshoots["myname"][/color].`
+    },
+    {
+        name: 'snapshootMake',
+        content: `Saves the current state of all [b]def[/b] variables under the given name. Example: [color=#ffa500]snapshootMake("start")[/color]. Stored in [color=#ffa500]snapshoots[/color].`
+    },
+    {
+        name: 'snapshootRestore',
+        content: `Restores all [b]def[/b] variables from a previously saved snapshot. Example: [color=#ffa500]snapshootRestore("start")[/color]. No-op if the name does not exist.`
     }
 ];
 
@@ -219,12 +250,12 @@ self.speed = 2;[/code]`
     },
     {
         name: 'getDirection',
-        threadTitle: 'getDirection(x, y)',
+        threadTitle: 'getDirection(targetX, targetY)',
         content: `Gives the angle in degrees from this object's position to a target point.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]The target's horizontal position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]The target's vertical position.[/i]
+[b][color=#90ee90]targetX[/color][/b] - [i]The target's horizontal position.[/i]
+[b][color=#90ee90]targetY[/color][/b] - [i]The target's vertical position.[/i]
 
 [b][color=#ffa500]Returns: the angle in degrees (0-360).[/color][/b]
 
@@ -257,11 +288,11 @@ self.speed = 2;[/code]`
     },
     {
         name: 'normalizeAngle',
-        threadTitle: 'normalizeAngle(angle)',
+        threadTitle: 'normalizeAngle(angleDeg)',
         content: `Puts an angle into the 0–360 range (e.g. -90 becomes 270, 450 becomes 90).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]angle[/color][/b] - [i]The angle in degrees to normalize.[/i]
+[b][color=#90ee90]angleDeg[/color][/b] - [i]The angle in degrees to normalize.[/i]
 
 [b][color=#ffa500]Returns:[/color][/b] the angle as a number between 0 and 360.
 [b]Example:[/b]
@@ -269,12 +300,12 @@ self.speed = 2;[/code]`
     },
     {
         name: 'angleDifference',
-        threadTitle: 'angleDifference(a, b)',
+        threadTitle: 'angleDifference(fromAngle, toAngle)',
         content: `Gives the shortest angle between two directions in degrees.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]a[/color][/b] - [i]The first angle in degrees.[/i]
-[b][color=#90ee90]b[/color][/b] - [i]The second angle in degrees.[/i]
+[b][color=#90ee90]fromAngle[/color][/b] - [i]The starting angle in degrees.[/i]
+[b][color=#90ee90]toAngle[/color][/b] - [i]The target angle in degrees.[/i]
 
 [b][color=#ffa500]Returns: the angle difference (can be negative).[/color][/b]
 
@@ -283,12 +314,12 @@ self.speed = 2;[/code]`
     },
     {
         name: 'getDistance',
-        threadTitle: 'getDistance(x, y)',
+        threadTitle: 'getDistance(targetX, targetY)',
         content: `Gives the distance from this object to a target point.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]x[/color][/b] - [i]The target's horizontal position.[/i]
-[b][color=#90ee90]y[/color][/b] - [i]The target's vertical position.[/i]
+[b][color=#90ee90]targetX[/color][/b] - [i]The target's horizontal position.[/i]
+[b][color=#90ee90]targetY[/color][/b] - [i]The target's vertical position.[/i]
 
 [b][color=#ffa500]Returns: the distance.[/color][/b]
 
@@ -297,12 +328,12 @@ self.speed = 2;[/code]`
     },
     {
         name: 'lenDirX',
-        threadTitle: 'lenDirX(len, dir)',
+        threadTitle: 'lenDirX(length, direction)',
         content: `Gives the horizontal part of a distance in a given direction.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]len[/color][/b] - [i]The distance or length.[/i]
-[b][color=#90ee90]dir[/color][/b] - [i]The direction in degrees.[/i]
+[b][color=#90ee90]length[/color][/b] - [i]The distance or length.[/i]
+[b][color=#90ee90]direction[/color][/b] - [i]The direction in degrees.[/i]
 
 [b][color=#ffa500]Returns: the horizontal offset.[/color][/b]
 
@@ -311,12 +342,12 @@ self.speed = 2;[/code]`
     },
     {
         name: 'lenDirY',
-        threadTitle: 'lenDirY(len, dir)',
+        threadTitle: 'lenDirY(length, direction)',
         content: `Gives the vertical part of a distance in a given direction.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]len[/color][/b] - [i]The distance or length.[/i]
-[b][color=#90ee90]dir[/color][/b] - [i]The direction in degrees.[/i]
+[b][color=#90ee90]length[/color][/b] - [i]The distance or length.[/i]
+[b][color=#90ee90]direction[/color][/b] - [i]The direction in degrees.[/i]
 
 [b][color=#ffa500]Returns: the vertical offset.[/color][/b]
 
@@ -325,12 +356,12 @@ self.speed = 2;[/code]`
     },
     {
         name: 'lenDir',
-        threadTitle: 'lenDir(len, dir)',
+        threadTitle: 'lenDir(length, direction)',
         content: `Returns both horizontal and vertical parts of a distance in a given direction as one object.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]len[/color][/b] - [i]The distance or length.[/i]
-[b][color=#90ee90]dir[/color][/b] - [i]The direction in degrees.[/i]
+[b][color=#90ee90]length[/color][/b] - [i]The distance or length.[/i]
+[b][color=#90ee90]direction[/color][/b] - [i]The direction in degrees.[/i]
 
 [b][color=#ffa500]Returns: an object with .x and .y (same as lenDirX and lenDirY).[/color][/b]
 
@@ -338,6 +369,22 @@ self.speed = 2;[/code]`
 [code]var ldx = lenDir(10, 90).x;
 var off = lenDir(10, 90);
 var ldy = off.y;[/code]`
+    },
+    {
+        name: 'lerp',
+        threadTitle: 'lerp(a, b, t)',
+        content: `Linearly interpolates between two values.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]a[/color][/b] - [i]Start value.[/i]
+[b][color=#90ee90]b[/color][/b] - [i]End value.[/i]
+[b][color=#90ee90]t[/color][/b] - [i]Blend amount (usually 0..1).[/i]
+
+[b][color=#ffa500]Returns:[/color][/b] [i]a + (b - a) * t[/i].
+
+[b]Example:[/b]
+[code]x = lerp(x, player.x, 0.1);      // smooth follow
+var v = lerp(0, 100, 0.25); // 25[/code]`
     },
     {
         name: 'hsvToHex',
@@ -356,12 +403,12 @@ var ldy = off.y;[/code]`
     },
     {
         name: 'move',
-        threadTitle: 'move(len, dir)',
+        threadTitle: 'move(length, direction)',
         content: `Moves this object a given distance in a given direction and updates its position.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]len[/color][/b] - [i]How far to move.[/i]
-[b][color=#90ee90]dir[/color][/b] - [i]The direction in degrees.[/i]
+[b][color=#90ee90]length[/color][/b] - [i]How far to move.[/i]
+[b][color=#90ee90]direction[/color][/b] - [i]The direction in degrees.[/i]
 
 [b]Example:[/b]
 [code]move(5, 90); // moves 5 units upward
@@ -568,11 +615,11 @@ direction = directionBounce(direction, false); // hit top or bottom wall[/code]`
     },
     {
         name: 'waveStart',
-        threadTitle: 'waveStart(id)',
+        threadTitle: 'waveStart(waveNumber)',
         content: `Starts the wave with the given number from the stage editor.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]id[/color][/b] - [i]The wave number from the stage editor.[/i]
+[b][color=#90ee90]waveNumber[/color][/b] - [i]The wave number from the stage editor.[/i]
 
 [b][color=#ffa500]Returns: true if that wave exists and was started, false otherwise.[/color][/b]
 
@@ -589,6 +636,17 @@ waveStart(2); // select Wave 2[/code]`
 
 [b]Example:[/b]
 [code]var w = waveGetCurrent();
+drawText(5, 5, "Wave: " + w);[/code]`
+    },
+    {
+        name: 'waveGet',
+        threadTitle: 'waveGet()',
+        content: `Returns the current wave number (alias of waveGetCurrent()).
+
+[b][color=#ffa500]Returns: the current wave number.[/color][/b]
+
+[b]Example:[/b]
+[code]var w = waveGet();
 drawText(5, 5, "Wave: " + w);[/code]`
     },
     {
@@ -793,7 +851,7 @@ sync(["x", "y", "hp"]); // sync but exclude x, y, hp[/code]`
     },
     {
         name: 'drawSprite',
-        threadTitle: 'drawSprite(x, y, name, scaleX, scaleY, rotation, color, align)',
+        threadTitle: 'drawSprite(x, y, spriteName, xScale, yScale, rotation, color, align)',
         content: `Draws an image at a position with optional size, rotation, color tint, and which point of the image is at (x,y).
 
 [b]Align grid:[/b] 1=top-left, 2=top-center, 3=top-right, 4=mid-left, 5=center, 6=mid-right, 7=bottom-left, 8=bottom-center, 9=bottom-right.
@@ -801,9 +859,9 @@ sync(["x", "y", "hp"]); // sync but exclude x, y, hp[/code]`
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
-[b][color=#90ee90]name[/color][/b] - [i]The image name (must start with @).[/i]
-[b][color=#90ee90]scaleX[/color][/b] - [i]Horizontal scale (1 is normal size).[/i]
-[b][color=#90ee90]scaleY[/color][/b] - [i]Vertical scale (1 is normal size).[/i]
+[b][color=#90ee90]spriteName[/color][/b] - [i]The image name (must start with @).[/i]
+[b][color=#90ee90]xScale[/color][/b] - [i]Horizontal scale (1 is normal size).[/i]
+[b][color=#90ee90]yScale[/color][/b] - [i]Vertical scale (1 is normal size).[/i]
 [color=#9acd32]rotation[/color] - [i]Optional rotation in degrees.[/i]
 [color=#9acd32]color[/color] - [i]Optional color tint.[/i]
 [color=#9acd32]align[/color] - [i]Optional 1–9 for which point of the image is at (x,y); default 5 is center.[/i]
@@ -814,13 +872,13 @@ drawSprite(0, 321, "@ui", 1, 1, 0, null, 1); // top-left at (0,321)[/code]`
     },
     {
         name: 'drawSheetSprite',
-        threadTitle: 'drawSheetSprite(x, y, name, frame, maxCellsX, maxCellsY)',
+        threadTitle: 'drawSheetSprite(x, y, spriteName, frame, maxCellsX, maxCellsY)',
         content: `Draws one frame from an image that contains multiple frames in a grid.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
-[b][color=#90ee90]name[/color][/b] - [i]The sheet image name (must start with @).[/i]
+[b][color=#90ee90]spriteName[/color][/b] - [i]The sheet image name (must start with @).[/i]
 [b][color=#90ee90]frame[/color][/b] - [i]Which frame to show (first is 0).[/i]
 [b][color=#90ee90]maxCellsX[/color][/b] - [i]How many frames fit across the sheet.[/i]
 [b][color=#90ee90]maxCellsY[/color][/b] - [i]How many frames fit down the sheet.[/i]
@@ -888,13 +946,13 @@ drawHealthbar(80, 150, 20, 3, 70, 100, 10); // With depth 10[/code]`
     },
     {
         name: 'createObject',
-        threadTitle: 'createObject(x, y, name, args?)',
+        threadTitle: 'createObject(x, y, objectName, args)',
         content: `Creates a new object of a given name at a position. Optional fourth argument is a [b]map[/b] of initial properties (merged into the new instance immediately—same as defs like [i]par[/i], [i]bullet[/i], etc.).
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position for the new object.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]Vertical position for the new object.[/i]
-[b][color=#90ee90]name[/color][/b] - [i]The object name from the editor.[/i]
+[b][color=#90ee90]objectName[/color][/b] - [i]The object name from the editor.[/i]
 [color=#9acd32]args[/color] - [i]Optional object literal, e.g. [code]{ par: id.id, bullet: { Alpha: 0.5 } }[/code]. Use braces; [code]par: id[/code] alone is not valid syntax. In scripts, [code]id[/code] is the current instance (object); use [code]id.id[/code] for its numeric id.[/i]
 
 [b][color=#ffa500]Returns: the created object or null if it failed.[/color][/b]
@@ -934,8 +992,17 @@ if (enemy) {
 [code]makeDraggable(); // Makes this object draggable[/code]`
     },
     {
+        name: 'winScreen',
+        threadTitle: 'winScreen()',
+        content: `Shows the stage clear / win screen.
+
+[b]Example:[/b]
+[code]if (waveGetCurrent() >= 5)
+#winScreen()[/code]`
+    },
+    {
         name: 'createBullet',
-        threadTitle: 'createBullet(x, y, params?)',
+        threadTitle: 'createBullet(x, y, params)',
         content: `Creates a bullet at (x, y). Only [b]x[/b] and [b]y[/b] are arguments. Set Speed, Direction, Size, etc. via optional [b]params[/b] object.
 
 [b]Arguments:[/b]
@@ -972,22 +1039,22 @@ if interval(60)
     {
         name: 'surfaceSet',
         threadTitle: 'surfaceSet(surfaceName)',
-        content: `Switches drawing to a named layer so bullets and shapes go there until you reset (other layers only show when you draw them with drawSurface).
+        content: `Routes subsequent drawing to a named surface (layer). Everything drawn after this call goes to that surface until surfaceReset() or another surfaceSet().
 
 [b]Arguments:[/b]
-[b][color=#90ee90]surfaceName[/color][/b] - [i]The name of the layer (e.g. "main" or "test").[/i]
+[b][color=#90ee90]surfaceName[/color][/b] - [i]Layer name (for example "main", "back", "ui", "glow").[/i]
 
 [b]Example:[/b]
-[code]surfaceSet("test");
+[code]surfaceSet("back");
 createBullet(x, y, { Speed: 5, Direction: 270, Size: 5 });
 drawCircle(x, y, 3);
 surfaceReset();
-createBullet(x, y);[/code]`
+drawSurface("back", 0, 0);[/code]`
     },
     {
         name: 'surfaceReset',
         threadTitle: 'surfaceReset()',
-        content: `Switches drawing back to the main layer (same as surfaceSet("main")).
+        content: `Switches drawing target back to the main surface (same as surfaceSet("main")).
 
 [b]Example:[/b]
 [code]surfaceSet("back");
@@ -997,7 +1064,7 @@ surfaceReset();[/code]`
     {
         name: 'drawBlendSet',
         threadTitle: 'drawBlendSet(mode)',
-        content: `Changes how new drawings combine with what is already on screen (normal, additive for glow, or subtract for cutouts); use drawBlendReset() to go back to normal.
+        content: `Sets blend mode for subsequent draw calls on the current surface until changed again.
 
 [b]Modes:[/b]
 [color=#90ee90]normal[/color] - [i]Default blending.[/i]
@@ -1014,27 +1081,39 @@ drawBlendReset();[/code]`
     {
         name: 'drawBlendReset',
         threadTitle: 'drawBlendReset()',
-        content: `Restores normal blending (same as drawBlendSet("normal")).`
+        content: `Restores blend mode to normal (same as drawBlendSet("normal")).`
     },
     {
         name: 'drawSetAlpha',
         threadTitle: 'drawSetAlpha(alpha)',
-        content: `Sets the default see-through amount (0 to 1) for later draw calls that do not specify it; use drawSetAlpha(1) to reset.`
+        content: `Sets default alpha (opacity) for later draw calls that do not pass their own alpha.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]alpha[/color][/b] - [i]0..1 (0 invisible, 1 fully visible).[/i]
+
+[b]Tip:[/b] Use [color=#ffa500]drawSetAlpha(1)[/color] to reset.`
     },
     {
         name: 'drawSetColor',
-        threadTitle: 'drawSetColor(color)',
-        content: `Sets the default color for later draw calls that do not pass a color (e.g. "#ff8080"); pass null to clear it.`
+        threadTitle: 'drawSetColor(hexCol)',
+        content: `Sets default draw color for later draw calls that do not pass a color.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]hexCol[/color][/b] - [i]Color value (for example "#ff8080"). Pass null to clear default color.[/i]`
     },
     {
         name: 'drawSetAlign',
         threadTitle: 'drawSetAlign(align)',
-        content: `Sets the default alignment (1–9, e.g. 1=top-left, 5=center, 9=bottom-right) for later drawSprite, drawBackground, and drawSurface; pass null to clear.`
+        content: `Sets default alignment used by drawSprite, drawBackground, and drawSurface when align is omitted.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]align[/color][/b] - [i]1..9 grid (1=top-left, 5=center, 9=bottom-right). Pass null to clear.[/i]`
     },
     {
         name: 'drawDepthSet',
         threadTitle: 'drawDepthSet(depth)',
-        content: `Sets the z-order for later draw calls (drawCircle, drawLine, drawText, drawSprite, drawSheetSprite, drawBackground, drawHealthbar when depth is omitted, drawSurface when depth is omitted). Lower values are drawn first (behind); higher values on top. Use drawDepthReset() to go back to 0.
+        content: `Sets default draw depth (z-order) for later draw calls that omit depth.
+Lower values draw first (behind); higher values draw later (in front). Use drawDepthReset() to return to 0.
 
 [b]Example:[/b]
 [code]drawDepthSet(-20);
@@ -1044,12 +1123,12 @@ drawDepthReset();[/code]`
     {
         name: 'drawDepthReset',
         threadTitle: 'drawDepthReset()',
-        content: `Resets draw depth to 0 (same as drawDepthSet(0)).`
+        content: `Resets default draw depth to 0 (same as drawDepthSet(0)).`
     },
     {
         name: 'drawSurface',
-        threadTitle: 'drawSurface(surfaceName, x, y, angle, xscale, yscale, alpha, depth, align)',
-        content: `Draws a named layer (its bullets, shapes, and images) at a position with optional scale, rotation, opacity, and draw order; layers other than main only show when you call this.
+        threadTitle: 'drawSurface(surfaceName, x, y, angle, xscale, yscale, alpha, layer, align)',
+        content: `Draws a named surface (layer content) at a position. Use this to show non-main surfaces you filled with surfaceSet().
 
 [b]Align grid:[/b] 1=top-left, 2=top-center, 3=top-right, 4=mid-left, 5=center, 6=mid-right, 7=bottom-left, 8=bottom-center, 9=bottom-right.
 
@@ -1059,7 +1138,7 @@ drawDepthReset();[/code]`
 [color=#9acd32]angle[/color] - [i]Optional rotation in degrees (default 0).[/i]
 [color=#9acd32]xscale, yscale[/color] - [i]Optional scale (default 1).[/i]
 [color=#9acd32]alpha[/color] - [i]Optional opacity from 0 to 1 (default 1).[/i]
-[color=#9acd32]depth[/color] - [i]Optional draw order (default 0).[/i]
+[color=#9acd32]layer[/color] - [i]Optional draw order layer (default 0).[/i]
 [color=#9acd32]align[/color] - [i]Optional 1–9 for which point (x,y) is (default 7 is bottom-left).[/i]
 
 [b]Example:[/b]
@@ -1067,15 +1146,55 @@ drawDepthReset();[/code]`
 drawSurface("front", 90, 160, 45, 1, 1, 1, -1, 5); // center at (90,160)[/code]`
     },
     {
+        name: 'shaderSet',
+        threadTitle: 'shaderSet(name, ...values)',
+        content: `Sets the active shader for subsequent bullet and draw calls.
+
+[b]Use:[/b]
+[code]shaderSet("invert");                       // activate built-in shader
+shaderSet("ripple", x, y, 2.0, 14.0, 0.03, 0.02); // built-in with params[/code]
+
+[b]Custom shader:[/b]
+[code]shaderSet("myFx", vertexSource, fragmentSource); // register/update + activate[/code]
+
+[b]Tip:[/b] Use [color=#ffa500]shaderReset()[/color] to return to default shader.`
+    },
+    {
+        name: 'shaderUniformSet',
+        threadTitle: 'shaderUniformSet(name, uniformName, value)',
+        content: `Sets one uniform value on a shader.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]name[/color][/b] - [i]Shader name.[/i]
+[b][color=#90ee90]uniformName[/color][/b] - [i]Uniform variable name (for example u_saturation).[/i]
+[b][color=#90ee90]value[/color][/b] - [i]Number or vector/list depending on the uniform type.[/i]
+
+[b]Example:[/b]
+[code]shaderSet("saturation");
+shaderUniformSet("saturation", "u_saturation", 0.25);
+drawBackground(0, 0, "bg");
+shaderReset();[/code]`
+    },
+    {
+        name: 'shaderReset',
+        threadTitle: 'shaderReset()',
+        content: `Resets shader back to the default rendering shader.
+
+[b]Example:[/b]
+[code]shaderSet("invert");
+drawSurface("back", 0, 0);
+shaderReset();[/code]`
+    },
+    {
         name: 'drawAnimated',
-        threadTitle: 'drawAnimated(x, y, name, anim, bones, scaleX, scaleY)',
+        threadTitle: 'drawAnimated(x, y, character, animation, bones, scaleX, scaleY)',
         content: `Shows an animated character at a position and returns a handle so you can control it.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
-[b][color=#90ee90]name[/color][/b] - [i]The character or skeleton asset name.[/i]
-[b][color=#90ee90]anim[/color][/b] - [i]The name of the animation to play.[/i]
+[b][color=#90ee90]character[/color][/b] - [i]The character or skeleton asset name.[/i]
+[b][color=#90ee90]animation[/color][/b] - [i]The name of the animation to play.[/i]
 [color=#9acd32]bones[/color] - [i]Optional list of bone names to hide.[/i]
 [color=#9acd32]scaleX[/color] - [i]Optional horizontal scale.[/i]
 [color=#9acd32]scaleY[/color] - [i]Optional vertical scale.[/i]
@@ -1105,11 +1224,11 @@ destroy(123); // removes codeChild with id 123[/code]`
     },
     {
         name: 'debugMessage',
-        threadTitle: 'debugMessage(msg)',
+        threadTitle: 'debugMessage(message)',
         content: `Shows a message in the debug or chat tab.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]msg[/color][/b] - [i]The message to show.[/i]
+[b][color=#90ee90]message[/color][/b] - [i]The message to show.[/i]
 
 [b]Example:[/b]
 [code]debugMessage("Player HP: " + playerHp);[/code]`
@@ -1128,6 +1247,18 @@ destroy(123); // removes codeChild with id 123[/code]`
 
 [b]Example:[/b]
 [code]if (objectOutScreen(x, y, 0.1)) { dead = true; }[/code]`
+    },
+    {
+        name: 'bulletOutScreen',
+        threadTitle: 'bulletOutScreen(i)',
+        content: `Default handler used by the engine to remove a bullet that goes off-screen.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]i[/color][/b] - [i]Bullet index in the internal bullet buffer.[/i]
+
+[b]Example:[/b]
+[code]// Advanced callback usage:
+// bulletOutScreen(i)[/code]`
     },
     {
         name: 'colideBullet',
@@ -1149,15 +1280,15 @@ inBullet(bids)
     },
     {
         name: 'colideOtherObject',
-        threadTitle: 'colideOtherObject(x, y, radius, tag, size)',
-        content: `Checks if a circle at a position touches any other object with a given tag (ignores this object).
+        threadTitle: 'colideOtherObject(x, y, size, object, size2)',
+        content: `Checks if a circle at a position touches any other object with a given object name (ignores this object).
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the center.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]Vertical position of the center.[/i]
-[b][color=#90ee90]radius[/color][/b] - [i]Collision radius for this object.[/i]
-[b][color=#90ee90]tag[/color][/b] - [i]Only objects with this tag are checked.[/i]
-[b][color=#90ee90]size[/color][/b] - [i]Radius to use for the other objects.[/i]
+[b][color=#90ee90]size[/color][/b] - [i]Collision radius for this object.[/i]
+[b][color=#90ee90]object[/color][/b] - [i]Object name to check against (matched against objectName).[/i]
+[b][color=#90ee90]size2[/color][/b] - [i]Radius to use for the other objects.[/i]
 
 [b][color=#ffa500]Returns: the first object that is touching, or null.[/color][/b]
 
@@ -1218,36 +1349,34 @@ if (other !== null) { other.hp -= 1; }[/code]`
     },
     {
         name: 'drawBackground',
-        threadTitle: 'drawBackground(x, y, backgroundName, angle, color, align)',
-        content: `Draws a background you created with background() at a position with optional rotation, color tint, and alignment (1–9, default 7 is bottom-left).
-
-[b]Align grid:[/b] 1=top-left, 2=top-center, 3=top-right, 4=mid-left, 5=center, 6=mid-right, 7=bottom-left, 8=bottom-center, 9=bottom-right.
+        threadTitle: 'drawBackground(x, y, backgroundName, layer)',
+        content: `Draws a named background created with background(). Static backgrounds reuse cached content; dynamic backgrounds show their latest redraw.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
 [b][color=#90ee90]backgroundName[/color][/b] - [i]The name you gave the background when you created it.[/i]
-[color=#9acd32]angle[/color] - [i]Optional rotation in degrees.[/i]
-[color=#9acd32]color[/color] - [i]Optional color tint.[/i]
-[color=#9acd32]align[/color] - [i]Optional 1–9 for which point of the background is at (x,y); default 7.[/i]
+[color=#9acd32]layer[/color] - [i]Optional compositing layer group with surfaces (>0 behind main, 0 main, <0 front).[/i]
+
+[b]Tip:[/b] For angle/color/align use [color=#ffa500]drawBackgroundExt(x, y, backgroundName, layer, angle, color, align)[/color].
 
 [b]Example:[/b]
 [code]drawBackground(90, 160, "myBg") // bottom-left at (90,160)
-drawBackground(90, 160, "myBg", 0, null, 5) // center at (90,160)[/code]`
+drawBackground(90, 160, "myBg", 10) // draw in layer 10 (behind main)[/code]`
     },
     {
         name: 'musicPlay',
-        threadTitle: 'musicPlay(name, seq, vol)',
+        threadTitle: 'musicPlay(songName, sequenceIndex, volume)',
         content: `Starts playing a soundtrack from the music folder (name must start with $).
 
 [b]Arguments:[/b]
-[b][color=#90ee90]name[/color][/b] - [i]The song name from the music folder (must start with $).[/i]
-[color=#9acd32]seq[/color] - [i]Optional starting order or section number.[/i]
-[color=#9acd32]vol[/color] - [i]Optional volume from 0 to 1.[/i]
+[b][color=#90ee90]songName[/color][/b] - [i]The song name from the music folder (must start with $).[/i]
+[color=#9acd32]sequenceIndex[/color] - [i]Optional starting order or section number.[/i]
+[color=#9acd32]volume[/color] - [i]Optional volume from 0 to 1.[/i]
 
 [b]Example:[/b]
-[code]musicPlay("$lethal-weapon-level-1");
-musicPlay("$song", 2, 0.5);[/code]`
+[code]musicPlay("$lethal-weapon-level-1.xm");
+musicPlay("$song.xm", 2, 0.5);[/code]`
     },
     {
         name: 'musicStop',
@@ -1263,11 +1392,11 @@ musicPlay("$song", 2, 0.5);[/code]`
     },
     {
         name: 'musicSetSequence',
-        threadTitle: 'musicSetSequence(seq)',
+        threadTitle: 'musicSetSequence(sequenceIndex)',
         content: `Jumps the current song to a specific order or section and plays from there.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]seq[/color][/b] - [i]The order or section number to jump to.[/i]
+[b][color=#90ee90]sequenceIndex[/color][/b] - [i]The order or section number to jump to.[/i]
 `
     }
 ];
