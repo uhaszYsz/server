@@ -216,6 +216,18 @@ if (myBullets.length > 10)
 #deleteBullet(Id)[/code]`
     },
     {
+        name: 'sfxSample',
+        content: `[b]Stage SFX sample map.[/b] Contains cut SFX samples saved with the stage as text.
+
+[b]Structure:[/b] [color=#ffa500]sfxSample["sampleName"][/color] -> serialized sample text
+
+[b]Use:[/b]
+[code]soundPlay("beam-impact-01");        // normal file SFX
+soundPlay(sfxSample["myCut"]);     // stage cut sample[/code]
+
+[i]Tip: if a sample name does not exist in the current stage map, playback falls back to normal sound name behavior.[/i]`
+    },
+    {
         name: 'initials',
         content: `[b]Read-only.[/b] Object holding the [b]initial values[/b] of this object at creation: [color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]speed[/color], [color=#ffa500]direction[/color], [color=#ffa500]depth[/color], and any [b]def[/b] variables.
 
@@ -838,16 +850,17 @@ sync(["x", "y", "hp"]); // sync but exclude x, y, hp[/code]`
     {
         name: 'soundPlay',
         threadTitle: 'soundPlay(sound, volume, pitch)',
-        content: `Plays a sound from the sound effects folder (use the name without the file extension).
+        content: `Plays a sound effect. Works with normal SFX names and stage cut samples.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]sound[/color][/b] - [i]The sound name from the sound effects folder.[/i]
+[b][color=#90ee90]sound[/color][/b] - [i]Normal SFX name (without extension), or [color=#ffa500]sfxSample["name"][/color] value.[/i]
 [color=#9acd32]volume[/color] - [i]Optional volume from 0 to 1 (default 1).[/i]
 [color=#9acd32]pitch[/color] - [i]Optional pitch (1 is normal).[/i]
 
 [b]Example:[/b]
 [code]soundPlay("explosion", 1.0, 1.0);
-// or soundPlay("explosion"); // uses default volume and pitch[/code]`
+soundPlay("explosion"); // uses default volume and pitch
+soundPlay(sfxSample["myCut"]);[/code]`
     },
     {
         name: 'drawSprite',
