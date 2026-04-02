@@ -216,18 +216,6 @@ if (myBullets.length > 10)
 #deleteBullet(Id)[/code]`
     },
     {
-        name: 'sfxSample',
-        content: `[b]Stage SFX sample map.[/b] Contains cut SFX samples saved with the stage as text.
-
-[b]Structure:[/b] [color=#ffa500]sfxSample["sampleName"][/color] -> serialized sample text
-
-[b]Use:[/b]
-[code]soundPlay("beam-impact-01");        // normal file SFX
-soundPlay(sfxSample["myCut"]);     // stage cut sample[/code]
-
-[i]Tip: if a sample name does not exist in the current stage map, playback falls back to normal sound name behavior.[/i]`
-    },
-    {
         name: 'initials',
         content: `[b]Read-only.[/b] Object holding the [b]initial values[/b] of this object at creation: [color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]speed[/color], [color=#ffa500]direction[/color], [color=#ffa500]depth[/color], and any [b]def[/b] variables.
 
@@ -849,18 +837,21 @@ sync(["x", "y", "hp"]); // sync but exclude x, y, hp[/code]`
     },
     {
         name: 'soundPlay',
-        threadTitle: 'soundPlay(sound, volume, pitch)',
-        content: `Plays a sound effect. Works with normal SFX names and stage cut samples.
+        threadTitle: 'soundPlay(name, volume, pitch, startMs, endMs)',
+        content: `Plays a sound effect from bundled [code]sfx/*.mp3[/code] assets. Arguments are [b]positional only[/b] — always pass [volume] and [pitch] before [startMs] / [endMs].
 
 [b]Arguments:[/b]
-[b][color=#90ee90]sound[/color][/b] - [i]Normal SFX name (without extension), or [color=#ffa500]sfxSample["name"][/color] value.[/i]
+[b][color=#90ee90]name[/color][/b] - [i]SFX name without extension (friendly names from the sound picker work).[/i]
 [color=#9acd32]volume[/color] - [i]Optional volume from 0 to 1 (default 1).[/i]
-[color=#9acd32]pitch[/color] - [i]Optional pitch (1 is normal).[/i]
+[color=#9acd32]pitch[/color] - [i]Optional playback rate (1 is normal, max 4).[/i]
+[color=#9acd32]startMs[/color] - [i]Optional start time in milliseconds within the clip.[/i]
+[color=#9acd32]endMs[/color] - [i]Optional end time in milliseconds (must be greater than startMs).[/i]
 
-[b]Example:[/b]
-[code]soundPlay("explosion", 1.0, 1.0);
-soundPlay("explosion"); // uses default volume and pitch
-soundPlay(sfxSample["myCut"]);[/code]`
+[b]Examples:[/b]
+[code]soundPlay("explosion");
+soundPlay("explosion", 1.0, 1.0);
+soundPlay("Laser Impact-01", 1, 1, 50, 200); // 50ms–200ms
+soundPlay("hit", 1, 1, 100); // from 100ms to end of file[/code]`
     },
     {
         name: 'drawSprite',
