@@ -16,6 +16,7 @@ import cors from 'cors';
 import http from 'http';
 import https from 'https';
 import { fork } from 'child_process';
+import { randomBytes } from 'crypto';
 
 // Password hashing configuration
 const BCRYPT_ROUNDS = 10; // Number of salt rounds (higher = more secure but slower)
@@ -326,7 +327,7 @@ async function verifyMultipleCodesWithOpenAI(codes) {
 const MAX_LEVEL_NAME_LENGTH = 64;
 const MAX_LEVEL_DATA_BYTES = 256 * 1024; // 256 KB
 const LEVEL_SLUG_REGEX = /^[a-z0-9]+[a-z0-9-_]*$/;
-const MAX_SPRITE_SIZE = 4096; // 4 KB max sprite size
+const MAX_SPRITE_SIZE = 20 * 1024; // 20 KB max sprite size
 
 await Promise.all([
     fs.mkdir(levelsDirectory, { recursive: true })
@@ -963,6 +964,16 @@ httpApp.get('/privacy', (req, res) => {
     }
 });
 
+// Main site: https://yourdomain.com/ → server/index.html (when reverse-proxied to this app)
+httpApp.get('/', (req, res) => {
+    const indexPath = path.join(__dirname, 'index.html');
+    if (existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).type('text/plain').send('index.html not found — add server/index.html for your home page');
+    }
+});
+
 // ========== OTA updates from GitHub (private repo supported via token) ==========
 const GITHUB_TOKEN_FILE = path.join(__dirname, 'github-token.txt');
 const GITHUB_REPO = process.env.GITHUB_REPO || 'uhaszYsz/danmakuRaiders';
@@ -974,6 +985,31 @@ const OTA_EXCLUDE_PREFIXES = [
     'lib/pixi.min',         // PIXI (DragonBones dependency)
     'ui/dragonbones'        // DragonBones UI module
 ];  // paths to exclude from OTA updates (never download)
+
+/** Present in repo www/ but not listed in OTA manifest — use getDevkit + /api/app/devkit/download only. */
+const OTA_MANIFEST_SKIP_FILES = new Set(['runner.apk']);
+const devkitDownloadTokens = new Map(); // token -> { expires: number }
+
+function createDevkitToken() {
+    const token = randomBytes(24).toString('hex');
+    const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    devkitDownloadTokens.set(token, { expires });
+    for (const [t, v] of devkitDownloadTokens) {
+        if (v.expires < Date.now()) devkitDownloadTokens.delete(t);
+    }
+    return token;
+}
+
+function consumeDevkitToken(token) {
+    if (typeof token !== 'string' || !token) return false;
+    const rec = devkitDownloadTokens.get(token);
+    if (!rec || rec.expires < Date.now()) {
+        devkitDownloadTokens.delete(token);
+        return false;
+    }
+    devkitDownloadTokens.delete(token);
+    return true;
+}
 
 let _githubToken = null;
 let _githubBranch = null;  // resolved default branch (cached)
@@ -1038,6 +1074,7 @@ async function getGitHubFileManifest() {
         if (prefix && !p.startsWith(prefix + '/') && p !== prefix) continue;
         const relative = prefix ? p.slice(prefix.length).replace(/^\//, '') : p;
         if (OTA_EXCLUDE_PREFIXES.some(ex => relative.startsWith(ex))) continue;
+        if (OTA_MANIFEST_SKIP_FILES.has(relative)) continue;
         manifest[relative] = { hash: node.sha, size: node.size };
     }
     return manifest;
@@ -1108,6 +1145,26 @@ httpApp.post('/api/app/update/check', async (req, res) => {
     }
 });
 
+// One-time token from WebSocket getDevkit — downloads runner.apk from GitHub www (not via bulk OTA)
+httpApp.get('/api/app/devkit/download', async (req, res) => {
+    try {
+        if (!getGitHubToken()) {
+            return otaUnavailable(res, 'Configure github-token.txt for private repo access');
+        }
+        const token = typeof req.query.token === 'string' ? req.query.token : '';
+        if (!consumeDevkitToken(token)) {
+            return res.status(403).json({ error: 'Invalid or expired devkit token' });
+        }
+        const content = await getGitHubFileContent('runner.apk');
+        res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+        res.setHeader('Content-Disposition', 'attachment; filename="runner.apk"');
+        res.send(content);
+    } catch (error) {
+        console.error('[OTA] Devkit download error:', error.message);
+        res.status(404).json({ error: 'Failed to download devkit', message: error.message });
+    }
+});
+
 // GET /api/app/update/file/:filePath(*) — stream file from GitHub
 httpApp.get('/api/app/update/file/:filePath(*)', async (req, res) => {
     try {
@@ -1117,6 +1174,9 @@ httpApp.get('/api/app/update/file/:filePath(*)', async (req, res) => {
         const filePath = req.params.filePath;
         if (filePath.includes('..') || path.isAbsolute(filePath)) {
             return res.status(400).json({ error: 'Invalid file path' });
+        }
+        if (filePath === 'runner.apk') {
+            return res.status(403).json({ error: 'runner.apk is only available via devkit flow (getDevkit message)' });
         }
         if (OTA_EXCLUDE_PREFIXES.some(ex => filePath.startsWith(ex))) {
             return res.status(403).json({ error: 'Path excluded from OTA updates' });
@@ -1715,6 +1775,22 @@ function handleWebSocketConnection(ws, req) {
         } catch (err) {
             console.error('[getMyUserData] Error:', err);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to get user data', fromGetMyUserData: true }));
+        }
+      } else if (data.type === 'getDevkit') {
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Login required to download devkit' }));
+            return;
+        }
+        if (!getGitHubToken()) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Devkit download unavailable (OTA not configured on server)' }));
+            return;
+        }
+        try {
+            const token = createDevkitToken();
+            ws.send(msgpack.encode({ type: 'devkitReady', token }));
+        } catch (e) {
+            console.error('[getDevkit] Error:', e);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to issue devkit token' }));
         }
       } else if (data.type === 'getRandomOutfit') {
         // Admin only: add a random outfit item to the player's inventory
@@ -3154,7 +3230,7 @@ function handleWebSocketConnection(ws, req) {
             const buffer = Buffer.from(fileData, 'base64');
             const fileSize = buffer.length;
 
-            // Check file size (4 KB max)
+            // Check file size (20 KB max)
             if (fileSize > MAX_SPRITE_SIZE) {
                 throw new Error(`File size exceeds ${MAX_SPRITE_SIZE} bytes limit`);
             }

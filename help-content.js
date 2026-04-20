@@ -5,12 +5,16 @@ export const specialKeywordsHelp = [
     {
         name: 'background',
         threadTitle: 'background(name, dynamic, width, height)',
-        content: `Creates or updates a named background layer. Use this block to draw into that layer, then show it with drawBackground().
+        content: `Creates or updates a named background buffer. Use this block to draw into it, then show it with drawBackground().
 
 [b]Arguments:[/b]
 [b][color=#90ee90]name[/color][/b] - [i]Required. Background name used later in drawBackground(x, y, name, ...).[/i]
 [color=#9acd32]dynamic[/color] - [i]Optional. false/omitted = static cache (draw once, reuse). true = redraw every frame while this block runs.[/i]
 [color=#9acd32]width, height[/color] - [i]Optional. Local canvas size for dynamic backgrounds (for example 200, 400).[/i]
+
+[b]Static vs dynamic:[/b]
+[i]Static[/i] backgrounds are baked once: [color=#ffa500]drawGround[/color], [color=#ffa500]drawLight[/color], circles, rectangles, text, and sprites are compiled into GPU data. [color=#ffa500]drawLight[/color] only affects that bake (ground grid, circles, rectangles, sprites in the same static block)—there is no runtime lighting.
+[i]Dynamic[/i] backgrounds redraw each frame for sprites, circles, text, rectangles, and lines; [color=#ffa500]drawGround[/color] and [color=#ffa500]drawLight[/color] do [b]nothing[/b] there. Object / main code cannot use drawGround or drawLight (only static background blocks can).
 
 [b]Example (static):[/b]
 [code]background("bg1")
@@ -28,7 +32,7 @@ drawBackground(0, 0, "parallax")[/code]
 [b]Example (dynamic with size):[/b]
 [code]background("ui", true, 200, 400)
 #drawRectangle(0, 0, 200, 400, "#112233")
-drawBackground(90, 160, "ui", 0, null, 5)[/code]`
+drawBackgroundExt(90, 160, "ui", 0, null, 5)[/code]`
     },
     {
         name: 'def',
@@ -140,11 +144,14 @@ export const builtInVariablesHelp = [
 [color=#ffa500]ScaleY[/color] - [i]Vertical stretch (1 is round, less than 1 is squashed).[/i]
 [color=#ffa500]Rotation[/color] - [i]How much it is rotated (internal).[/i]
 [color=#ffa500]Lifetime[/color] - [i]How many frames it lasts; -1 means forever.[/i]
+[color=#ffa500]LifetimeMax[/color] - [i]If 0 or positive, the bullet is removed when its per-frame age counter reaches this value; -1 disables this cap.[/i]
+[color=#ffa500]SpeedMax[/color], [color=#ffa500]SpeedMin[/color] - [i]Clamp signed speed each frame; -1 means no bound on that side.[/i]
+[color=#ffa500]SizeMax[/color], [color=#ffa500]SizeMin[/color] - [i]Clamp Size each frame; -1 means no bound on that side.[/i]
 [color=#ffa500]Homing[/color] - [i]How strongly it turns toward the player.[/i]
 [color=#ffa500]Spin[/color] - [i]How fast it spins each frame.[/i]
 [color=#ffa500]Shape[/color] - [i]Shape index: circle, square, triangle, diamond, star, or cross.[/i]
 [color=#ffa500]Type[/color] - [i]Whether it is a player or enemy bullet (in bulletTypes).[/i]
-[color=#ffa500]Surface[/color] - [i]Which drawing layer it is on ("main" is default).[/i]
+[color=#ffa500]Surface[/color] - [i]Which drawing surface it uses ([color=#ffa500]surfaceSet[/color]; "main" is default).[/i]
 [color=#ffa500]GlowSize[/color] - [i]How big the glow is (-1 uses default).[/i]
 [color=#ffa500]GlowPower[/color] - [i]How bright the glow is from 0 to 1 (-1 uses default).[/i]
 [color=#ffa500]ColorGlow[/color] - [i]The color of the glow (e.g. "#FF0000").[/i]`
@@ -736,7 +743,7 @@ var bones = inverseKinematics(x, y, xTar, yTar, [10, 12, 14, 16, 18, 14, 12, 10]
     {
         name: 'drawGround',
         threadTitle: 'drawGround(x, y, w, h, cellW, cellH, color)',
-        content: `Draws a grid of rectangles in a region.
+        content: `Records a ground grid for [b]static[/b] [color=#ffa500]background("name")[/color] bake only. It has no effect in dynamic backgrounds, object code, or anywhere outside a non-dynamic background block.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x, y[/color][/b] - [i]Left and bottom of the region.[/i]
@@ -744,34 +751,39 @@ var bones = inverseKinematics(x, y, xTar, yTar, [10, 12, 14, 16, 18, 14, 12, 10]
 [b][color=#90ee90]cellW, cellH[/color][/b] - [i]Width and height of each grid cell.[/i]
 [b][color=#90ee90]color[/color][/b] - [i]Hex string (e.g. "#003E29") or RGBA array [r, g, b, a] (0–1).[/i]
 
-[b]Example (full world):[/b]
-[code]drawGround(0, 0, 180, 321, 4, 4, "#003E29");[/code]
+[b]Example (inside static background):[/b]
+[code]background("bg")
+#drawGround(0, 0, 180, 321, 4, 4, "#003E29")
+#drawLight(90, 160, 50, 1000) // power uses same scale as drawLight (see drawLight help)
+drawBackground(0, 0, "bg")[/code]
 
 [b]Example (region):[/b]
-[code]drawGround(0, 0, 90, 160, 4, 4, "#ff0000"); // red grid in left half[/code]`
+[code]drawGround(0, 0, 90, 160, 4, 4, "#ff0000"); // left half, red grid[/code]`
     },
     {
         name: 'drawLight',
         threadTitle: 'drawLight(x, y, radius, power)',
-        content: `Adds a light at a position that brightens nearby ground tiles (closer tiles get brighter).
+        content: `Bake-time light for [b]static[/b] [color=#ffa500]background("name")[/color] only. At compile/bake, it tints nearby areas on the ground grid, circles, rectangles, and sprites in that same background. There is no per-frame lighting at runtime. Ignored in dynamic backgrounds and in object code.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position of the light.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]Vertical position of the light.[/i]
-[color=#9acd32]radius[/color] - [i]Optional how far the light reaches (default 50).[/i]
-[color=#9acd32]power[/color] - [i]Optional brightness from 0 to 1 (default 1).[/i]
+[color=#9acd32]radius[/color] - [i]Optional horizontal reach (default 50); falloff uses a slightly elliptical shape.[/i]
+[color=#9acd32]power[/color] - [i]Optional intensity. The engine divides by 1000 then clamps to 0–1 (e.g. 4000 → full strength, 1000 → 1.0 after scaling).[/i]
 
-[b]Example:[/b]
-[code]drawLight(90, 160, 50, 1.0); // bright light at center
-// or drawLight(x, y, 30, 0.5); // dimmer light with smaller radius[/code]`
+[b]Example (static background block):[/b]
+[code]background("bg")
+#drawGround(0, 0, 180, 321, 4, 4, "#003E29")
+#drawLight(90, 160, 50, 4000) // bright at center
+drawBackground(0, 0, "bg")[/code]`
     },
     {
         name: 'clearLights',
         threadTitle: 'clearLights()',
-        content: `Removes all lights you added this frame (call at the start of each frame to reset).
+        content: `No-op. Lights are not tracked at runtime; bake-time lights are fixed when a static background is compiled. You can leave calls in old code—they do nothing.
 
 [b]Example:[/b]
-[code]clearLights(); // remove all lights[/code]`
+[code]clearLights(); // optional; has no effect[/code]`
     },
     {
         name: 'didTapped',
@@ -1043,10 +1055,10 @@ if interval(60)
     {
         name: 'surfaceSet',
         threadTitle: 'surfaceSet(surfaceName)',
-        content: `Routes subsequent drawing to a named surface (layer). Everything drawn after this call goes to that surface until surfaceReset() or another surfaceSet().
+        content: `Routes subsequent drawing to a named surface. Everything drawn after this call goes to that surface until surfaceReset() or another surfaceSet().
 
 [b]Arguments:[/b]
-[b][color=#90ee90]surfaceName[/color][/b] - [i]Layer name (for example "main", "back", "ui", "glow").[/i]
+[b][color=#90ee90]surfaceName[/color][/b] - [i]Surface name (for example "main", "back", "ui", "glow").[/i]
 
 [b]Example:[/b]
 [code]surfaceSet("back");
@@ -1064,6 +1076,23 @@ drawSurface("back", 0, 0);[/code]`
 [code]surfaceSet("back");
 createBullet(x, y);
 surfaceReset();[/code]`
+    },
+    {
+        name: 'surfaceAutoClean',
+        threadTitle: 'surfaceAutoClean(surfaceName, enable)',
+        content: `Toggles per-frame auto clear for one named surface (default for each surface: on if you never call this for that name).
+
+[b]Arguments:[/b]
+[b][color=#90ee90]surfaceName[/color][/b] - [i]Surface name (not "main").[/i]
+[b][color=#90ee90]enable[/color][/b] - [i]true = clear that surface at the start of each frame (normal). false (or 0) = do not bulk-clear; pixels accumulate until surfaceClean("name") or surfacePersist.[/i]
+
+[b]Example:[/b]
+[code]surfaceAutoClean("fx", false);
+surfaceSet("fx");
+// smear / feedback ...
+surfaceReset();
+drawSurface("fx", 0, 0);
+surfaceAutoClean("fx", true);[/code]`
     },
     {
         name: 'drawBlendSet',
@@ -1131,23 +1160,22 @@ drawDepthReset();[/code]`
     },
     {
         name: 'drawSurface',
-        threadTitle: 'drawSurface(surfaceName, x, y, angle, xscale, yscale, alpha, layer, align)',
-        content: `Draws a named surface (layer content) at a position. Use this to show non-main surfaces you filled with surfaceSet().
+        threadTitle: 'drawSurface(surfaceName, x, y, angle, xscale, yscale, alpha, align)',
+        content: `Draws a named surface at a position. Use this to show non-main surfaces you filled with surfaceSet(). Composites after the main pass, in the order your code issues drawSurface calls.
 
 [b]Align grid:[/b] 1=top-left, 2=top-center, 3=top-right, 4=mid-left, 5=center, 6=mid-right, 7=bottom-left, 8=bottom-center, 9=bottom-right.
 
 [b]Arguments:[/b]
-[b][color=#90ee90]surfaceName[/color][/b] - [i]The name of the layer to draw.[/i]
+[b][color=#90ee90]surfaceName[/color][/b] - [i]The surface name to draw.[/i]
 [color=#9acd32]x, y[/color] - [i]Optional position (default 0).[/i]
 [color=#9acd32]angle[/color] - [i]Optional rotation in degrees (default 0).[/i]
 [color=#9acd32]xscale, yscale[/color] - [i]Optional scale (default 1).[/i]
 [color=#9acd32]alpha[/color] - [i]Optional opacity from 0 to 1 (default 1).[/i]
-[color=#9acd32]layer[/color] - [i]Optional draw order layer (default 0).[/i]
 [color=#9acd32]align[/color] - [i]Optional 1–9 for which point (x,y) is (default 7 is bottom-left).[/i]
 
 [b]Example:[/b]
-[code]drawSurface("back", 0, 0, 0, 1, 1, 0.5, -10);
-drawSurface("front", 90, 160, 45, 1, 1, 1, -1, 5); // center at (90,160)[/code]`
+[code]drawSurface("back", 0, 0, 0, 1, 1, 0.5);
+drawSurface("front", 90, 160, 45, 1, 1, 1, 5); // center at (90,160), align 5[/code]`
     },
     {
         name: 'shaderSet',
@@ -1205,11 +1233,22 @@ shaderReset();[/code]`
 
 [b][color=#ffa500]Returns: a handle you can use to control the animation.[/color][/b]
 
+[b]Animation speed:[/b] [code]handle.timeScale = 1.5[/code] is the same as [code]handle.animation.timeScale[/code] (DragonBones playback multiplier; [i]1[/i] = normal, below [i]1[/i] slower, above faster). You can set it before [code]ready[/code]; it applies when the armature attaches.
+
+[b]Per-bone transparency:[/b] [code]handle.getBone("Head").alpha = 0[/code] sets the Pixi [i]alpha[/i] on every slot display attached to that bone. If the armature is not available yet, the assignment does nothing.
+
+[b]Per-bone color (multiply):[/b] [code]handle.getBone("Head").color = "#ffcc00"[/code] sets Pixi [i]tint[/i] on those slot displays (hex [code]#rrggbb[/code] or [code]#rgb[/code], or numeric [code]0xRRGGBB[/code]). This multiplies the art colors like a light gel; [code]#ffffff[/code] is neutral. Invalid strings are ignored. The engine reapplies your tint each frame so animation timelines do not wipe it.
+
+[b]Replace whole texture atlas (edited sheet):[/b] [code]handle.setAtlas("ForestBee_tex_damaged.png")[/code] or [code]handle.getBone("_").setAtlas("...")[/code] — same [color=#ffa500]SpriteCache[/color] / server path rules as [color=#ffa500]drawSprite[/color]. The PNG must match the character\'s exported packed atlas [i]size and layout[/i] (same UV layout), typically a lightly edited copy of the original [i]_tex.png[/i]. This uses DragonBones [i]replacedTexture[/i] on the whole armature (bone name is ignored). [code]setAtlas("")[/code] restores the default atlas. Returns false until the image has finished loading.
+
 [b]Example:[/b]
 [code]var animX = 90;
 var animY = 160;
 var bonesToHide = ["arm_L", "arm_R"];
-var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);[/code]`
+var handle = drawAnimated(animX, animY, "ForestBee", "Idle", bonesToHide, 2, 2);
+handle.getBone("Head").alpha = 0.5;
+handle.getBone("Head").color = "#fff000";
+if (bossPhase === 2) { handle.setAtlas("ForestBee_tex_phase2.png"); }[/code]`
     },
     {
         name: 'destroy',
@@ -1353,20 +1392,18 @@ if (other !== null) { other.hp -= 1; }[/code]`
     },
     {
         name: 'drawBackground',
-        threadTitle: 'drawBackground(x, y, backgroundName, layer)',
-        content: `Draws a named background created with background(). Static backgrounds reuse cached content; dynamic backgrounds show their latest redraw.
+        threadTitle: 'drawBackground(x, y, backgroundName)',
+        content: `Draws a named background created with background(). Static backgrounds reuse cached GPU data (including bake-time ground and drawLight tinting). Dynamic backgrounds show the latest per-frame sprite/circle/text/rectangle/line redraw only.
 
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
 [b][color=#90ee90]backgroundName[/color][/b] - [i]The name you gave the background when you created it.[/i]
-[color=#9acd32]layer[/color] - [i]Optional compositing layer group with surfaces (>0 behind main, 0 main, <0 front).[/i]
 
-[b]Tip:[/b] For angle/color/align use [color=#ffa500]drawBackgroundExt(x, y, backgroundName, layer, angle, color, align)[/color].
+[b]Tip:[/b] For angle/color/align use [color=#ffa500]drawBackgroundExt(x, y, backgroundName, angle, color, align)[/color].
 
 [b]Example:[/b]
-[code]drawBackground(90, 160, "myBg") // bottom-left at (90,160)
-drawBackground(90, 160, "myBg", 10) // draw in layer 10 (behind main)[/code]`
+[code]drawBackground(90, 160, "myBg") // bottom-left at (90,160)[/code]`
     },
     {
         name: 'musicPlay',
