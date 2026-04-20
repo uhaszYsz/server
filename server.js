@@ -1123,19 +1123,24 @@ async function fetchGitHubContentsBlob(repoRelativePath) {
     } catch {
         throw new Error(`GitHub: invalid JSON for ${clean}`);
     }
-    if (data && data.content != null && typeof data.encoding === 'string') {
-        return Buffer.from(data.content, data.encoding || 'base64');
-    }
+    // Large / binary files: prefer raw download (avoids base64 + GitHub sometimes sends encoding: "none")
     if (data && data.download_url && typeof data.download_url === 'string') {
-        const token = getGitHubToken();
+        const tokenDl = getGitHubToken();
         const dres = await fetch(data.download_url, {
-            headers: token ? { Authorization: `Bearer ${token}`, Accept: 'application/octet-stream' } : { Accept: 'application/octet-stream' }
+            headers: tokenDl ? { Authorization: `Bearer ${tokenDl}`, Accept: 'application/octet-stream' } : { Accept: 'application/octet-stream' }
         });
         if (!dres.ok) {
             const t = await dres.text();
             throw new Error(`GitHub raw download ${dres.status}: ${t.slice(0, 200)}`);
         }
         return Buffer.from(await dres.arrayBuffer());
+    }
+    if (data && data.content != null) {
+        let enc = typeof data.encoding === 'string' ? data.encoding.trim().toLowerCase() : 'base64';
+        if (enc === 'none' || enc === '' || enc === 'undefined') enc = 'base64';
+        if (enc === 'utf-8') enc = 'utf8';
+        if (!Buffer.isEncoding(enc)) enc = 'base64';
+        return Buffer.from(data.content, enc);
     }
     throw new Error(`GitHub: could not read ${clean} (no content or download_url)`);
 }
