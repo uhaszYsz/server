@@ -979,6 +979,9 @@ const GITHUB_TOKEN_FILE = path.join(__dirname, 'github-token.txt');
 const GITHUB_REPO = process.env.GITHUB_REPO || 'uhaszYsz/danmakuRaiders';
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 const GITHUB_WWW_PATH = process.env.GITHUB_WWW_PATH || 'app/src/main/assets/www';  // path inside repo to www folder
+/** Full path from repo root to devkit APK (overrides GITHUB_WWW_PATH + runner.apk). E.g. MyApplication/app/src/main/assets/www/runner.apk */
+const DEVKIT_REPO_PATH = (process.env.DEVKIT_REPO_PATH || '').replace(/\\/g, '/').trim();
+const DEVKIT_FILE_NAME = process.env.DEVKIT_FILE_NAME || 'runner.apk';
 const OTA_EXCLUDE_PREFIXES = [
     'sprites/bosses/',      // DragonBones boss assets - load always from APK
     'lib/dragonBones',      // DragonBones library
@@ -1089,16 +1092,66 @@ async function getGitHubFileManifest() {
     return manifest;
 }
 
-async function getGitHubFileContent(filePath) {
+/**
+ * Fetch file bytes from repo (path relative to repository root, forward slashes).
+ * Handles small files (base64 in JSON) and large files (>~1MB: Git omits content, use download_url).
+ */
+async function fetchGitHubContentsBlob(repoRelativePath) {
     const [owner, repo] = GITHUB_REPO.split('/');
     const branch = _githubBranch || GITHUB_BRANCH;
-    const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${GITHUB_WWW_PATH.replace(/\\/g, '/')}/${encodedPath}?ref=${encodeURIComponent(branch)}`;
-    const res = await fetchGitHub(url);
-    const data = await res.json();
-    if (data.content == null) throw new Error('File not found or not a file');
-    const content = Buffer.from(data.content, data.encoding || 'base64');
-    return content;
+    const clean = repoRelativePath.replace(/^\/+/, '').replace(/\/+/g, '/');
+    const encodedPath = clean.split('/').map(encodeURIComponent).join('/');
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`;
+    const token = getGitHubToken();
+    const res = await fetch(url, {
+        headers: {
+            Accept: 'application/vnd.github.v3+json',
+            ...(token && { Authorization: `Bearer ${token}` })
+        }
+    });
+    const text = await res.text();
+    if (!res.ok) {
+        const hint404 = ' Commit runner.apk to this branch, or set GITHUB_WWW_PATH / DEVKIT_REPO_PATH if your repo root is not the Android module (e.g. monorepo). Note: *.apk is usually gitignored — use: git add -f <path> && git push';
+        if (res.status === 404) {
+            throw new Error(`GitHub 404: no file at ${clean}.${hint404} (API: ${text.slice(0, 120)})`);
+        }
+        throw new Error(`GitHub API ${res.status}: ${text.slice(0, 200)}`);
+    }
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch {
+        throw new Error(`GitHub: invalid JSON for ${clean}`);
+    }
+    if (data && data.content != null && typeof data.encoding === 'string') {
+        return Buffer.from(data.content, data.encoding || 'base64');
+    }
+    if (data && data.download_url && typeof data.download_url === 'string') {
+        const token = getGitHubToken();
+        const dres = await fetch(data.download_url, {
+            headers: token ? { Authorization: `Bearer ${token}`, Accept: 'application/octet-stream' } : { Accept: 'application/octet-stream' }
+        });
+        if (!dres.ok) {
+            const t = await dres.text();
+            throw new Error(`GitHub raw download ${dres.status}: ${t.slice(0, 200)}`);
+        }
+        return Buffer.from(await dres.arrayBuffer());
+    }
+    throw new Error(`GitHub: could not read ${clean} (no content or download_url)`);
+}
+
+async function getGitHubFileContent(filePath) {
+    const prefix = GITHUB_WWW_PATH.replace(/\\/g, '/').replace(/\/$/, '');
+    const rel = String(filePath).replace(/^\/+/, '');
+    const full = `${prefix}/${rel}`.replace(/\/+/g, '/');
+    return fetchGitHubContentsBlob(full);
+}
+
+function getDevkitBlobRepoPath() {
+    if (DEVKIT_REPO_PATH) return DEVKIT_REPO_PATH.replace(/^\/+/, '').replace(/\/+$/, '');
+    const prefix = GITHUB_WWW_PATH.replace(/\\/g, '/').replace(/\/$/, '');
+    const name = DEVKIT_FILE_NAME.replace(/^\/+/, '');
+    return `${prefix}/${name}`.replace(/\/+/g, '/');
 }
 
 function otaUnavailable(res, message) {
@@ -1165,9 +1218,9 @@ httpApp.get('/api/app/devkit/download', async (req, res) => {
         if (!verifyDevkitSignedToken(token)) {
             return res.status(403).json({ error: 'Invalid or expired devkit token' });
         }
-        const content = await getGitHubFileContent('runner.apk');
+        const content = await fetchGitHubContentsBlob(getDevkitBlobRepoPath());
         res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-        res.setHeader('Content-Disposition', 'attachment; filename="runner.apk"');
+        res.setHeader('Content-Disposition', `attachment; filename="${DEVKIT_FILE_NAME.replace(/[^\w.\-]/g, '_') || 'runner.apk'}"`);
         res.send(content);
     } catch (error) {
         console.error('[OTA] Devkit download error:', error.message);
