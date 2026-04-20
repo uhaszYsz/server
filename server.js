@@ -16,7 +16,7 @@ import cors from 'cors';
 import http from 'http';
 import https from 'https';
 import { fork } from 'child_process';
-import { randomBytes } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 // Password hashing configuration
 const BCRYPT_ROUNDS = 10; // Number of salt rounds (higher = more secure but slower)
@@ -988,27 +988,36 @@ const OTA_EXCLUDE_PREFIXES = [
 
 /** Present in repo www/ but not listed in OTA manifest — use getDevkit + /api/app/devkit/download only. */
 const OTA_MANIFEST_SKIP_FILES = new Set(['runner.apk']);
-const devkitDownloadTokens = new Map(); // token -> { expires: number }
 
-function createDevkitToken() {
-    const token = randomBytes(24).toString('hex');
-    const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
-    devkitDownloadTokens.set(token, { expires });
-    for (const [t, v] of devkitDownloadTokens) {
-        if (v.expires < Date.now()) devkitDownloadTokens.delete(t);
-    }
-    return token;
+/** Stateless devkit URL (works across load-balanced instances; same secret as OTA GitHub token). */
+function devkitHmacSecret() {
+    return getGitHubToken() || process.env.DEVKIT_HMAC_SECRET || 'devkit-local-only';
 }
 
-function consumeDevkitToken(token) {
+function createDevkitSignedToken() {
+    const expSec = Math.floor(Date.now() / 1000) + 10 * 60; // 10 minutes
+    const sig = createHmac('sha256', devkitHmacSecret())
+        .update(`devkit:${expSec}`)
+        .digest('hex');
+    return `${expSec}.${sig}`;
+}
+
+function verifyDevkitSignedToken(token) {
     if (typeof token !== 'string' || !token) return false;
-    const rec = devkitDownloadTokens.get(token);
-    if (!rec || rec.expires < Date.now()) {
-        devkitDownloadTokens.delete(token);
+    const dot = token.indexOf('.');
+    if (dot <= 0) return false;
+    const expSec = parseInt(token.slice(0, dot), 10);
+    const sigHex = token.slice(dot + 1);
+    if (!Number.isFinite(expSec) || sigHex.length !== 64) return false;
+    if (expSec * 1000 < Date.now()) return false;
+    const expected = createHmac('sha256', devkitHmacSecret())
+        .update(`devkit:${expSec}`)
+        .digest('hex');
+    try {
+        return timingSafeEqual(Buffer.from(sigHex, 'utf8'), Buffer.from(expected, 'utf8'));
+    } catch {
         return false;
     }
-    devkitDownloadTokens.delete(token);
-    return true;
 }
 
 let _githubToken = null;
@@ -1151,8 +1160,9 @@ httpApp.get('/api/app/devkit/download', async (req, res) => {
         if (!getGitHubToken()) {
             return otaUnavailable(res, 'Configure github-token.txt for private repo access');
         }
-        const token = typeof req.query.token === 'string' ? req.query.token : '';
-        if (!consumeDevkitToken(token)) {
+        let token = typeof req.query.token === 'string' ? req.query.token : '';
+        if (!token && typeof req.query.t === 'string') token = req.query.t;
+        if (!verifyDevkitSignedToken(token)) {
             return res.status(403).json({ error: 'Invalid or expired devkit token' });
         }
         const content = await getGitHubFileContent('runner.apk');
@@ -1786,7 +1796,7 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         try {
-            const token = createDevkitToken();
+            const token = createDevkitSignedToken();
             ws.send(msgpack.encode({ type: 'devkitReady', token }));
         } catch (e) {
             console.error('[getDevkit] Error:', e);
