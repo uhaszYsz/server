@@ -986,7 +986,8 @@ const OTA_EXCLUDE_PREFIXES = [
     'sprites/bosses/',      // DragonBones boss assets - load always from APK
     'lib/dragonBones',      // DragonBones library
     'lib/pixi.min',         // PIXI (DragonBones dependency)
-    'ui/dragonbones'        // DragonBones UI module
+    'ui/dragonbones',       // DragonBones UI module
+    'apk_tools/'            // native signing assets / future www paths — never OTA
 ];  // paths to exclude from OTA updates (never download)
 
 /** Present in repo www/ but not listed in OTA manifest — use getDevkit + /api/app/devkit/download only. */
@@ -1209,6 +1210,19 @@ httpApp.post('/api/app/update/check', async (req, res) => {
     } catch (error) {
         console.error('[OTA] Error checking updates:', error.message);
         res.status(500).json({ error: 'Failed to check updates', message: error.message });
+    }
+});
+
+// Signed devkit token (no login; same token WebSocket getDevkit issues)
+httpApp.get('/api/app/devkit/token', (req, res) => {
+    try {
+        if (!getGitHubToken()) {
+            return otaUnavailable(res, 'Configure github-token.txt for private repo access');
+        }
+        res.json({ token: createDevkitSignedToken() });
+    } catch (e) {
+        console.error('[OTA] devkit/token error:', e.message);
+        res.status(500).json({ error: 'Failed to issue devkit token' });
     }
 });
 
@@ -1845,10 +1859,6 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to get user data', fromGetMyUserData: true }));
         }
       } else if (data.type === 'getDevkit') {
-        if (!ws.googleId) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Login required to download devkit' }));
-            return;
-        }
         if (!getGitHubToken()) {
             ws.send(msgpack.encode({ type: 'error', message: 'Devkit download unavailable (OTA not configured on server)' }));
             return;

@@ -80,7 +80,36 @@ inBullet(Id)
 #Color = "#66ccff"[/code]
 [i]Tints every bullet in the game.[/i]`
     },
-    // inObject has been removed from the language; help entry deleted.
+    {
+        name: 'inObject',
+        threadTitle: 'inObject(expr)',
+        content: `Runs an indented or braced block with [b]this[/b] set to a chosen object instance (JavaScript [color=#ffa500].call()[/color] semantics).
+
+[b]Argument:[/b]
+[b][color=#90ee90]expr[/color][/b] - [i]Any expression that evaluates to the [color=#ffa500]codeObject[/color] (or [color=#ffa500]null[/color] — avoid mutating in that case).[/i]
+
+[b]this / other:[/b]
+[i]- [color=#ffa500]this[/color] = the instance from [color=#ffa500]expr[/color] (e.g. [color=#ffa500]this.x[/color], [color=#ffa500]this.bullet.Alpha[/color]).[/i]
+[i]- [color=#ffa500]other.*[/color] = the spawner's current [color=#ffa500]codeObject[/color] (the object whose script is running).[/i]
+[i]Legacy [color=#ffa500]#[/color] / [color=#ffa500]##[/color] field sugar for the target is removed; use [color=#ffa500]this[/color] explicitly.[/i]
+
+[b]Sugar with createObject:[/b]
+[i]A [color=#ffa500]createObject(...)[/color] line followed by more-indented [color=#ffa500]#[/color] lines is rewritten to assign the result and run [color=#ffa500]inObject(__co) { ... }[/color] — leading [color=#ffa500]#[/color] is only indentation, like elsewhere.[/i]
+
+[b]Example (explicit):[/b]
+[code]var e = createObject(10, 20, "Marker")
+inObject(e) {
+  this.life = 99
+  other.cooldown = 30
+}[/code]
+[i]Inside the block, [color=#ffa500]this[/color] is [color=#ffa500]e[/color]; [color=#ffa500]other[/color] is the spawner.[/i]
+
+[b]Example (sugar):[/b]
+[code]createObject(x, y, "Pickup", { value: 1 })
+#this.vy = 2
+#this.life = 60[/code]
+[i]Same idea: body runs as [color=#ffa500]inObject[/color] on the new instance.[/i]`
+    },
     {
         name: 'repeat',
         threadTitle: 'repeat(n)',
@@ -1024,7 +1053,17 @@ if (enemy) {
 [b]Arguments:[/b]
 [b][color=#90ee90]x[/color][/b] - [i]Horizontal position.[/i]
 [b][color=#90ee90]y[/color][/b] - [i]Vertical position.[/i]
-[color=#9acd32]params[/color] - [i]Optional object: { Speed, Direction, Size, Alpha, Color, Homing, ... }. Defaults: Speed 0, Direction 0, Size 4.[/i]
+[color=#9acd32]params[/color] - [i]Optional object. Supported keys:[/i]
+[code]X, Y, Speed, Direction,
+Alpha (or alpha), Size, ScaleY, Rotation,
+Lifetime, LifetimeMax,
+SpeedAdd, DirectionAdd, SizeAdd,
+SpeedMax, SpeedMin, SizeMax, SizeMin,
+Homing, Spin, Shape, Type,
+Color, ColorGlow, GlowSize, GlowPower,
+Offset (pixels beyond world bounds before auto-cleanup),
+User1, User2[/code]
+[i]Defaults: Speed 0, Direction 0, Size 4. Offset defaults to 0. User1/User2 default to null.[/i]
 
 [b][color=#ffa500]Returns: the bullet's unique ID.[/color][/b]
 
