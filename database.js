@@ -1550,6 +1550,120 @@ export function createForumPost(threadId, authorGoogleId, content) {
     });
 }
 
+/** Parse `[level]slug[/level]` from forum post BBCode (case-insensitive tag names). Returns trimmed slugs. */
+export function parseLevelBbcodeSlugsFromText(text) {
+    if (!text || typeof text !== 'string') return [];
+    const re = /\[(?:level)\]([^\[]+?)\[\/(?:level)\]/gi;
+    const out = [];
+    let m;
+    while ((m = re.exec(text))) {
+        const s = String(m[1] || '').trim();
+        if (s) out.push(s);
+    }
+    return out;
+}
+
+/** All unique `[level]` slugs mentioned anywhere in posts of this thread (before posts are deleted). */
+export function extractLevelSlugsFromForumThread(threadId) {
+    return new Promise((resolve, reject) => {
+        const tid = parseInt(threadId, 10);
+        if (!Number.isFinite(tid) || tid < 1) {
+            resolve([]);
+            return;
+        }
+        db.all('SELECT content FROM forum_posts WHERE thread_id = ?', [tid], (err, rows) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            const set = new Set();
+            for (const row of rows || []) {
+                for (const s of parseLevelBbcodeSlugsFromText(row.content)) set.add(s);
+            }
+            resolve([...set]);
+        });
+    });
+}
+
+/** Count forum posts whose content contains the exact `[level]slug[/level]` needle. */
+export function countForumPostsReferencingLevelSlug(slug) {
+    return new Promise((resolve, reject) => {
+        if (!slug || typeof slug !== 'string') {
+            resolve(0);
+            return;
+        }
+        const needle = `[level]${slug}[/level]`;
+        db.get(
+            'SELECT COUNT(*) AS c FROM forum_posts WHERE instr(content, ?) > 0',
+            [needle],
+            (err, row) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(row && typeof row.c === 'number' ? row.c : 0);
+            }
+        );
+    });
+}
+
+/**
+ * Delete leaderboard rows for a user-uploaded stage slug (not campaign).
+ * @returns {Promise<number>} rows deleted
+ */
+export function deleteLeaderboardEntriesForStageSlug(slug) {
+    return new Promise((resolve, reject) => {
+        if (!slug || typeof slug !== 'string') {
+            resolve(0);
+            return;
+        }
+        db.run('DELETE FROM leaderboards WHERE stage_slug = ?', [slug], function(err) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(typeof this.changes === 'number' ? this.changes : 0);
+        });
+    });
+}
+
+/**
+ * For each slug, if nothing in forum_posts references `[level]slug[/level]` anymore, remove DB row + leaderboards.
+ * Used after deleting forum threads/posts that may have documented user stages.
+ */
+export async function purgeStaleUserStagesAfterForumReferencesLost(slugs) {
+    const uniq = [...new Set((slugs || []).map(s => String(s).trim()).filter(Boolean))];
+    const removedStages = [];
+    let leaderboardRowsRemoved = 0;
+    for (const slug of uniq) {
+        const n = await countForumPostsReferencingLevelSlug(slug);
+        if (n > 0) continue;
+        const stage = await getStageBySlug(slug);
+        if (!stage) continue;
+        leaderboardRowsRemoved += await deleteLeaderboardEntriesForStageSlug(slug);
+        const did = await deleteStage(slug);
+        if (did) removedStages.push(slug);
+    }
+    return { removedStages, leaderboardRowsRemoved };
+}
+
+/** Every row in `stages` whose slug is never mentioned in forum_posts `[level]` BBCode gets deleted (and leaderboards cleaned). */
+export async function pruneOrphanUserStagesNotReferencedInForum() {
+    const all = await getAllStages();
+    const removedStages = [];
+    let leaderboardRowsRemoved = 0;
+    for (const st of all) {
+        const slug = st && st.slug ? String(st.slug) : '';
+        if (!slug) continue;
+        const n = await countForumPostsReferencingLevelSlug(slug);
+        if (n > 0) continue;
+        leaderboardRowsRemoved += await deleteLeaderboardEntriesForStageSlug(slug);
+        const ok = await deleteStage(slug);
+        if (ok) removedStages.push(slug);
+    }
+    return { removedStages, leaderboardRowsRemoved };
+}
+
 // Find the first forum post/thread that references a level slug via [level]slug[/level]
 export function findForumPostByLevelSlug(levelSlug) {
     return new Promise((resolve, reject) => {

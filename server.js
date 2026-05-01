@@ -1,6 +1,6 @@
 // server.js
 import { WebSocketServer } from 'ws';
-import { promises as fs, readFileSync, existsSync } from 'fs';
+import { promises as fs, readFileSync, existsSync, statSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Encoder } from 'msgpackr';
@@ -993,6 +993,51 @@ const OTA_EXCLUDE_PREFIXES = [
 /** Present in repo www/ but not listed in OTA manifest — use getDevkit + /api/app/devkit/download only. */
 const OTA_MANIFEST_SKIP_FILES = new Set(['runner.apk']);
 
+/** If this JSON file exists, OTA uses it as the server manifest (paths → { hash, size }) instead of GitHub tree. Build with: node scripts/build-ota-snapshot-manifest.mjs <www-extract-from-aab> */
+const OTA_MANIFEST_SNAPSHOT_PATH = process.env.OTA_MANIFEST_SNAPSHOT || path.join(__dirname, 'ota-manifest-snapshot.json');
+/** Clients with otaChannel=test compare against this file when present; otherwise they fall back to stable manifest/GitHub. */
+const OTA_MANIFEST_SNAPSHOT_TEST_PATH = process.env.OTA_MANIFEST_SNAPSHOT_TEST || path.join(__dirname, 'ota-manifest-snapshot-test.json');
+
+let _otaSnapMtime = null;
+let _otaSnapManifestCache = null;
+let _otaSnapTestMtime = null;
+let _otaSnapTestManifestCache = null;
+
+function readOtaSnapshotManifest() {
+    try {
+        const p = path.resolve(OTA_MANIFEST_SNAPSHOT_PATH);
+        if (!existsSync(p)) return null;
+        const st = statSync(p);
+        if (_otaSnapManifestCache && _otaSnapMtime === st.mtimeMs) {
+            return _otaSnapManifestCache;
+        }
+        const raw = JSON.parse(readFileSync(p, 'utf8'));
+        const out = {};
+        for (const [rel, meta] of Object.entries(raw)) {
+            if (!meta || typeof meta.hash !== 'string') continue;
+            const size = typeof meta.size === 'number' ? meta.size : 0;
+            out[rel.replace(/\\/g, '/')] = { hash: meta.hash, size };
+        }
+        _otaSnapMtime = st.mtimeMs;
+        _otaSnapManifestCache = out;
+        return out;
+    } catch (e) {
+        console.error('[OTA] Failed to read snapshot manifest:', e.message);
+        return null;
+    }
+}
+
+try {
+    const sp = path.resolve(OTA_MANIFEST_SNAPSHOT_PATH);
+    if (existsSync(sp)) {
+        console.log(`[OTA] ota-manifest-snapshot.json found — update/check will use it instead of GitHub: ${sp}`);
+    }
+    const tsp = path.resolve(OTA_MANIFEST_SNAPSHOT_TEST_PATH);
+    if (existsSync(tsp)) {
+        console.log(`[OTA] ota-manifest-snapshot-test.json found — clients with otaChannel=test use this: ${tsp}`);
+    }
+} catch (_) {}
+
 /** Stateless devkit URL (works across load-balanced instances; same secret as OTA GitHub token). */
 function devkitHmacSecret() {
     return getGitHubToken() || process.env.DEVKIT_HMAC_SECRET || 'devkit-local-only';
@@ -1055,7 +1100,49 @@ async function fetchGitHub(url, options = {}) {
     return res;
 }
 
-async function getGitHubFileManifest() {
+function readOtaTestSnapshotManifest() {
+    try {
+        const p = path.resolve(OTA_MANIFEST_SNAPSHOT_TEST_PATH);
+        if (!existsSync(p)) return null;
+        const st = statSync(p);
+        if (_otaSnapTestManifestCache && _otaSnapTestMtime === st.mtimeMs) {
+            return _otaSnapTestManifestCache;
+        }
+        const raw = JSON.parse(readFileSync(p, 'utf8'));
+        const out = {};
+        for (const [rel, meta] of Object.entries(raw)) {
+            if (!meta || typeof meta.hash !== 'string') continue;
+            const size = typeof meta.size === 'number' ? meta.size : 0;
+            out[rel.replace(/\\/g, '/')] = { hash: meta.hash, size };
+        }
+        _otaSnapTestMtime = st.mtimeMs;
+        _otaSnapTestManifestCache = out;
+        return out;
+    } catch (e) {
+        console.error('[OTA] Failed to read test snapshot manifest:', e.message);
+        return null;
+    }
+}
+
+/**
+ * @param {'stable'|'test'} channel  — test prefers ota-manifest-snapshot-test.json, then falls back same as stable
+ */
+async function getGitHubFileManifest(channel = 'stable') {
+    if (channel === 'test') {
+        const testSnap = readOtaTestSnapshotManifest();
+        if (testSnap && Object.keys(testSnap).length > 0) {
+            return testSnap;
+        }
+        console.warn('[OTA] test channel: no usable ota-manifest-snapshot-test.json — using stable snapshot / GitHub');
+    }
+    const snap = readOtaSnapshotManifest();
+    if (snap && Object.keys(snap).length > 0) {
+        return snap;
+    }
+    if (!getGitHubToken()) {
+        throw new Error('OTA: set OTA_MANIFEST_SNAPSHOT or add github-token.txt for GitHub manifests');
+    }
+
     const [owner, repo] = GITHUB_REPO.split('/');
     if (!owner || !repo) {
         throw new Error('Invalid GITHUB_REPO (use owner/repo)');
@@ -1164,28 +1251,34 @@ function otaUnavailable(res, message) {
     res.status(503).json({ error: 'OTA unavailable', message });
 }
 
-// GET /api/app/update/manifest — list of files and hashes from GitHub
+// GET /api/app/update/manifest — list of files and hashes (GitHub tree or optional ota-manifest-snapshot.json)
 httpApp.get('/api/app/update/manifest', async (req, res) => {
     try {
-        if (!getGitHubToken()) {
-            return otaUnavailable(res, 'Configure github-token.txt for private repo access');
-        }
-        const manifest = await getGitHubFileManifest();
-        res.json({ manifest, timestamp: Date.now() });
+        const channel = req.query && String(req.query.channel) === 'test' ? 'test' : 'stable';
+        const manifest = await getGitHubFileManifest(channel);
+        const snapTest = readOtaTestSnapshotManifest();
+        const snapStable = readOtaSnapshotManifest();
+        const snapshotBacked = channel === 'test'
+            ? !!(snapTest && Object.keys(snapTest).length > 0)
+            : !!(snapStable && Object.keys(snapStable).length > 0);
+        res.json({
+            manifest,
+            snapshot: snapshotBacked,
+            otaChannel: channel,
+            timestamp: Date.now()
+        });
     } catch (error) {
         console.error('[OTA] Error generating manifest:', error.message);
         res.status(500).json({ error: 'Failed to generate manifest', message: error.message });
     }
 });
 
-// POST /api/app/update/check — compare client manifest with GitHub, return files to update
+// POST /api/app/update/check — compare client manifest with server manifest (snapshot or GitHub)
 httpApp.post('/api/app/update/check', async (req, res) => {
     try {
-        if (!getGitHubToken()) {
-            return otaUnavailable(res, 'Configure github-token.txt for private repo access');
-        }
         const clientManifest = req.body.manifest || {};
-        const serverManifest = await getGitHubFileManifest();
+        const otaChannel = req.body && req.body.otaChannel === 'test' ? 'test' : 'stable';
+        const serverManifest = await getGitHubFileManifest(otaChannel);
         const filesToUpdate = [];
         for (const [filePath, serverFile] of Object.entries(serverManifest)) {
             const clientFile = clientManifest[filePath];
@@ -1205,7 +1298,8 @@ httpApp.post('/api/app/update/check', async (req, res) => {
             needsUpdate: unique.length > 0,
             filesToUpdate: unique,
             fileHashes,
-            totalFiles: Object.keys(serverManifest).length
+            totalFiles: Object.keys(serverManifest).length,
+            otaChannel
         });
     } catch (error) {
         console.error('[OTA] Error checking updates:', error.message);
@@ -4966,8 +5060,24 @@ function handleWebSocketConnection(ws, req) {
                 return;
             }
             
+            let levelSlugsInThread = [];
+            try {
+                levelSlugsInThread = await db.extractLevelSlugsFromForumThread(data.threadId);
+            } catch (slugErr) {
+                console.warn('[deleteForumThread] Could not scan thread for [level] slugs:', slugErr?.message || slugErr);
+            }
             const deleted = await db.deleteForumThread(data.threadId);
             if (deleted) {
+                if (levelSlugsInThread.length > 0) {
+                    try {
+                        const purge = await db.purgeStaleUserStagesAfterForumReferencesLost(levelSlugsInThread);
+                        if (purge.removedStages.length > 0) {
+                            console.log(`✅ Removed user stage(s) with no forum [level] reference: ${purge.removedStages.join(', ')} (${purge.leaderboardRowsRemoved} leaderboard row(s))`);
+                        }
+                    } catch (purgeErr) {
+                        console.error('[deleteForumThread] Stage purge after thread delete:', purgeErr);
+                    }
+                }
                 ws.send(msgpack.encode({ type: 'forumThreadDeleted', threadId: data.threadId }));
                 console.log(`✅ Thread ${data.threadId} deleted by ${ws.name || ws.googleId} (${isAdmin ? 'admin' : 'owner'})`);
             } else {
@@ -5110,8 +5220,19 @@ function handleWebSocketConnection(ws, req) {
                 return;
             }
             
+            const slugsFromPost = db.parseLevelBbcodeSlugsFromText(post.content || '');
             const deleted = await db.deleteForumPost(data.postId);
             if (deleted) {
+                if (slugsFromPost.length > 0) {
+                    try {
+                        const purge = await db.purgeStaleUserStagesAfterForumReferencesLost(slugsFromPost);
+                        if (purge.removedStages.length > 0) {
+                            console.log(`✅ Removed user stage(s) no longer referenced in forum after post delete: ${purge.removedStages.join(', ')} (${purge.leaderboardRowsRemoved} leaderboard row(s))`);
+                        }
+                    } catch (purgeErr) {
+                        console.error('[deleteForumPost] Stage purge:', purgeErr);
+                    }
+                }
                 ws.send(msgpack.encode({ type: 'forumPostDeleted', postId: data.postId, threadId: post.thread_id }));
                 console.log(`✅ Post ${data.postId} deleted by ${ws.name || 'user'} (${isAdmin ? 'admin' : 'owner'})`);
             } else {
@@ -5520,6 +5641,33 @@ rl.on('line', async (input) => {
     } catch (error) {
       console.error('❌ updateGoogleHash failed:', error);
     }
+  } else if (command === 'pruneorphanstages') {
+    const dry = parts[1] === 'dry' || parts[1] === 'list' || parts[1] === 'preview';
+    console.log(`🔄 ${dry ? '[dry-run] ' : ''}Finding user stages (\`stages\` table) with no forum [level]slug[/level] reference...`);
+    try {
+      const all = await db.getAllStages();
+      const orphans = [];
+      for (const st of all) {
+        const slug = st && st.slug ? String(st.slug) : '';
+        if (!slug) continue;
+        const n = await db.countForumPostsReferencingLevelSlug(slug);
+        if (n === 0) orphans.push(slug);
+      }
+      if (orphans.length === 0) {
+        console.log('✅ No orphan user stages.');
+        return;
+      }
+      console.log(` Found ${orphans.length} orphan slug(s):\n${orphans.map(s => `  - ${s}`).join('\n')}`);
+      if (dry) {
+        console.log('ℹ️  Dry-run only. Run pruneorphanstages (without dry) to DELETE these from DB + leaderboard.');
+        return;
+      }
+      const result = await db.pruneOrphanUserStagesNotReferencedInForum();
+      console.log(`✅ Deleted ${result.removedStages.length} stage(s): ${result.removedStages.join(', ')}`);
+      console.log(`   Leaderboard rows removed: ${result.leaderboardRowsRemoved}`);
+    } catch (error) {
+      console.error('❌ pruneorphanstages failed:', error);
+    }
   } else if (command === 'help' || command === '?') {
     console.log('\nAvailable server console commands:');
     console.log('  rang <username> <rank>  - Set user rank (player, moderator, admin)');
@@ -5528,6 +5676,8 @@ rl.on('line', async (input) => {
     console.log('  listblocked            - List all blocked IPs');
     console.log('  migratepass            - Migrate all plain text passwords to bcrypt hashes');
     console.log('  updategooglehash       - Hash raw Google IDs in DB (run once on VPS to migrate existing data)');
+    console.log('  pruneorphanstages      - DELETE user stages with no forum [level] slug + clean leaderboards');
+    console.log('  pruneorphanstages dry - List orphan slugs without deleting');
     console.log('  help                   - Show this help message');
     console.log('');
   } else {

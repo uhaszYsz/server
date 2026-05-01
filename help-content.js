@@ -1278,6 +1278,10 @@ shaderReset();[/code]`
 
 [b]Per-bone color (multiply):[/b] [code]handle.getBone("Head").color = "#ffcc00"[/code] sets Pixi [i]tint[/i] on those slot displays (hex [code]#rrggbb[/code] or [code]#rgb[/code], or numeric [code]0xRRGGBB[/code]). This multiplies the art colors like a light gel; [code]#ffffff[/code] is neutral. Invalid strings are ignored. The engine reapplies your tint each frame so animation timelines do not wipe it.
 
+[b]Per-bone scale:[/b] [code]handle.getBone("Wing").scaleX = 1.1[/code] and/or [code]handle.getBone("Wing").scaleY = 0.95[/code] set Pixi [i]scale[/i] on each slot display rooted under that bone. The pairing works like tint: once set, values are reapplied every frame.
+
+[b]DragonBones bone [color=#ffa500]offset[/color]:[/b] [code]handle.getBone("arm").offset.x[/code], [color=#ffa500].y[/color], [color=#ffa500].rotation[/color], [color=#ffa500].skew[/color], [color=#ffa500].scaleX[/color], [color=#ffa500].scaleY[/color] — same as native [code]bone.offset[/code] ([i]rotation[/i] / [i]skew[/i] in [b]radians[/b]). Setting any field triggers [code]invalidUpdate()[/code] on that bone.
+
 [b]Replace whole texture atlas (edited sheet):[/b] [code]handle.setAtlas("ForestBee_tex_damaged.png")[/code] or [code]handle.getBone("_").setAtlas("...")[/code] — same [color=#ffa500]SpriteCache[/color] / server path rules as [color=#ffa500]drawSprite[/color]. The PNG must match the character\'s exported packed atlas [i]size and layout[/i] (same UV layout), typically a lightly edited copy of the original [i]_tex.png[/i]. This uses DragonBones [i]replacedTexture[/i] on the whole armature (bone name is ignored). [code]setAtlas("")[/code] restores the default atlas. Returns false until the image has finished loading.
 
 [b]Example:[/b]
