@@ -993,7 +993,7 @@ const OTA_EXCLUDE_PREFIXES = [
 /** Present in repo www/ but not listed in OTA manifest — use getDevkit + /api/app/devkit/download only. */
 const OTA_MANIFEST_SKIP_FILES = new Set(['runner.apk']);
 
-/** If this JSON file exists, OTA uses it as the server manifest (paths → { hash, size }) instead of GitHub tree. Build with: node scripts/build-ota-snapshot-manifest.mjs <www-extract-from-aab> */
+/** If present and no GitHub token (or OTA_USE_SNAPSHOT_MANIFEST=1), OTA /update/check uses this manifest instead of the live GitHub tree. Build with: node scripts/build-ota-snapshot-manifest.mjs <www-dir> */
 const OTA_MANIFEST_SNAPSHOT_PATH = process.env.OTA_MANIFEST_SNAPSHOT || path.join(__dirname, 'ota-manifest-snapshot.json');
 /** Clients with otaChannel=test compare against this file when present; otherwise they fall back to stable manifest/GitHub. */
 const OTA_MANIFEST_SNAPSHOT_TEST_PATH = process.env.OTA_MANIFEST_SNAPSHOT_TEST || path.join(__dirname, 'ota-manifest-snapshot-test.json');
@@ -1030,7 +1030,7 @@ function readOtaSnapshotManifest() {
 try {
     const sp = path.resolve(OTA_MANIFEST_SNAPSHOT_PATH);
     if (existsSync(sp)) {
-        console.log(`[OTA] ota-manifest-snapshot.json found — update/check will use it instead of GitHub: ${sp}`);
+        console.log(`[OTA] ota-manifest-snapshot.json found at ${sp} — fallback when no GitHub token, or when OTA_USE_SNAPSHOT_MANIFEST=1 (otherwise live GitHub tree is used for /update/check)`);
     }
     const tsp = path.resolve(OTA_MANIFEST_SNAPSHOT_TEST_PATH);
     if (existsSync(tsp)) {
@@ -1126,6 +1126,8 @@ function readOtaTestSnapshotManifest() {
 
 /**
  * @param {'stable'|'test'} channel  — test prefers ota-manifest-snapshot-test.json, then falls back same as stable
+ * Stable: live GitHub tree when github-token.txt exists (push-to-update). Snapshot file is fallback without token,
+ * or when OTA_USE_SNAPSHOT_MANIFEST=1 (or OTA_USE_SNAPSHOT=1) to freeze hashes without removing the JSON.
  */
 async function getGitHubFileManifest(channel = 'stable') {
     if (channel === 'test') {
@@ -1136,48 +1138,55 @@ async function getGitHubFileManifest(channel = 'stable') {
         console.warn('[OTA] test channel: no usable ota-manifest-snapshot-test.json — using stable snapshot / GitHub');
     }
     const snap = readOtaSnapshotManifest();
-    if (snap && Object.keys(snap).length > 0) {
+    const hasSnap = !!(snap && Object.keys(snap).length > 0);
+    const token = getGitHubToken();
+    const forceSnapshot = process.env.OTA_USE_SNAPSHOT_MANIFEST === '1' || process.env.OTA_USE_SNAPSHOT === '1';
+
+    if (hasSnap && forceSnapshot) {
         return snap;
     }
-    if (!getGitHubToken()) {
-        throw new Error('OTA: set OTA_MANIFEST_SNAPSHOT or add github-token.txt for GitHub manifests');
+    if (token) {
+        const [owner, repo] = GITHUB_REPO.split('/');
+        if (!owner || !repo) {
+            throw new Error('Invalid GITHUB_REPO (use owner/repo)');
+        }
+        const baseUrl = `https://api.github.com/repos/${owner}/${repo}`;
+
+        // Fetch repo first to get default_branch (avoids 404 if branch is "master" or different)
+        const repoRes = await fetchGitHub(baseUrl);
+        const repoData = await repoRes.json();
+        const branchName = repoData.default_branch || GITHUB_BRANCH;
+        if (!branchName) throw new Error('Could not get default branch');
+        _githubBranch = branchName;
+
+        const branchRes = await fetchGitHub(`${baseUrl}/branches/${encodeURIComponent(branchName)}`);
+        const branch = await branchRes.json();
+        const commitSha = branch.commit?.sha;
+        if (!commitSha) throw new Error('Could not get branch commit');
+        const commitRes = await fetchGitHub(`${baseUrl}/git/commits/${commitSha}`);
+        const commit = await commitRes.json();
+        const treeSha = commit.tree?.sha;
+        if (!treeSha) throw new Error('Could not get tree sha');
+        const treeRes = await fetchGitHub(`${baseUrl}/git/trees/${treeSha}?recursive=1`);
+        const tree = await treeRes.json();
+        const prefix = GITHUB_WWW_PATH.replace(/\\/g, '/').replace(/\/$/, '');
+        const manifest = {};
+        for (const node of tree.tree || []) {
+            if (node.type !== 'blob') continue;
+            const p = node.path;
+            if (prefix && !p.startsWith(prefix + '/') && p !== prefix) continue;
+            const relative = prefix ? p.slice(prefix.length).replace(/^\//, '') : p;
+            if (OTA_EXCLUDE_PREFIXES.some(ex => relative.startsWith(ex))) continue;
+            if (OTA_MANIFEST_SKIP_FILES.has(relative)) continue;
+            manifest[relative] = { hash: node.sha, size: node.size };
+        }
+        return manifest;
     }
 
-    const [owner, repo] = GITHUB_REPO.split('/');
-    if (!owner || !repo) {
-        throw new Error('Invalid GITHUB_REPO (use owner/repo)');
+    if (hasSnap) {
+        return snap;
     }
-    const baseUrl = `https://api.github.com/repos/${owner}/${repo}`;
-
-    // Fetch repo first to get default_branch (avoids 404 if branch is "master" or different)
-    const repoRes = await fetchGitHub(baseUrl);
-    const repoData = await repoRes.json();
-    const branchName = repoData.default_branch || GITHUB_BRANCH;
-    if (!branchName) throw new Error('Could not get default branch');
-    _githubBranch = branchName;
-
-    const branchRes = await fetchGitHub(`${baseUrl}/branches/${encodeURIComponent(branchName)}`);
-    const branch = await branchRes.json();
-    const commitSha = branch.commit?.sha;
-    if (!commitSha) throw new Error('Could not get branch commit');
-    const commitRes = await fetchGitHub(`${baseUrl}/git/commits/${commitSha}`);
-    const commit = await commitRes.json();
-    const treeSha = commit.tree?.sha;
-    if (!treeSha) throw new Error('Could not get tree sha');
-    const treeRes = await fetchGitHub(`${baseUrl}/git/trees/${treeSha}?recursive=1`);
-    const tree = await treeRes.json();
-    const prefix = GITHUB_WWW_PATH.replace(/\\/g, '/').replace(/\/$/, '');
-    const manifest = {};
-    for (const node of tree.tree || []) {
-        if (node.type !== 'blob') continue;
-        const p = node.path;
-        if (prefix && !p.startsWith(prefix + '/') && p !== prefix) continue;
-        const relative = prefix ? p.slice(prefix.length).replace(/^\//, '') : p;
-        if (OTA_EXCLUDE_PREFIXES.some(ex => relative.startsWith(ex))) continue;
-        if (OTA_MANIFEST_SKIP_FILES.has(relative)) continue;
-        manifest[relative] = { hash: node.sha, size: node.size };
-    }
-    return manifest;
+    throw new Error('OTA: add github-token.txt for GitHub manifests, or add ota-manifest-snapshot.json (and optional OTA_USE_SNAPSHOT_MANIFEST=1)');
 }
 
 /**
