@@ -206,7 +206,6 @@ async function verifyCodeWithOpenAI(code) {
         const resp = await client.chat.completions.create({
             model: 'gpt-5.4-nano',
             temperature: 0.2,
-            max_tokens: 50,
             messages: [
                 {
                     role: 'system',
@@ -283,7 +282,6 @@ async function verifyMultipleCodesWithOpenAI(codes) {
         const resp = await client.chat.completions.create({
             model: 'gpt-5.4-nano',
             temperature: 0.2,
-            max_tokens: 50,
             messages: [
                 {
                     role: 'system',
@@ -441,10 +439,11 @@ IMPORTANT: Example code meant for the game script must follow BulletScript / dan
         tail;
 
     try {
+        // No max_tokens / max_completion_tokens: let the model use its default output budget.
+        // Per-user limits are enforced server-side (ASK_AI_MONTHLY_TOKEN_LIMIT + DB counters).
         const resp = await client.chat.completions.create({
             model: 'gpt-5.4-nano',
             temperature: 0.25,
-            max_tokens: 700,
             messages: [
                 {
                     role: 'system',
