@@ -10,6 +10,7 @@ import bcrypt from 'bcrypt';
 import DOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
 import * as spritesDb from './spritesDatabase.js';
+import * as helpContentForAi from './help-content.js';
 import OpenAI from 'openai';
 import express from 'express';
 import cors from 'cors';
@@ -321,6 +322,130 @@ async function verifyMultipleCodesWithOpenAI(codes) {
     } catch (error) {
         console.error('[verifyMultipleCodesWithOpenAI] Failed:', error);
         return null;
+    }
+}
+
+const BULLET_SCRIPT_INFO_PATH = path.join(__dirname, '..', 'bulletScriptInfo.md');
+let _bulletScriptInfoTextCached = null;
+function getBulletScriptInfoTextForAi() {
+    if (_bulletScriptInfoTextCached !== null) return _bulletScriptInfoTextCached;
+    try {
+        if (existsSync(BULLET_SCRIPT_INFO_PATH)) {
+            _bulletScriptInfoTextCached = String(readFileSync(BULLET_SCRIPT_INFO_PATH, 'utf8') || '');
+        } else {
+            _bulletScriptInfoTextCached = '';
+        }
+    } catch (e) {
+        console.warn('[codeInterpreterAskAi] bulletScriptInfo.md read failed:', e?.message);
+        _bulletScriptInfoTextCached = '';
+    }
+    return _bulletScriptInfoTextCached;
+}
+
+const HELP_CONTENT_AI_KEYS = [
+    'specialKeywordsHelp',
+    'builtInVariablesHelp',
+    'danmakuHelpersHelp',
+    'dragonBonesHelp',
+    'javaScriptStuffHelp',
+    'mathFunctionsHelp',
+    'arrayMethodsHelp',
+    'stringMethodsHelp',
+    'numberMethodsHelp',
+    'globalFunctionsHelp',
+    'arrayConstructorHelp',
+    'stringNumberConstructorsHelp'
+];
+let _helpContentCorpusForAiCached = null;
+function getHelpContentCorpusForAi() {
+    if (_helpContentCorpusForAiCached !== null) return _helpContentCorpusForAiCached;
+    const chunks = [];
+    let total = 0;
+    const MAX = 90000;
+    for (const key of HELP_CONTENT_AI_KEYS) {
+        const arr = helpContentForAi[key];
+        if (!Array.isArray(arr)) continue;
+        for (const item of arr) {
+            if (!item || typeof item !== 'object') continue;
+            const title = item.name || item.threadTitle || key;
+            const body = item.content || '';
+            const piece = `\n## ${String(title)}\n${String(body)}\n`;
+            if (total + piece.length > MAX) {
+                _helpContentCorpusForAiCached = chunks.join('');
+                return _helpContentCorpusForAiCached;
+            }
+            chunks.push(piece);
+            total += piece.length;
+        }
+    }
+    _helpContentCorpusForAiCached = chunks.join('');
+    return _helpContentCorpusForAiCached;
+}
+
+async function completeCodeInterpreterAskAi(userQuestion, objectCodes) {
+    const client = getOpenAIClient();
+    if (!client) {
+        return { ok: false, error: 'Server missing OpenAI key' };
+    }
+    const q = String(userQuestion || '').trim();
+    const code = String(objectCodes || '').trim();
+    if (!q) {
+        return { ok: false, error: 'No question provided' };
+    }
+    const MAX_Q = 4000;
+    const MAX_CODE = 24000;
+    const safeQ = q.length > MAX_Q ? q.slice(0, MAX_Q) : q;
+    const safeCode = code.length > MAX_CODE ? code.slice(0, MAX_CODE) : code;
+
+    const bulletDoc = getBulletScriptInfoTextForAi();
+    const helpCorpus = getHelpContentCorpusForAi();
+    const MAX_DOC = 95000;
+    const bulletSlice = bulletDoc.length > MAX_DOC ? bulletDoc.slice(0, MAX_DOC) : bulletDoc;
+    const helpSlice = helpCorpus.length > MAX_DOC ? helpCorpus.slice(0, MAX_DOC) : helpCorpus;
+
+    const tail = `///BASING ON FILES YOU HAVE ACCESS TO HELP USER WITH HIS PROBLEM:
+
+${safeQ}
+
+Question is about code:
+${safeCode}
+
+give anwser basing on files bulletScriptInfo.md and help-content.txt
+anwser must be short 2 line explaination plus code if anwser requires it.`;
+
+    const userPayload =
+        'Use the following reference material (bulletScriptInfo.md and help-content equivalent).\n\n' +
+        '--- bulletScriptInfo.md ---\n' +
+        bulletSlice +
+        '\n\n--- help-content.txt ---\n' +
+        helpSlice +
+        '\n\n---\n\n' +
+        tail;
+
+    try {
+        const resp = await client.chat.completions.create({
+            model: 'gpt-4o-mini',
+            temperature: 0.25,
+            max_tokens: 700,
+            messages: [
+                {
+                    role: 'system',
+                    content:
+                        'You help authors with stage object / danmaku interpreter scripts for this game. ' +
+                        'Answer using the reference excerpts only when they apply. ' +
+                        'Follow the user format: a short explanation (about two lines) plus code in a fenced markdown block only if the answer needs code.'
+                },
+                { role: 'user', content: userPayload.length > 180000 ? userPayload.slice(0, 180000) : userPayload }
+            ]
+        });
+        const answer = String(resp?.choices?.[0]?.message?.content || '').trim();
+        if (!answer) {
+            return { ok: false, error: 'Empty model response' };
+        }
+        return { ok: true, answer };
+    } catch (error) {
+        console.error('[completeCodeInterpreterAskAi] Failed:', error);
+        return { ok: false, error: error?.message || 'AI request failed' };
     }
 }
 
@@ -4422,6 +4547,42 @@ function handleWebSocketConnection(ws, req) {
                 ok: false,
                 error: error?.message || 'Verification failed'
             }));
+        }
+      } else if (data.type === 'codeInterpreterAskAi') {
+        try {
+            const requestId = (data && typeof data.requestId === 'string') ? data.requestId : null;
+            const userQuestion = (data && typeof data.userQuestion === 'string') ? data.userQuestion : '';
+            const objectCodes = (data && typeof data.objectCodes === 'string') ? data.objectCodes : '';
+            const result = await completeCodeInterpreterAskAi(userQuestion, objectCodes);
+            if (result.ok) {
+                ws.send(
+                    msgpack.encode({
+                        type: 'codeInterpreterAskAiResult',
+                        requestId,
+                        ok: true,
+                        answer: result.answer
+                    })
+                );
+            } else {
+                ws.send(
+                    msgpack.encode({
+                        type: 'codeInterpreterAskAiResult',
+                        requestId,
+                        ok: false,
+                        error: result.error || 'Ask AI failed'
+                    })
+                );
+            }
+        } catch (error) {
+            console.error('[codeInterpreterAskAi] Failed:', error);
+            ws.send(
+                msgpack.encode({
+                    type: 'codeInterpreterAskAiResult',
+                    requestId: (data && typeof data.requestId === 'string') ? data.requestId : null,
+                    ok: false,
+                    error: error?.message || 'Ask AI failed'
+                })
+            );
         }
       } else if (data.type === 'reverifyThreadCodes') {
         // Re-verify all code blocks in a thread (admin only)
