@@ -381,7 +381,7 @@ function getHelpContentCorpusForAi() {
 }
 
 /** Monthly cap per user on prompt+completion tokens (same window as DB ask‑ai counters; see maybeResetAllAskAiTokensIfPeriodExpired). */
-const ASK_AI_MONTHLY_TOKEN_LIMIT = 1_000_000;
+const ASK_AI_MONTHLY_TOKEN_LIMIT = 2_000_000;
 
 function askAiPeriodEndsAtFromStartIso(periodStartIso) {
     if (!periodStartIso || typeof periodStartIso !== 'string') return null;
@@ -389,7 +389,7 @@ function askAiPeriodEndsAtFromStartIso(periodStartIso) {
     return Number.isFinite(endMs) ? new Date(endMs).toISOString() : null;
 }
 
-async function completeCodeInterpreterAskAi(userQuestion, objectCodes, previousAssistantAnswer) {
+async function completeCodeInterpreterAskAi(userQuestion, objectCodes, previousAssistantAnswer, stageContext) {
     const client = getOpenAIClient();
     if (!client) {
         return { ok: false, error: 'Server missing OpenAI key' };
@@ -414,11 +414,27 @@ async function completeCodeInterpreterAskAi(userQuestion, objectCodes, previousA
     const bulletSlice = bulletDoc.length > MAX_DOC ? bulletDoc.slice(0, MAX_DOC) : bulletDoc;
     const helpSlice = helpCorpus.length > MAX_DOC ? helpCorpus.slice(0, MAX_DOC) : helpCorpus;
 
+    const sc = stageContext && typeof stageContext === 'object' ? stageContext : {};
+    const rawNames = String(sc.objectNamesList || '').trim();
+    const rawWaves = String(sc.wavesSummary || '').trim();
+    const MAX_CTX_NAMES = 8000;
+    const MAX_CTX_WAVES = 16000;
+    const safeNames =
+        rawNames.length > MAX_CTX_NAMES ? rawNames.slice(0, MAX_CTX_NAMES) + '\n…(truncated)' : rawNames;
+    const safeWaves =
+        rawWaves.length > MAX_CTX_WAVES ? rawWaves.slice(0, MAX_CTX_WAVES) + '\n…(truncated)' : rawWaves;
+    const stageOverview =
+        safeNames || safeWaves
+            ? `--- Current stage (editor) ---\n` +
+              `All code object definition names in this stage (one per line):\n${safeNames || '(none)'}\n\n` +
+              `Waves and placed instances (wave id/name, then each line: instance id + objID = object type + optional pos):\n${safeWaves || '(none)'}\n---\n\n`
+            : '';
+
     const followUpContext = safePrev
         ? `For context here is last message user replied to\n\n${safePrev}\n\n`
         : '';
 
-    const tail = `${followUpContext}///BASING ON FILES YOU HAVE ACCESS TO HELP USER WITH HIS PROBLEM:
+    const tail = `${followUpContext}${stageOverview}///BASING ON FILES YOU HAVE ACCESS TO HELP USER WITH HIS PROBLEM:
 
 ${safeQ}
 
@@ -449,6 +465,7 @@ IMPORTANT: Example code meant for the game script must follow BulletScript / dan
                     role: 'system',
                     content:
                         'You help authors with BulletScript-style stage/danmaku interpreter code for this game (see reference: bulletScript + help snippets). ' +
+                        'When a "Current stage (editor)" section is present, use it for object names, waves, and which object types (objID) appear in which wave. ' +
                         'Prefer the excerpts; when you include runnable snippets for Main/script flows, format them like BulletScript: # line prefixes and interpreter blocks — not idiomatic standalone JavaScript braces where the corpus uses # indentation. ' +
                         'Brief explanation (~two lines); use a fenced markdown code block only when code is helpful.'
                 },
@@ -4674,7 +4691,12 @@ function handleWebSocketConnection(ws, req) {
             const objectCodes = (data && typeof data.objectCodes === 'string') ? data.objectCodes : '';
             const previousAssistantAnswer =
                 data && typeof data.previousAssistantAnswer === 'string' ? data.previousAssistantAnswer : '';
-            const result = await completeCodeInterpreterAskAi(userQuestion, objectCodes, previousAssistantAnswer);
+            const objectNamesList = (data && typeof data.objectNamesList === 'string') ? data.objectNamesList : '';
+            const wavesSummary = (data && typeof data.wavesSummary === 'string') ? data.wavesSummary : '';
+            const result = await completeCodeInterpreterAskAi(userQuestion, objectCodes, previousAssistantAnswer, {
+                objectNamesList,
+                wavesSummary
+            });
             if (result.ok) {
                 let askAiTokenUsage = null;
                 let askAiPeriodEndsAt = null;
