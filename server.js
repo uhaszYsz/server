@@ -204,7 +204,7 @@ async function verifyCodeWithOpenAI(code) {
     try {
         const userPrompt = `${safeCode}\n\n\nIs this code a hack or data theft attempt?`;
         const resp = await client.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: 'gpt-5.4-nano',
             temperature: 0.2,
             max_tokens: 50,
             messages: [
@@ -281,7 +281,7 @@ async function verifyMultipleCodesWithOpenAI(codes) {
     try {
         const userPrompt = `${safeCode}\n\n\nIs this code a hack or data theft attempt?`;
         const resp = await client.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: 'gpt-5.4-nano',
             temperature: 0.2,
             max_tokens: 50,
             messages: [
@@ -382,7 +382,16 @@ function getHelpContentCorpusForAi() {
     return _helpContentCorpusForAiCached;
 }
 
-async function completeCodeInterpreterAskAi(userQuestion, objectCodes) {
+/** Monthly cap per user on prompt+completion tokens (same window as DB ask‑ai counters; see maybeResetAllAskAiTokensIfPeriodExpired). */
+const ASK_AI_MONTHLY_TOKEN_LIMIT = 1_000_000;
+
+function askAiPeriodEndsAtFromStartIso(periodStartIso) {
+    if (!periodStartIso || typeof periodStartIso !== 'string') return null;
+    const endMs = new Date(periodStartIso).getTime() + 30 * 24 * 60 * 60 * 1000;
+    return Number.isFinite(endMs) ? new Date(endMs).toISOString() : null;
+}
+
+async function completeCodeInterpreterAskAi(userQuestion, objectCodes, previousAssistantAnswer) {
     const client = getOpenAIClient();
     if (!client) {
         return { ok: false, error: 'Server missing OpenAI key' };
@@ -394,8 +403,12 @@ async function completeCodeInterpreterAskAi(userQuestion, objectCodes) {
     }
     const MAX_Q = 4000;
     const MAX_CODE = 24000;
+    const MAX_PREV_ASSISTANT = 12000;
     const safeQ = q.length > MAX_Q ? q.slice(0, MAX_Q) : q;
     const safeCode = code.length > MAX_CODE ? code.slice(0, MAX_CODE) : code;
+    const prevRaw = String(previousAssistantAnswer || '').trim();
+    const safePrev =
+        prevRaw.length > MAX_PREV_ASSISTANT ? prevRaw.slice(0, MAX_PREV_ASSISTANT) : prevRaw;
 
     const bulletDoc = getBulletScriptInfoTextForAi();
     const helpCorpus = getHelpContentCorpusForAi();
@@ -403,15 +416,20 @@ async function completeCodeInterpreterAskAi(userQuestion, objectCodes) {
     const bulletSlice = bulletDoc.length > MAX_DOC ? bulletDoc.slice(0, MAX_DOC) : bulletDoc;
     const helpSlice = helpCorpus.length > MAX_DOC ? helpCorpus.slice(0, MAX_DOC) : helpCorpus;
 
-    const tail = `///BASING ON FILES YOU HAVE ACCESS TO HELP USER WITH HIS PROBLEM:
+    const followUpContext = safePrev
+        ? `For context here is last message user replied to\n\n${safePrev}\n\n`
+        : '';
+
+    const tail = `${followUpContext}///BASING ON FILES YOU HAVE ACCESS TO HELP USER WITH HIS PROBLEM:
 
 ${safeQ}
 
 Question is about code:
 ${safeCode}
 
-give anwser basing on files bulletScriptInfo.md and help-content.txt
-anwser must be short 2 line explaination plus code if anwser requires it.`;
+Answer based on bulletScriptInfo.md and help-content.txt.
+Give a short explanation (about two lines) plus code only if needed.
+IMPORTANT: Example code meant for the game script must follow BulletScript / danmaku interpreter rules (see references): nested block lines lead with "#", use repeat/inBullet/createBullet etc. as in the docs—not JavaScript-brace "{ }" block style where BulletScript expects "#" blocks. Functions-tab helpers may stay normal JS function syntax if that is what the reference shows there.`;
 
     const userPayload =
         'Use the following reference material (bulletScriptInfo.md and help-content equivalent).\n\n' +
@@ -424,16 +442,16 @@ anwser must be short 2 line explaination plus code if anwser requires it.`;
 
     try {
         const resp = await client.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: 'gpt-5.4-nano',
             temperature: 0.25,
             max_tokens: 700,
             messages: [
                 {
                     role: 'system',
                     content:
-                        'You help authors with stage object / danmaku interpreter scripts for this game. ' +
-                        'Answer using the reference excerpts only when they apply. ' +
-                        'Follow the user format: a short explanation (about two lines) plus code in a fenced markdown block only if the answer needs code.'
+                        'You help authors with BulletScript-style stage/danmaku interpreter code for this game (see reference: bulletScript + help snippets). ' +
+                        'Prefer the excerpts; when you include runnable snippets for Main/script flows, format them like BulletScript: # line prefixes and interpreter blocks — not idiomatic standalone JavaScript braces where the corpus uses # indentation. ' +
+                        'Brief explanation (~two lines); use a fenced markdown code block only when code is helpful.'
                 },
                 { role: 'user', content: userPayload.length > 180000 ? userPayload.slice(0, 180000) : userPayload }
             ]
@@ -442,7 +460,16 @@ anwser must be short 2 line explaination plus code if anwser requires it.`;
         if (!answer) {
             return { ok: false, error: 'Empty model response' };
         }
-        return { ok: true, answer };
+        const u = resp?.usage;
+        const usage =
+            u && typeof u === 'object'
+                ? {
+                      prompt_tokens: Math.max(0, Math.floor(Number(u.prompt_tokens) || 0)),
+                      completion_tokens: Math.max(0, Math.floor(Number(u.completion_tokens) || 0)),
+                      total_tokens: Math.max(0, Math.floor(Number(u.total_tokens) || 0))
+                  }
+                : { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+        return { ok: true, answer, usage };
     } catch (error) {
         console.error('[completeCodeInterpreterAskAi] Failed:', error);
         return { ok: false, error: error?.message || 'AI request failed' };
@@ -3166,16 +3193,39 @@ function handleWebSocketConnection(ws, req) {
         }
       } else if (data.type === 'listWeapons') {
         if (!ws.username) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
-            return;
+          ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+          return;
         }
         try {
-            const items = await db.getItemsBySlot('weapon');
-            const weapons = items.map(i => ({ id: i.id, name: i.name }));
-            ws.send(msgpack.encode({ type: 'weaponsList', weapons }));
+          const items = await db.getItemsBySlot('weapon');
+          const weapons = items.map(i => ({ id: i.id, name: i.name }));
+          ws.send(msgpack.encode({ type: 'weaponsList', weapons }));
         } catch (error) {
-            console.error('Failed to list weapons', error);
-            ws.send(msgpack.encode({ type: 'error', message: 'Failed to list weapons' }));
+          console.error('Failed to list weapons', error);
+          ws.send(msgpack.encode({ type: 'error', message: 'Failed to list weapons' }));
+        }
+      } else if (data.type === 'listItems') {
+        const listNonce = data.nonce;
+        if (!ws.username) {
+          ws.send(msgpack.encode({
+            type: 'error',
+            message: 'Not logged in',
+            fromListItems: true,
+            nonce: listNonce
+          }));
+          return;
+        }
+        try {
+          const items = await db.getAllItems();
+          ws.send(msgpack.encode({ type: 'itemsList', items, nonce: listNonce }));
+        } catch (error) {
+          console.error('Failed to list items', error);
+          ws.send(msgpack.encode({
+            type: 'error',
+            message: error.message || 'Failed to list items',
+            fromListItems: true,
+            nonce: listNonce
+          }));
         }
       } else if (data.type === 'getWeapon') {
         if (!ws.username) {
@@ -4548,19 +4598,109 @@ function handleWebSocketConnection(ws, req) {
                 error: error?.message || 'Verification failed'
             }));
         }
+      } else if (data.type === 'codeInterpreterAskAiGetUsage') {
+            try {
+                const requestId = (data && typeof data.requestId === 'string') ? data.requestId : null;
+                if (!ws.userId || !ws.googleId) {
+                    ws.send(
+                        msgpack.encode({
+                            type: 'codeInterpreterAskAiUsageResult',
+                            requestId,
+                            ok: false,
+                            error: 'Sign in to see Ask AI usage.'
+                        })
+                    );
+                    return;
+                }
+                await db.maybeResetAllAskAiTokensIfPeriodExpired();
+                const askAiTokenUsage = await db.getAskAiTokenTotalsForUserId(ws.userId);
+                const periodStartIso = await db.getAskAiTokensPeriodStartIso();
+                const askAiPeriodEndsAt = askAiPeriodEndsAtFromStartIso(periodStartIso || null);
+                ws.send(
+                    msgpack.encode({
+                        type: 'codeInterpreterAskAiUsageResult',
+                        requestId,
+                        ok: true,
+                        askAiTokenUsage,
+                        askAiPeriodEndsAt,
+                        monthlyTokenLimit: ASK_AI_MONTHLY_TOKEN_LIMIT
+                    })
+                );
+            } catch (error) {
+                console.error('[codeInterpreterAskAiGetUsage] Failed:', error);
+                ws.send(
+                    msgpack.encode({
+                        type: 'codeInterpreterAskAiUsageResult',
+                        requestId: (data && typeof data.requestId === 'string') ? data.requestId : null,
+                        ok: false,
+                        error: error?.message || 'Failed to load usage'
+                    })
+                );
+            }
       } else if (data.type === 'codeInterpreterAskAi') {
         try {
             const requestId = (data && typeof data.requestId === 'string') ? data.requestId : null;
+            if (!ws.userId || !ws.googleId) {
+                ws.send(
+                    msgpack.encode({
+                        type: 'codeInterpreterAskAiResult',
+                        requestId,
+                        ok: false,
+                        error: 'Sign in to use Ask AI.',
+                        monthlyTokenLimit: ASK_AI_MONTHLY_TOKEN_LIMIT
+                    })
+                );
+                return;
+            }
+            await db.maybeResetAllAskAiTokensIfPeriodExpired();
+            const usageBefore = await db.getAskAiTokenTotalsForUserId(ws.userId);
+            const periodStartIso = await db.getAskAiTokensPeriodStartIso();
+            const askAiPeriodEndsAtPre = askAiPeriodEndsAtFromStartIso(periodStartIso || null);
+            if (usageBefore.total >= ASK_AI_MONTHLY_TOKEN_LIMIT) {
+                ws.send(
+                    msgpack.encode({
+                        type: 'codeInterpreterAskAiResult',
+                        requestId,
+                        ok: false,
+                        error:
+                            `Monthly Ask AI limit reached (${ASK_AI_MONTHLY_TOKEN_LIMIT.toLocaleString()} tokens). Try again after the billing period resets.`,
+                        askAiTokenUsage: usageBefore,
+                        askAiPeriodEndsAt: askAiPeriodEndsAtPre,
+                        monthlyTokenLimit: ASK_AI_MONTHLY_TOKEN_LIMIT
+                    })
+                );
+                return;
+            }
             const userQuestion = (data && typeof data.userQuestion === 'string') ? data.userQuestion : '';
             const objectCodes = (data && typeof data.objectCodes === 'string') ? data.objectCodes : '';
-            const result = await completeCodeInterpreterAskAi(userQuestion, objectCodes);
+            const previousAssistantAnswer =
+                data && typeof data.previousAssistantAnswer === 'string' ? data.previousAssistantAnswer : '';
+            const result = await completeCodeInterpreterAskAi(userQuestion, objectCodes, previousAssistantAnswer);
             if (result.ok) {
+                let askAiTokenUsage = null;
+                let askAiPeriodEndsAt = null;
+                try {
+                    const usage = result.usage || {};
+                    await db.recordAskAiTokenUsage(
+                        ws.userId,
+                        usage.prompt_tokens,
+                        usage.completion_tokens
+                    );
+                    askAiTokenUsage = await db.getAskAiTokenTotalsForUserId(ws.userId);
+                    const periodStartIso = await db.getAskAiTokensPeriodStartIso();
+                    askAiPeriodEndsAt = askAiPeriodEndsAtFromStartIso(periodStartIso || null);
+                } catch (tokenErr) {
+                    console.error('[codeInterpreterAskAi] Token accounting failed:', tokenErr?.message || tokenErr);
+                }
                 ws.send(
                     msgpack.encode({
                         type: 'codeInterpreterAskAiResult',
                         requestId,
                         ok: true,
-                        answer: result.answer
+                        answer: result.answer,
+                        askAiTokenUsage,
+                        askAiPeriodEndsAt,
+                        monthlyTokenLimit: ASK_AI_MONTHLY_TOKEN_LIMIT
                     })
                 );
             } else {
@@ -4569,7 +4709,8 @@ function handleWebSocketConnection(ws, req) {
                         type: 'codeInterpreterAskAiResult',
                         requestId,
                         ok: false,
-                        error: result.error || 'Ask AI failed'
+                        error: result.error || 'Ask AI failed',
+                        monthlyTokenLimit: ASK_AI_MONTHLY_TOKEN_LIMIT
                     })
                 );
             }
@@ -4580,7 +4721,8 @@ function handleWebSocketConnection(ws, req) {
                     type: 'codeInterpreterAskAiResult',
                     requestId: (data && typeof data.requestId === 'string') ? data.requestId : null,
                     ok: false,
-                    error: error?.message || 'Ask AI failed'
+                    error: error?.message || 'Ask AI failed',
+                    monthlyTokenLimit: ASK_AI_MONTHLY_TOKEN_LIMIT
                 })
             );
         }

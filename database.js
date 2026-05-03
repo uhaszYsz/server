@@ -106,6 +106,32 @@ export function initDatabase() {
                     return;
                 }
                 console.log('✅ Users table initialized');
+
+                db.run(
+                    `
+                    CREATE TABLE IF NOT EXISTS server_settings (
+                        key TEXT PRIMARY KEY NOT NULL,
+                        value TEXT NOT NULL
+                    )
+                `,
+                    (err) => {
+                        if (err) {
+                            console.warn('Warning: Could not create server_settings:', err.message);
+                        } else {
+                            console.log('✅ server_settings table initialized');
+                        }
+                    }
+                );
+                db.run(`ALTER TABLE users ADD COLUMN ask_ai_tokens_prompt INTEGER NOT NULL DEFAULT 0`, (err) => {
+                    if (err && !err.message.includes('duplicate column name')) {
+                        console.warn('Warning: Could not add ask_ai_tokens_prompt:', err.message);
+                    }
+                });
+                db.run(`ALTER TABLE users ADD COLUMN ask_ai_tokens_completion INTEGER NOT NULL DEFAULT 0`, (err) => {
+                    if (err && !err.message.includes('duplicate column name')) {
+                        console.warn('Warning: Could not add ask_ai_tokens_completion:', err.message);
+                    }
+                });
                 
                 // Create forum tables
                 db.run(`
@@ -2297,6 +2323,23 @@ export function createItem(name, slot, codeChildren) {
     });
 }
 
+/** All rows in `items` (id, name, slot) for client catalogs (e.g. loot editor). */
+export function getAllItems() {
+    return new Promise((resolve, reject) => {
+        db.all('SELECT id, name, slot FROM items ORDER BY slot, name', (err, rows) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve((rows || []).map(row => ({
+                id: row.id,
+                name: row.name,
+                slot: row.slot
+            })));
+        });
+    });
+}
+
 export function getItemsBySlot(slot) {
     return new Promise((resolve, reject) => {
         const slotStr = typeof slot === 'string' ? slot.trim() : 'weapon';
@@ -2517,6 +2560,114 @@ export function updateGoogleHashInDatabase() {
             reject(err);
         }
     });
+}
+
+const ASK_AI_TOKENS_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
+const ASK_AI_PERIOD_START_KEY = 'ask_ai_tokens_period_start';
+
+function getServerSetting(key) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT value FROM server_settings WHERE key = ?', [key], (err, row) => {
+            if (err) reject(err);
+            else resolve(row ? row.value : null);
+        });
+    });
+}
+
+function setServerSetting(key, value) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            'INSERT INTO server_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+            [key, String(value)],
+            function (err) {
+                if (err) reject(err);
+                else resolve();
+            }
+        );
+    });
+}
+
+/** Ensure global Ask AI billing period row exists (ISO start time). */
+export async function ensureAskAiTokensPeriodStart() {
+    const existing = await getServerSetting(ASK_AI_PERIOD_START_KEY);
+    if (!existing) {
+        await setServerSetting(ASK_AI_PERIOD_START_KEY, new Date().toISOString());
+    }
+}
+
+/**
+ * If the global 30-day window has elapsed, zero ask-ai token columns for all users
+ * and start a new period. Safe to call before each usage record.
+ */
+export async function maybeResetAllAskAiTokensIfPeriodExpired() {
+    await ensureAskAiTokensPeriodStart();
+    const startIso = await getServerSetting(ASK_AI_PERIOD_START_KEY);
+    const startMs = startIso ? new Date(startIso).getTime() : NaN;
+    if (!Number.isFinite(startMs)) {
+        await setServerSetting(ASK_AI_PERIOD_START_KEY, new Date().toISOString());
+        return true;
+    }
+    if (Date.now() - startMs < ASK_AI_TOKENS_PERIOD_MS) {
+        return false;
+    }
+    await new Promise((resolve, reject) => {
+        db.run(
+            'UPDATE users SET ask_ai_tokens_prompt = 0, ask_ai_tokens_completion = 0',
+            (err) => {
+                if (err) reject(err);
+                else resolve();
+            }
+        );
+    });
+    await setServerSetting(ASK_AI_PERIOD_START_KEY, new Date().toISOString());
+    console.log('[askAiTokens] Global 30-day period rolled; all user Ask AI token counters reset.');
+    return true;
+}
+
+/** Add OpenAI-reported token usage for one user (after maybeReset…). */
+export async function recordAskAiTokenUsage(userId, promptTokens, completionTokens) {
+    const p = Math.max(0, Math.floor(Number(promptTokens) || 0));
+    const c = Math.max(0, Math.floor(Number(completionTokens) || 0));
+    await maybeResetAllAskAiTokensIfPeriodExpired();
+    await new Promise((resolve, reject) => {
+        db.run(
+            `UPDATE users SET
+                ask_ai_tokens_prompt = COALESCE(ask_ai_tokens_prompt, 0) + ?,
+                ask_ai_tokens_completion = COALESCE(ask_ai_tokens_completion, 0) + ?
+             WHERE id = ?`,
+            [p, c, userId],
+            function (err) {
+                if (err) reject(err);
+                else if (this.changes === 0) reject(new Error('recordAskAiTokenUsage: user not found'));
+                else resolve();
+            }
+        );
+    });
+}
+
+export async function getAskAiTokenTotalsForUserId(userId) {
+    const row = await new Promise((resolve, reject) => {
+        db.get(
+            'SELECT ask_ai_tokens_prompt, ask_ai_tokens_completion FROM users WHERE id = ?',
+            [userId],
+            (err, r) => {
+                if (err) reject(err);
+                else resolve(r || null);
+            }
+        );
+    });
+    if (!row) {
+        return { prompt: 0, completion: 0, total: 0 };
+    }
+    const prompt = row.ask_ai_tokens_prompt != null ? row.ask_ai_tokens_prompt : 0;
+    const completion = row.ask_ai_tokens_completion != null ? row.ask_ai_tokens_completion : 0;
+    return { prompt, completion, total: prompt + completion };
+}
+
+/** ISO time when the current global Ask AI period started (for UI). */
+export async function getAskAiTokensPeriodStartIso() {
+    await ensureAskAiTokensPeriodStart();
+    return getServerSetting(ASK_AI_PERIOD_START_KEY);
 }
 
 // Close database connection
