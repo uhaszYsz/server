@@ -154,8 +154,9 @@ interval(20, 5, 0)
 export const builtInVariablesHelp = [
     {
         name: 'player',
-        content: `The player object you can read from (position, health, knockback, etc). 
-[b]Properties:[/b] [color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]hp[/color], [color=#ffa500]knockbackTime[/color], [color=#ffa500]knockbackPower[/color], [color=#ffa500]knockbackDirection[/color]`
+        content: `The player object you can read from (position, health, knockback, etc). When [color=#ffa500]playerData[/color] is missing (e.g. you never opened inventory), the client uses the same [i]placeholder[/i] defaults as the inventory modal until the server sends real data. When [color=#ffa500]playerData[/color] arrives or changes (server / inventory) and when [color=#ffa500]player[/color] is (re)created, the game copies aggregated equipment [color=#ffa500]stats[/color] onto the same object so you can read e.g. [color=#ffa500]player.critical[/color], [color=#ffa500]player.block[/color], [color=#ffa500]player.knockback[/color] (knockback [i]resistance[/i], not knockbackTime), [color=#ffa500]player.MpRegen[/color], [color=#ffa500]player.recovery[/color], [color=#ffa500]player.reload[/color], [color=#ffa500]player.maxHp[/color], [color=#ffa500]player.maxMp[/color], plus any other keys on [color=#ffa500]stats[/color] except reserved engine fields ([color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]hp[/color], [color=#ffa500]mp[/color], knockback movement timers, etc). Do not rely on assigning these for combat — the next sync overwrites them. [color=#ffa500]Game.syncPlayerStatsFromInventoryIfPossible()[/color] exists if you need to refresh after a rare client-only stats change.
+
+[b]Properties:[/b] [color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]hp[/color], [color=#ffa500]mp[/color], [color=#ffa500]maxHp[/color], [color=#ffa500]maxMp[/color], [color=#ffa500]knockbackTime[/color], [color=#ffa500]knockbackPower[/color], [color=#ffa500]knockbackDirection[/color], and the equipment stats listed above.`
     },
     {
         name: 'bulletData',
