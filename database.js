@@ -394,6 +394,7 @@ export function getAllUsers() {
             const users = rows.map(row => {
                 const user = {
                     id: row.id,
+                    googleIdHash: row.googleIdHash,
                     name: row.name || null,
                     stats: JSON.parse(row.stats),
                     inventory: JSON.parse(row.inventory),
@@ -406,6 +407,61 @@ export function getAllUsers() {
 
             resolve(users);
         });
+    });
+}
+
+// Update user by googleIdHash (expects already-hashed Google ID)
+export function updateUserByGoogleIdHash(googleIdHash, userData) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            if (!googleIdHash || typeof googleIdHash !== 'string') {
+                reject(new Error('googleIdHash is required'));
+                return;
+            }
+
+            // Get existing name if not updating
+            let nameToStore = userData.name || null;
+            if (!nameToStore) {
+                const existingUser = await getUserByGoogleIdHash(googleIdHash);
+                nameToStore = existingUser ? existingUser.name : null;
+            }
+
+            const stmt = db.prepare(`
+                UPDATE users 
+                SET name = COALESCE(?, name),
+                    stats = ?,
+                    inventory = ?,
+                    equipment = ?,
+                    weaponData = ?,
+                    passiveAbility = ?,
+                    rank = ?,
+                    verified = ?
+                WHERE googleIdHash = ?
+            `);
+
+            stmt.run(
+                nameToStore,
+                JSON.stringify(userData.stats || {}),
+                JSON.stringify(userData.inventory || []),
+                JSON.stringify(userData.equipment || {}),
+                userData.weaponData ? JSON.stringify(userData.weaponData) : null,
+                null, // passiveAbility always null (deprecated)
+                userData.rank || 'player',
+                null, // verified always null (deprecated)
+                googleIdHash,
+                function(err) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                }
+            );
+
+            stmt.finalize();
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 

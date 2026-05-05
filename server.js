@@ -157,34 +157,10 @@ await Promise.all([
 ]);
 
 // Equipment slots
-const EQUIPMENT_SLOTS = ['weapon', 'armor', 'amulet', 'outfit', 'spellcard'];
-
-// Outfit list: same as client outfits.js (displayName + characterIndex for sprite)
-const OUTFIT_LIST = [
-    { characterIndex: 1, displayName: 'Glenys Alt 1' },
-    { characterIndex: 2, displayName: 'Glenys Alt 2' },
-    { characterIndex: 3, displayName: 'Glenys' },
-    { characterIndex: 4, displayName: 'Hex Alt 1' },
-    { characterIndex: 5, displayName: 'Hex Alt 2' },
-    { characterIndex: 6, displayName: 'Hex' },
-    { characterIndex: 7, displayName: 'Ley Alt 1' },
-    { characterIndex: 8, displayName: 'Ley Alt 2' },
-    { characterIndex: 9, displayName: 'Ley' },
-    { characterIndex: 10, displayName: 'Linail Alt 1' },
-    { characterIndex: 11, displayName: 'Linail Alt 2' },
-    { characterIndex: 12, displayName: 'Linail' },
-    { characterIndex: 13, displayName: 'Oratio Alt 1' },
-    { characterIndex: 14, displayName: 'Oratio Alt 2' },
-    { characterIndex: 15, displayName: 'Oratio' },
-    { characterIndex: 16, displayName: 'Ouzo Alt 1' },
-    { characterIndex: 17, displayName: 'Ouzo Alt 2' },
-    { characterIndex: 18, displayName: 'Ouzo' },
-    { characterIndex: 39, displayName: 'Prime Alt' },
-    { characterIndex: 40, displayName: 'Prime' }
-];
+const EQUIPMENT_SLOTS = ['weapon', 'armor', 'amulet', 'spellcard'];
 
 // Available stats for items
-const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback', 'recovery', 'reload'];
+const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback', 'recovery', 'reload', 'parry', 'destroyer', 'weakspot', 'pierce', 'medic'];
 
 // Generate a random item for a given slot
 function generateRandomItem(slotName) {
@@ -336,7 +312,12 @@ function getDefaultStats() {
         block: 5,
         knockback: 0,
         recovery: 0,
-        reload: 0
+        reload: 0,
+        parry: 0,
+        destroyer: 0,
+        weakspot: 0,
+        pierce: 0,
+        medic: 0
     };
 }
 
@@ -355,22 +336,12 @@ function getSpellcardDisplayName(abilityId) {
 
 // Initialize inventory and equipment for new players
 function initializeInventoryAndEquipment() {
-    // Give new user one random outfit (stores characterIndex for sprite)
-    const randomOutfit = OUTFIT_LIST[Math.floor(Math.random() * OUTFIT_LIST.length)];
-    const starterOutfit = {
-        name: 'outfit',
-        displayName: randomOutfit.displayName,
-        characterIndex: randomOutfit.characterIndex,
-        stats: []
-    };
-
     return {
-        inventory: [starterOutfit],
+        inventory: [],
         equipment: {
             weapon: null,
             armor: null,
             amulet: null,
-            outfit: starterOutfit,
             spellcard: null
         }
     };
@@ -482,7 +453,7 @@ function sanitizeLevelPayload(payload) {
         throw new Error('Level data is too large');
     }
 
-    // times: array of { time: number (seconds), loot: string (outfit name) | -1 }
+    // times: array of { time: number (seconds), loot: string (loot name) | -1 }
     let times = [];
     if (Array.isArray(payload.times)) {
         const parseTimeToSeconds = (t) => {
@@ -545,8 +516,8 @@ async function buildRoomWeaponData(clientsCollection) {
             playerId: client.id,
             weaponCodeChildren: weaponCodeChildren,
             weaponItemName: weaponItemName || null,
-            outfitCharacterIndex: (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
-                ? user.equipment.outfit.characterIndex
+            armorCharacterIndex: (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
+                ? user.equipment.armor.characterIndex
                 : null
         });
     }
@@ -601,8 +572,8 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
                 }
             }
             entry.stats = user.stats || null;
-            entry.outfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
-                ? user.equipment.outfit.characterIndex
+            entry.armorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
+                ? user.equipment.armor.characterIndex
                 : null;
         }
 
@@ -1430,11 +1401,11 @@ async function joinFirstCampaignLobby(ws) {
                     username: client.username || null,
                     x,
                     y,
-                    outfitCharacterIndex: client.equippedOutfitCharacterIndex ?? null
+                    armorCharacterIndex: client.equippedArmorCharacterIndex ?? null
                 });
             }
             ws.send(msgpack.encode({ type: 'lobbyPlayersPositions', players, fullList: true }));
-            const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_LOBBY_X, y: DEFAULT_LOBBY_Y, outfitCharacterIndex: ws.equippedOutfitCharacterIndex ?? null }];
+            const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_LOBBY_X, y: DEFAULT_LOBBY_Y, armorCharacterIndex: ws.equippedArmorCharacterIndex ?? null }];
             const openStateLobby = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
             for (const client of roomData.clients) {
                 if (client !== ws && client.readyState === openStateLobby) {
@@ -1752,8 +1723,8 @@ function handleWebSocketConnection(ws, req) {
             if (userDataChanged) {
                 await db.updateUser(ws.googleId, user);
             }
-            ws.equippedOutfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
-                ? user.equipment.outfit.characterIndex
+            ws.equippedArmorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
+                ? user.equipment.armor.characterIndex
                 : null;
             ws.send(msgpack.encode({
                 type: 'playerData',
@@ -1796,44 +1767,55 @@ function handleWebSocketConnection(ws, req) {
             console.error('[getDevkit] Error:', e);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to issue devkit token' }));
         }
-      } else if (data.type === 'getRandomOutfit') {
-        // Admin only: add a random outfit item to the player's inventory
+      } else if (data.type === 'purgeOutfits') {
+        // Admin only: remove legacy outfit items from all user inventories (migration helper)
         if (ws.rank !== 'admin') {
             ws.send(msgpack.encode({ type: 'error', message: 'Only administrators can use this' }));
             return;
         }
-        if (!ws.googleId) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
-            return;
-        }
-        const user = await db.getUserByGoogleId(ws.googleId);
-        if (!user) {
-            ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
-            return;
-        }
-        const outfitEntry = OUTFIT_LIST[Math.floor(Math.random() * OUTFIT_LIST.length)];
-        const outfitItem = {
-            name: 'outfit',
-            displayName: outfitEntry.displayName,
-            characterIndex: outfitEntry.characterIndex,
-            stats: []
-        };
-        if (!user.inventory) {
-            user.inventory = [];
-        }
-        user.inventory.push(outfitItem);
-        await db.updateUser(ws.googleId, user);
-        ws.send(msgpack.encode({
-            type: 'randomOutfitGranted',
-            playerData: {
-                username: user.name,
-                name: user.name,
-                stats: user.stats,
-                inventory: user.inventory,
-                equipment: user.equipment
+        try {
+            const users = await db.getAllUsers();
+            let usersChanged = 0;
+            let removedInventoryItems = 0;
+            let removedEquipmentSlots = 0;
+
+            for (const user of users) {
+                if (!user || !user.googleIdHash) continue;
+                let changed = false;
+
+                if (Array.isArray(user.inventory)) {
+                    const before = user.inventory.length;
+                    user.inventory = user.inventory.filter(it => !(it && String(it.name || '').toLowerCase() === 'outfit'));
+                    const after = user.inventory.length;
+                    if (after !== before) {
+                        removedInventoryItems += (before - after);
+                        changed = true;
+                    }
+                }
+
+                if (user.equipment && typeof user.equipment === 'object' && 'outfit' in user.equipment) {
+                    delete user.equipment.outfit;
+                    removedEquipmentSlots += 1;
+                    changed = true;
+                }
+
+                if (changed) {
+                    usersChanged += 1;
+                    await db.updateUserByGoogleIdHash(user.googleIdHash, user);
+                }
             }
-        }));
-        console.log(`[getRandomOutfit] Admin ${ws.username || ws.googleId} received outfit: ${outfitItem.displayName}`);
+
+            ws.send(msgpack.encode({
+                type: 'purgeOutfitsResult',
+                usersChanged,
+                removedInventoryItems,
+                removedEquipmentSlots
+            }));
+            console.log(`[purgeOutfits] usersChanged=${usersChanged} removedInventoryItems=${removedInventoryItems} removedEquipmentSlots=${removedEquipmentSlots}`);
+        } catch (err) {
+            console.error('[purgeOutfits] Error:', err);
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to purge outfits' }));
+        }
       } else if (data.type === 'debugGiveLoot') {
         // Debug: Generate and give random loot to player
         if (!ws.googleId) {
@@ -1848,7 +1830,7 @@ function handleWebSocketConnection(ws, req) {
         }
         
         // Generate random loot: any equipment slot (except weapon)
-        const lootTypes = ['armor', 'amulet', 'outfit', 'spellcard'];
+        const lootTypes = ['armor', 'amulet', 'spellcard'];
         const randomIndex = Math.floor(Math.random() * lootTypes.length);
         const itemType = lootTypes[randomIndex];
         
@@ -1859,12 +1841,7 @@ function handleWebSocketConnection(ws, req) {
         };
         
         // Set display name and special properties based on item type
-        if (itemType === 'outfit') {
-            const outfitEntry = OUTFIT_LIST[Math.floor(Math.random() * OUTFIT_LIST.length)];
-            lootItem.displayName = outfitEntry.displayName;
-            lootItem.characterIndex = outfitEntry.characterIndex;
-            lootItem.stats = [];
-        } else if (itemType === 'spellcard') {
+        if (itemType === 'spellcard') {
             // Random active ability for spellcard (no stats)
             const randomActiveAbility = ACTIVE_ABILITIES[Math.floor(Math.random() * ACTIVE_ABILITIES.length)];
             lootItem.displayName = getSpellcardDisplayName(randomActiveAbility);
@@ -2053,17 +2030,19 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         
-        // Remove item from inventory
+        // Remove the selected item from inventory (inventory items are not stack-count based).
         user.inventory.splice(inventoryIndex, 1);
+        const itemToEquip = item;
         
         // If there's already an item in that slot, move it back to inventory
         const oldItem = user.equipment[slotName];
         if (oldItem) {
+            // Return old equipped item back to inventory.
             user.inventory.push(oldItem);
         }
         
         // Equip the new item
-        user.equipment[slotName] = item;
+        user.equipment[slotName] = itemToEquip;
 
         if (slotName === 'weapon' && (item.itemId != null || item.item_id != null)) {
             const id = item.itemId ?? item.item_id;
@@ -2094,9 +2073,9 @@ function handleWebSocketConnection(ws, req) {
         // Save to database
         await db.updateUser(ws.googleId, user);
         
-        // Keep socket outfit in sync so lobby/game broadcasts show correct sprite
-        ws.equippedOutfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
-            ? user.equipment.outfit.characterIndex
+        // Keep socket armor sprite in sync so lobby/game broadcasts show correct sprite
+        ws.equippedArmorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
+            ? user.equipment.armor.characterIndex
             : null;
         
         // Send success response with updated player data
@@ -2263,12 +2242,12 @@ function handleWebSocketConnection(ws, req) {
 
             const roomData = rooms.get(room);
             
-            // Ensure outfit is set on socket for lobby (e.g. reconnected with sessionId only)
-            if (roomData.type === 'lobby' && ws.googleId && ws.equippedOutfitCharacterIndex === undefined) {
+            // Ensure armor sprite is set on socket for lobby (e.g. reconnected with sessionId only)
+            if (roomData.type === 'lobby' && ws.googleId && ws.equippedArmorCharacterIndex === undefined) {
                 const user = await db.getUserByGoogleId(ws.googleId);
                 if (user) {
-                    ws.equippedOutfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
-                        ? user.equipment.outfit.characterIndex
+                    ws.equippedArmorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
+                        ? user.equipment.armor.characterIndex
                         : null;
                 }
             }
@@ -2316,12 +2295,12 @@ function handleWebSocketConnection(ws, req) {
                   username: client.username || null,
                   x,
                   y,
-                  outfitCharacterIndex: client.equippedOutfitCharacterIndex ?? null
+                  armorCharacterIndex: client.equippedArmorCharacterIndex ?? null
                 });
               }
               ws.send(msgpack.encode({ type: 'lobbyPlayersPositions', players, fullList: true }));
               // Notify existing clients so the new joiner appears instantly (at default position)
-              const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_X, y: DEFAULT_Y, outfitCharacterIndex: ws.equippedOutfitCharacterIndex ?? null }];
+              const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_X, y: DEFAULT_Y, armorCharacterIndex: ws.equippedArmorCharacterIndex ?? null }];
               const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
               for (const client of roomData.clients) {
                 if (client !== ws && client.readyState === openState) {
@@ -2491,7 +2470,7 @@ function handleWebSocketConnection(ws, req) {
         if (isLobbyMove) {
           payload.startTime = globalTimer;
         }
-        payload.outfitCharacterIndex = ws.equippedOutfitCharacterIndex ?? null;
+        payload.armorCharacterIndex = ws.equippedArmorCharacterIndex ?? null;
 
         const targetTime = globalTimer + 1000;
 
@@ -3736,7 +3715,7 @@ function handleWebSocketConnection(ws, req) {
             const memberClient = clients.get(memberId);
             if (memberClient && memberClient.username && room.clients.has(memberClient)) {
                 // Generate random loot: any equipment slot (except weapon)
-                const lootTypes = ['armor', 'amulet', 'outfit', 'spellcard'];
+                const lootTypes = ['armor', 'amulet', 'spellcard'];
                 const randomIndex = Math.floor(Math.random() * lootTypes.length);
                 const itemType = lootTypes[randomIndex];
                 console.log(`[LootGeneration] Random index: ${randomIndex}, Selected type: ${itemType}`);
@@ -3748,12 +3727,7 @@ function handleWebSocketConnection(ws, req) {
                 };
                 
                 // Set display name and special properties based on item type
-                if (itemType === 'outfit') {
-                    const outfitEntry = OUTFIT_LIST[Math.floor(Math.random() * OUTFIT_LIST.length)];
-                    lootItem.displayName = outfitEntry.displayName;
-                    lootItem.characterIndex = outfitEntry.characterIndex;
-                    lootItem.stats = [];
-                } else if (itemType === 'spellcard') {
+                if (itemType === 'spellcard') {
                     // Random active ability for spellcard (no stats)
                     const randomActiveAbility = ACTIVE_ABILITIES[Math.floor(Math.random() * ACTIVE_ABILITIES.length)];
                     lootItem.displayName = getSpellcardDisplayName(randomActiveAbility);
@@ -4219,8 +4193,8 @@ function handleWebSocketConnection(ws, req) {
             ws.sessionId = session.sessionId; // Store session ID on WebSocket
             ws.rank = user.rank || 'player';
             ws.isAdmin = (ws.rank === 'admin');
-            ws.equippedOutfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
-                ? user.equipment.outfit.characterIndex
+            ws.equippedArmorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
+                ? user.equipment.armor.characterIndex
                 : null;
             
             // Send login success with session ID
@@ -4315,8 +4289,8 @@ function handleWebSocketConnection(ws, req) {
                 ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
-            ws.equippedOutfitCharacterIndex = (user.equipment && user.equipment.outfit && typeof user.equipment.outfit.characterIndex === 'number')
-                ? user.equipment.outfit.characterIndex
+            ws.equippedArmorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
+                ? user.equipment.armor.characterIndex
                 : null;
             
             // Send session restored
@@ -4541,7 +4515,7 @@ function handleWebSocketConnection(ws, req) {
         });
         
         try {
-            // First-reply-in-General reward: one random outfit for first reply (not thread create) in General
+            // First-reply-in-General reward removed (legacy outfits removed)
             let giveFirstReplyOutfit = false;
             const thread = await db.getForumThread(data.threadId);
             if (thread) {
@@ -4585,32 +4559,7 @@ function handleWebSocketConnection(ws, req) {
                 console.warn('[createForumPost] Mention notification failed:', mentionErr && mentionErr.message ? mentionErr.message : mentionErr);
             }
 
-            if (giveFirstReplyOutfit) {
-                const user = await db.getUserByGoogleId(ws.googleId);
-                if (user) {
-                    const outfitEntry = OUTFIT_LIST[Math.floor(Math.random() * OUTFIT_LIST.length)];
-                    const outfitItem = {
-                        name: 'outfit',
-                        displayName: outfitEntry.displayName,
-                        characterIndex: outfitEntry.characterIndex,
-                        stats: []
-                    };
-                    if (!user.inventory) user.inventory = [];
-                    user.inventory.push(outfitItem);
-                    await db.updateUser(ws.googleId, user);
-                    ws.send(msgpack.encode({
-                        type: 'randomOutfitGranted',
-                        playerData: {
-                            username: user.name,
-                            name: user.name,
-                            stats: user.stats,
-                            inventory: user.inventory,
-                            equipment: user.equipment
-                        }
-                    }));
-                    console.log(`[createForumPost] First reply in General: granted outfit "${outfitItem.displayName}" to ${user.name || ws.googleId}`);
-                }
-            }
+            // (no reward)
         } catch (error) {
             console.error('Failed to create forum post', error);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to create forum post' }));
@@ -5288,6 +5237,44 @@ rl.on('line', async (input) => {
     } catch (error) {
       console.error('❌ pruneorphanstages failed:', error);
     }
+  } else if (command === 'purgeoutfits') {
+    console.log('🔄 Purging legacy outfit items from all users...');
+    try {
+      const users = await db.getAllUsers();
+      let usersChanged = 0;
+      let removedInventoryItems = 0;
+      let removedEquipmentSlots = 0;
+
+      for (const user of users) {
+        if (!user || !user.googleIdHash) continue;
+        let changed = false;
+
+        if (Array.isArray(user.inventory)) {
+          const before = user.inventory.length;
+          user.inventory = user.inventory.filter(it => !(it && String(it.name || '').toLowerCase() === 'outfit'));
+          const after = user.inventory.length;
+          if (after !== before) {
+            removedInventoryItems += (before - after);
+            changed = true;
+          }
+        }
+
+        if (user.equipment && typeof user.equipment === 'object' && 'outfit' in user.equipment) {
+          delete user.equipment.outfit;
+          removedEquipmentSlots += 1;
+          changed = true;
+        }
+
+        if (changed) {
+          usersChanged += 1;
+          await db.updateUserByGoogleIdHash(user.googleIdHash, user);
+        }
+      }
+
+      console.log(`✅ purgeoutfits done: usersChanged=${usersChanged} removedInventoryItems=${removedInventoryItems} removedEquipmentSlots=${removedEquipmentSlots}`);
+    } catch (error) {
+      console.error('❌ purgeoutfits failed:', error);
+    }
   } else if (command === 'help' || command === '?') {
     console.log('\nAvailable server console commands:');
     console.log('  rang <username> <rank>  - Set user rank (player, moderator, admin)');
@@ -5298,6 +5285,7 @@ rl.on('line', async (input) => {
     console.log('  updategooglehash       - Hash raw Google IDs in DB (run once on VPS to migrate existing data)');
     console.log('  pruneorphanstages      - DELETE user stages with no forum [level] slug + clean leaderboards');
     console.log('  pruneorphanstages dry - List orphan slugs without deleting');
+    console.log('  purgeoutfits           - Remove legacy outfit items from all users (inventory + equipment)');
     console.log('  help                   - Show this help message');
     console.log('');
   } else {
