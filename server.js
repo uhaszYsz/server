@@ -3502,17 +3502,36 @@ function handleWebSocketConnection(ws, req) {
         }
 
         try {
-            const slug = data.slug;
-            if (!slug) {
+            const slugRaw = data.slug;
+            if (!slugRaw || typeof slugRaw !== 'string') {
                 ws.send(msgpack.encode({ type: 'error', message: 'Level slug is required' }));
                 return;
             }
+            const slug = ensureValidSlug(slugRaw);
 
             // Delete from database
             const deleted = await db.deleteCampaignLevel(slug);
             if (deleted) {
-                // Also remove the lobby room if it exists
                 const roomName = `lobby_${slug}`;
+                const lobbyRoom = rooms.get(roomName);
+                const OPEN_STATE = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
+                const removedPayload = msgpack.encode({
+                    type: 'campaignLobbyRemoved',
+                    slug,
+                    message: 'This campaign lobby was removed by an administrator.'
+                });
+                if (lobbyRoom && lobbyRoom.clients && lobbyRoom.clients.size > 0) {
+                    for (const client of [...lobbyRoom.clients]) {
+                        lobbyRoom.clients.delete(client);
+                        if (lobbyRoom.lobbyPositions) lobbyRoom.lobbyPositions.delete(client.id);
+                        client.room = undefined;
+                        if (client.readyState === OPEN_STATE) {
+                            try {
+                                client.send(removedPayload);
+                            } catch (_) {}
+                        }
+                    }
+                }
                 if (rooms.has(roomName)) {
                     rooms.delete(roomName);
                     console.log(`✅ Removed lobby room for deleted campaign level: "${roomName}"`);
