@@ -158,6 +158,158 @@ await Promise.all([
 
 // Equipment slots
 const EQUIPMENT_SLOTS = ['weapon', 'armor', 'amulet', 'ring', 'spellcard'];
+const LOOT_STORAGE_SLOTS = [...EQUIPMENT_SLOTS, 'gold', 'material', 'other', 'none'];
+
+/** Emoji prefix for server-built display lines when legacy JSON has no leading emoji */
+const LOOT_SLOT_UI_EMOJI = {
+    weapon: '⚔️',
+    armor: '🛡️',
+    amulet: '💎',
+    ring: '💍',
+    spellcard: '✨',
+    gold: '🪙',
+    material: '🧱',
+    other: '📦',
+    none: '📦'
+};
+
+function stringStartsWithEmoji(str) {
+    const t = String(str || '').trim();
+    if (!t) return false;
+    try {
+        if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+            const seg = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+            const first = [...seg.segment(t)][0];
+            return !!(first && /^\p{Extended_Pictographic}/u.test(first.segment));
+        }
+    } catch (_) { /* ignore */ }
+    return /^\p{Extended_Pictographic}/u.test(t);
+}
+
+/** Equip slot only if weapon..spellcard */
+function resolveEquipSlotFromItem(item) {
+    if (!item || typeof item !== 'object') return null;
+    if (typeof item.slot === 'string') {
+        const s = item.slot.trim().toLowerCase();
+        if (EQUIPMENT_SLOTS.includes(s)) return s;
+        return null;
+    }
+    if (typeof item.name === 'string') {
+        const n = item.name.trim().toLowerCase();
+        if (EQUIPMENT_SLOTS.includes(n)) return n;
+    }
+    return null;
+}
+
+function normalizeLootStorageSlot(item, equipSlot) {
+    if (typeof item.slot === 'string') {
+        const s = item.slot.trim().toLowerCase();
+        if (LOOT_STORAGE_SLOTS.includes(s)) return s;
+    }
+    if (equipSlot) return equipSlot;
+    if (typeof item.name === 'string') {
+        const n = item.name.trim().toLowerCase();
+        if (['gold', 'material', 'other'].includes(n)) return n;
+        if (EQUIPMENT_SLOTS.includes(n)) return n;
+    }
+    return 'none';
+}
+
+/**
+ * Stored inventory loot: name is one display string "<emoji> Label"; slot is equip/category metadata.
+ * Accepts legacy { name: "armor", displayName }.
+ */
+function normalizeStoredLootItem(item) {
+    const rawName = typeof item.name === 'string' ? item.name.trim() : '';
+    if (!rawName) {
+        throw new Error('Invalid loot item (name required)');
+    }
+    let equipSlot = resolveEquipSlotFromItem(item);
+    let displayLine = rawName;
+    const keyFromName = rawName.toLowerCase();
+
+    if (!stringStartsWithEmoji(displayLine)) {
+        const label = (typeof item.displayName === 'string' && item.displayName.trim())
+            ? item.displayName.trim()
+            : (rawName.charAt(0).toUpperCase() + rawName.slice(1));
+        const hinted = normalizeLootStorageSlot(item, equipSlot);
+        const typeKey = EQUIPMENT_SLOTS.includes(hinted) ? hinted
+            : (['gold', 'material', 'other'].includes(hinted) ? hinted
+                : (EQUIPMENT_SLOTS.includes(keyFromName) ? keyFromName
+                    : (['gold', 'material', 'other'].includes(keyFromName) ? keyFromName : 'none')));
+        const em = LOOT_SLOT_UI_EMOJI[typeKey] || '📦';
+        displayLine = `${em} ${label}`;
+        if (!equipSlot && EQUIPMENT_SLOTS.includes(keyFromName)) equipSlot = keyFromName;
+    }
+
+    const storageSlot = normalizeLootStorageSlot(item, equipSlot);
+
+    const lootItem = {
+        name: displayLine,
+        slot: storageSlot,
+        stats: Array.isArray(item.stats) ? item.stats : []
+    };
+
+    if (storageSlot === 'weapon' || equipSlot === 'weapon') {
+        if (item.itemId != null) {
+            lootItem.itemId = parseInt(item.itemId, 10);
+            if (!Number.isInteger(lootItem.itemId) || lootItem.itemId < 1) delete lootItem.itemId;
+        }
+    }
+    if (typeof item.activeAbility === 'string' && item.activeAbility.trim()) {
+        lootItem.activeAbility = item.activeAbility.trim();
+    }
+    if (typeof item.characterIndex === 'number') {
+        lootItem.characterIndex = item.characterIndex;
+    }
+    const spaceIdx = displayLine.indexOf(' ');
+    const lab = spaceIdx >= 0 ? displayLine.slice(spaceIdx + 1).trim() : displayLine;
+    if (lab) lootItem.displayName = lab;
+
+    return lootItem;
+}
+
+/** Random raid/debug loot (armor | amulet | ring | spellcard) with normalized name + slot */
+function buildServerGeneratedEquipmentLoot(itemType) {
+    let lootItem = {
+        name: '',
+        slot: itemType,
+        stats: []
+    };
+    if (itemType === 'spellcard') {
+        const randomActiveAbility = ACTIVE_ABILITIES[Math.floor(Math.random() * ACTIVE_ABILITIES.length)];
+        const label = getSpellcardDisplayName(randomActiveAbility);
+        lootItem.name = `${LOOT_SLOT_UI_EMOJI.spellcard} ${label}`;
+        lootItem.displayName = label;
+        lootItem.activeAbility = randomActiveAbility;
+        lootItem.stats = [];
+    } else {
+        const displayNames = {
+            armor: 'Armor',
+            amulet: 'Amulet',
+            ring: 'Ring'
+        };
+        const label = displayNames[itemType] || itemType;
+        const em = LOOT_SLOT_UI_EMOJI[itemType] || '📦';
+        lootItem.name = `${em} ${label}`;
+        lootItem.displayName = label;
+        const slotCounts = { armor: 2, amulet: 1, ring: 1 };
+        const slotCount = slotCounts[itemType] || 0;
+        if (slotCount > 0) {
+            const availableStats = [...ITEM_STATS];
+            const stats = [];
+            for (let i = 0; i < slotCount; i++) {
+                const randomIndex = Math.floor(Math.random() * availableStats.length);
+                const selectedStat = availableStats[randomIndex];
+                availableStats.splice(randomIndex, 1);
+                const value = i === 0 ? 2 : 1;
+                stats.push({ stat: selectedStat, value });
+            }
+            lootItem.stats = stats;
+        }
+    }
+    return lootItem;
+}
 
 // Available stats for items
 const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback', 'recovery', 'reload', 'parry', 'destroyer', 'weakspot', 'pierce', 'medic'];
@@ -181,8 +333,12 @@ function generateRandomItem(slotName) {
         value: 1
     }));
     
+    const em = LOOT_SLOT_UI_EMOJI[slotName] || '📦';
+    const label = String(slotName).charAt(0).toUpperCase() + String(slotName).slice(1);
     return {
-        name: slotName,
+        name: `${em} ${label}`,
+        slot: slotName,
+        displayName: label,
         stats: statBonuses
     };
 }
@@ -1834,60 +1990,7 @@ function handleWebSocketConnection(ws, req) {
         const lootTypes = ['armor', 'amulet', 'ring', 'spellcard'];
         const randomIndex = Math.floor(Math.random() * lootTypes.length);
         const itemType = lootTypes[randomIndex];
-        
-        // Create loot item based on type
-        let lootItem = {
-            name: itemType,
-            stats: [] // Default to empty stats
-        };
-        
-        // Set display name and special properties based on item type
-        if (itemType === 'spellcard') {
-            // Random active ability for spellcard (no stats)
-            const randomActiveAbility = ACTIVE_ABILITIES[Math.floor(Math.random() * ACTIVE_ABILITIES.length)];
-            lootItem.displayName = getSpellcardDisplayName(randomActiveAbility);
-            lootItem.activeAbility = randomActiveAbility;
-        } else {
-            // Regular items (armor, amulet, ring) - have stats
-            const displayNames = {
-                armor: 'Armor',
-                amulet: 'Amulet',
-                ring: 'Ring'
-            };
-            lootItem.displayName = displayNames[itemType] || itemType;
-            
-            // Determine number of slots based on item type
-            const slotCounts = {
-                armor: 2,
-                amulet: 1,
-                ring: 1
-            };
-            const slotCount = slotCounts[itemType] || 0;
-            
-            // Generate stats for the item (only if slotCount > 0)
-            if (slotCount > 0) {
-                const availableStats = [...ITEM_STATS];
-                const stats = [];
-                
-                for (let i = 0; i < slotCount; i++) {
-                    const randomIndex = Math.floor(Math.random() * availableStats.length);
-                    const selectedStat = availableStats[randomIndex];
-                    availableStats.splice(randomIndex, 1); // Remove to prevent duplicates
-                    
-                    // First stat gets 2x bonus, others get 1x
-                    const value = i === 0 ? 2 : 1;
-                    stats.push({
-                        stat: selectedStat,
-                        value: value
-                    });
-                }
-                
-                lootItem.stats = stats;
-            } else {
-                // Items with 0 slot count have no stats
-                lootItem.stats = [];
-            }
-        }
+        const lootItem = buildServerGeneratedEquipmentLoot(itemType);
         
         // Add loot item to player's inventory
         if (!user.inventory) {
@@ -1903,7 +2006,7 @@ function handleWebSocketConnection(ws, req) {
             stats: null // No stats for debug loot
         }));
         
-        const itemDesc = itemType === 'spellcard' ? `${lootItem.displayName} (${itemType})` : itemType;
+        const itemDesc = lootItem.displayName || lootItem.name;
         if (lootItem.stats && lootItem.stats.length > 0) {
             const firstStat = lootItem.stats[0].stat;
             console.log(`[DebugGiveLoot] Added ${itemDesc} to ${ws.username || ws.googleId}'s inventory with ${lootItem.stats.length} stats (${firstStat} +${lootItem.stats[0].value})`);
@@ -1911,8 +2014,10 @@ function handleWebSocketConnection(ws, req) {
             console.log(`[DebugGiveLoot] Added ${itemDesc} to ${ws.username || ws.googleId}'s inventory`);
         }
       } else if (data.type === 'addLoot') {
-        // Interpreter/utils: add one loot item to player inventory (lootData = stringified JSON from loot generator format)
+        // Interpreter/utils: add loot item(s) from JSON (`name` display line + `slot`); normalized before save.
+        // Optional data.quantity: integer >= 1, max ADD_LOOT_MAX_QUANTITY per request (each unit is a separate inventory row).
         // Only allowed when user is in a quest (game) room playing a campaign level (room.level set); not in lobby or custom/browse levels.
+        const ADD_LOOT_MAX_QUANTITY = 100;
         if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in', fromAddLoot: true }));
             return;
@@ -1932,25 +2037,27 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({ type: 'error', message: 'Invalid loot item (need object with name)', fromAddLoot: true }));
             return;
         }
+        let lootItem;
+        try {
+            lootItem = normalizeStoredLootItem(item);
+        } catch (err) {
+            ws.send(msgpack.encode({ type: 'error', message: err && err.message ? err.message : 'Invalid loot item', fromAddLoot: true }));
+            return;
+        }
+        let qty = 1;
+        if (data.quantity != null && data.quantity !== '') {
+            const q = typeof data.quantity === 'number' ? data.quantity : parseInt(data.quantity, 10);
+            if (Number.isFinite(q) && q >= 1) {
+                qty = Math.min(ADD_LOOT_MAX_QUANTITY, Math.floor(q));
+            }
+        }
         if (!user.inventory) user.inventory = [];
-        const lootItem = {
-            name: String(item.name).trim().toLowerCase() || 'item',
-            displayName: typeof item.displayName === 'string' ? item.displayName : (item.displayName || item.name),
-            stats: Array.isArray(item.stats) ? item.stats : []
-        };
-        if (lootItem.name === 'weapon' && item.itemId != null) {
-            lootItem.itemId = parseInt(item.itemId, 10);
-            if (!Number.isInteger(lootItem.itemId) || lootItem.itemId < 1) delete lootItem.itemId;
+        const templateJson = JSON.stringify(lootItem);
+        for (let i = 0; i < qty; i++) {
+            user.inventory.push(JSON.parse(templateJson));
         }
-        if (typeof item.activeAbility === 'string' && item.activeAbility.trim()) {
-            lootItem.activeAbility = item.activeAbility.trim();
-        }
-        if (typeof item.characterIndex === 'number') {
-            lootItem.characterIndex = item.characterIndex;
-        }
-        user.inventory.push(lootItem);
         await db.updateUser(ws.googleId, user);
-        console.log(`[addLoot] Added ${lootItem.displayName} (${lootItem.name}) to ${ws.username || ws.googleId}'s inventory`);
+        console.log(`[addLoot] Added ${qty}x ${lootItem.displayName || lootItem.name} (${lootItem.slot}) to ${ws.username || ws.googleId}'s inventory`);
         ws.send(msgpack.encode({
             type: 'lootAdded',
             playerData: {
@@ -1960,7 +2067,8 @@ function handleWebSocketConnection(ws, req) {
                 inventory: user.inventory,
                 equipment: user.equipment
             },
-            addedItem: lootItem
+            addedItem: lootItem,
+            addedCount: qty
         }));
       } else if (data.type === 'npcGiveSpellcards') {
         // Spellcard NPC (client-rendered) - add all 3 spellcards to user inventory
@@ -1977,9 +2085,9 @@ function handleWebSocketConnection(ws, req) {
         }
         if (!user.inventory) user.inventory = [];
         const spellcards = [
-            { name: 'spellcard', displayName: 'Shield Spellcard', activeAbility: 'shield', stats: [] },
-            { name: 'spellcard', displayName: 'Heal Zone Spellcard', activeAbility: 'heal_zone', stats: [] },
-            { name: 'spellcard', displayName: 'Explosion Spellcard', activeAbility: 'explosion', stats: [] }
+            { name: `${LOOT_SLOT_UI_EMOJI.spellcard} Shield Spellcard`, slot: 'spellcard', displayName: 'Shield Spellcard', activeAbility: 'shield', stats: [] },
+            { name: `${LOOT_SLOT_UI_EMOJI.spellcard} Heal Zone Spellcard`, slot: 'spellcard', displayName: 'Heal Zone Spellcard', activeAbility: 'heal_zone', stats: [] },
+            { name: `${LOOT_SLOT_UI_EMOJI.spellcard} Explosion Spellcard`, slot: 'spellcard', displayName: 'Explosion Spellcard', activeAbility: 'explosion', stats: [] }
         ];
         spellcards.forEach(sc => user.inventory.push(sc));
         await db.updateUser(ws.googleId, user);
@@ -2026,10 +2134,9 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         
-        // Determine slot from item name
-        const slotName = item.name.toLowerCase();
-        if (!EQUIPMENT_SLOTS.includes(slotName)) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Invalid equipment slot' }));
+        const slotName = resolveEquipSlotFromItem(item);
+        if (!slotName) {
+            ws.send(msgpack.encode({ type: 'error', message: 'This item cannot be equipped' }));
             return;
         }
         
@@ -2826,12 +2933,13 @@ function handleWebSocketConnection(ws, req) {
                 return;
             }
             if (!user.inventory) user.inventory = [];
-            const weaponItem = {
+            const weaponItem = normalizeStoredLootItem({
                 name: 'weapon',
                 displayName: objectName,
-                itemId: itemId,
+                slot: 'weapon',
+                itemId,
                 stats: []
-            };
+            });
             user.inventory.push(weaponItem);
             await db.updateUser(ws.googleId, user);
             ws.send(msgpack.encode({
@@ -3742,61 +3850,7 @@ function handleWebSocketConnection(ws, req) {
                 const randomIndex = Math.floor(Math.random() * lootTypes.length);
                 const itemType = lootTypes[randomIndex];
                 console.log(`[LootGeneration] Random index: ${randomIndex}, Selected type: ${itemType}`);
-                
-                // Create loot item based on type
-                let lootItem = {
-                    name: itemType,
-                    stats: [] // Default to empty stats
-                };
-                
-                // Set display name and special properties based on item type
-                if (itemType === 'spellcard') {
-                    // Random active ability for spellcard (no stats)
-                    const randomActiveAbility = ACTIVE_ABILITIES[Math.floor(Math.random() * ACTIVE_ABILITIES.length)];
-                    lootItem.displayName = getSpellcardDisplayName(randomActiveAbility);
-                    lootItem.activeAbility = randomActiveAbility;
-                } else {
-                    // Regular items (armor, amulet, ring) - have stats
-                    const displayNames = {
-                        armor: 'Armor',
-                        amulet: 'Amulet',
-                        ring: 'Ring'
-                    };
-                    lootItem.displayName = displayNames[itemType] || itemType;
-                    
-                    // Determine number of slots based on item type
-                    const slotCounts = {
-                        armor: 2,
-                        amulet: 1,
-                        ring: 1
-                    };
-                    const slotCount = slotCounts[itemType] || 0;
-                    
-                    // Generate stats for the item (only if slotCount > 0)
-                    if (slotCount > 0) {
-                        const availableStats = [...ITEM_STATS];
-                        const stats = [];
-                        
-                        for (let i = 0; i < slotCount; i++) {
-                            const randomIndex = Math.floor(Math.random() * availableStats.length);
-                            const selectedStat = availableStats[randomIndex];
-                            availableStats.splice(randomIndex, 1); // Remove to prevent duplicates
-                            
-                            // First stat gets 2x bonus, others get 1x
-                            const value = i === 0 ? 2 : 1;
-                            stats.push({
-                                stat: selectedStat,
-                                value: value
-                            });
-                        }
-                        
-                        lootItem.stats = stats;
-                    } else {
-                        // Items with 0 slot count have no stats
-                        lootItem.stats = [];
-                    }
-                }
-                
+                const lootItem = buildServerGeneratedEquipmentLoot(itemType);
                 lootForPlayers[memberClient.googleId] = lootItem;
                 
                 // Add loot item to player's inventory
@@ -3808,8 +3862,7 @@ function handleWebSocketConnection(ws, req) {
                     user.inventory.push(lootItem);
                     await db.updateUser(memberClient.googleId, user);
                     inventoryUpdated = true;
-                    const itemDesc = itemType === 'spellcard' ? `${lootItem.displayName} (${itemType})` : 
-                                   itemType;
+                    const itemDesc = lootItem.displayName || lootItem.name;
                     if (lootItem.stats && lootItem.stats.length > 0) {
                         const firstStat = lootItem.stats[0].stat;
                         console.log(`📦 Added ${itemDesc} to ${memberClient.username}'s inventory with ${lootItem.stats.length} stats (${firstStat} +${lootItem.stats[0].value})`);
@@ -3828,8 +3881,9 @@ function handleWebSocketConnection(ws, req) {
         // Send loot and stats to each party member
         for (const memberId of party.members) {
             const memberClient = clients.get(memberId);
-            if (memberClient && memberClient.username && memberClient.readyState === ws.OPEN) {
-                const playerLoot = lootForPlayers[memberClient.username];
+            const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
+            if (memberClient && memberClient.username && memberClient.readyState === openState) {
+                const playerLoot = lootForPlayers[memberClient.googleId];
                 if (playerLoot) {
                     // Create stats object with server-calculated time
                     const statsWithServerTime = stats ? { ...stats } : {};
