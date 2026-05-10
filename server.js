@@ -477,6 +477,28 @@ function getDefaultStats() {
     };
 }
 
+/** Reset user.stats from base + armor/amulet/ring bonuses only */
+function recalculateStatsFromEquipment(user) {
+    if (!user.stats) user.stats = {};
+    const baseStats = getDefaultStats();
+    Object.keys(baseStats).forEach(statKey => {
+        user.stats[statKey] = baseStats[statKey];
+    });
+    const statContributingSlots = ['armor', 'amulet', 'ring'];
+    statContributingSlots.forEach(slotName => {
+        const equippedItem = user.equipment && user.equipment[slotName];
+        if (equippedItem && Array.isArray(equippedItem.stats)) {
+            equippedItem.stats.forEach(statEntry => {
+                const stat = statEntry.stat;
+                const value = statEntry.value;
+                if (user.stats[stat] !== undefined) {
+                    user.stats[stat] += value;
+                }
+            });
+        }
+    });
+}
+
 // Active ability IDs for spellcards
 const ACTIVE_ABILITIES = ['shield', 'heal_zone', 'explosion'];
 
@@ -2159,26 +2181,7 @@ function handleWebSocketConnection(ws, req) {
             console.log(`[EquipItem] User ${ws.username} equipped weapon (itemId=${id})`);
         }
         
-        // Recalculate stats (base stats + equipment bonuses)
-        const baseStats = getDefaultStats();
-        Object.keys(baseStats).forEach(statKey => {
-            user.stats[statKey] = baseStats[statKey];
-        });
-        
-        // Apply equipment bonuses (from armor, amulet, ring)
-        const statContributingSlots = ['armor', 'amulet', 'ring'];
-        statContributingSlots.forEach(slotName => {
-            const equippedItem = user.equipment[slotName];
-            if (equippedItem && Array.isArray(equippedItem.stats)) {
-                equippedItem.stats.forEach(statEntry => {
-                    const stat = statEntry.stat;
-                    const value = statEntry.value;
-                    if (user.stats[stat] !== undefined) {
-                        user.stats[stat] += value;
-                    }
-                });
-            }
-        });
+        recalculateStatsFromEquipment(user);
         
         // Save to database
         await db.updateUser(ws.googleId, user);
@@ -2199,6 +2202,99 @@ function handleWebSocketConnection(ws, req) {
         }));
         
         console.log(`[EquipItem] User ${ws.username} equipped ${slotName}`);
+      } else if (data.type === 'unequipItem') {
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+
+        const user = await db.getUserByGoogleId(ws.googleId);
+        if (!user) {
+            ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            return;
+        }
+
+        if (db.hashGoogleId(ws.googleId) !== user.googleIdHash) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
+            return;
+        }
+
+        const equipmentSlot = typeof data.equipmentSlot === 'string' ? data.equipmentSlot.trim().toLowerCase() : '';
+        if (!EQUIPMENT_SLOTS.includes(equipmentSlot)) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Invalid equipment slot' }));
+            return;
+        }
+
+        if (!user.equipment || typeof user.equipment !== 'object') {
+            ws.send(msgpack.encode({ type: 'error', message: 'Nothing equipped in that slot' }));
+            return;
+        }
+
+        const item = user.equipment[equipmentSlot];
+        if (!item) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Nothing equipped in that slot' }));
+            return;
+        }
+
+        user.equipment[equipmentSlot] = null;
+        if (!user.inventory) user.inventory = [];
+        user.inventory.push(item);
+
+        recalculateStatsFromEquipment(user);
+
+        await db.updateUser(ws.googleId, user);
+
+        ws.equippedArmorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
+            ? user.equipment.armor.characterIndex
+            : null;
+
+        ws.send(msgpack.encode({
+            type: 'unequipSuccess',
+            playerData: {
+                stats: user.stats,
+                inventory: user.inventory,
+                equipment: user.equipment
+            }
+        }));
+
+        console.log(`[UnequipItem] User ${ws.username} unequipped ${equipmentSlot}`);
+      } else if (data.type === 'discardInventoryItem') {
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+
+        const user = await db.getUserByGoogleId(ws.googleId);
+        if (!user) {
+            ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            return;
+        }
+
+        if (db.hashGoogleId(ws.googleId) !== user.googleIdHash) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
+            return;
+        }
+
+        const inventoryIndex = data.inventoryIndex;
+        if (inventoryIndex === undefined || inventoryIndex < 0 || inventoryIndex >= user.inventory.length) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Invalid inventory index' }));
+            return;
+        }
+
+        user.inventory.splice(inventoryIndex, 1);
+
+        await db.updateUser(ws.googleId, user);
+
+        ws.send(msgpack.encode({
+            type: 'discardSuccess',
+            playerData: {
+                stats: user.stats,
+                inventory: user.inventory,
+                equipment: user.equipment
+            }
+        }));
+
+        console.log(`[DiscardInventoryItem] User ${ws.username} discarded inventory index ${inventoryIndex}`);
       } else if (data.type === 'rerollItem') {
         // Handle rerolling item stats
         if (!ws.username) {
