@@ -2629,8 +2629,9 @@ function handleWebSocketConnection(ws, req) {
             }
             console.log(`[PartyStartLevel] leader=${ws.username || ws.id} hasStageData=${party.stageData ? 'yes' : 'no'} requestedLevel=${requestedLevel}`);
             if (party.stageData) {
-                // Use the stage data that was loaded earlier (from local or server)
-                await sendPartyToGameRoom(party, { stageData: party.stageData, levelFileName: null });
+                // Use the stage data that was loaded earlier (from local or server).
+                // Still pass levelFileName so the game room has room.level set (required for addLoot / lootAdd during quest).
+                await sendPartyToGameRoom(party, { stageData: party.stageData, levelFileName: requestedLevel });
                 // Clear the stage data after using it
                 delete party.stageData;
             } else {
