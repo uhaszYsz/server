@@ -3,10 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Home</title>
+  <title>Game server</title>
+  <style>
+    :root { color-scheme: dark; --bg: #0f1419; --card: #1a2332; --accent: #10b981; --muted: #94a3b8; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, Segoe UI, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: #e2e8f0;
+      line-height: 1.5;
+      padding: 2rem 1.25rem;
+    }
+    main { max-width: 36rem; margin: 0 auto; }
+    h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 0.5rem; }
+    p { color: var(--muted); margin: 0 0 1rem; }
+    ul { margin: 0 0 1rem; padding-left: 1.25rem; color: var(--muted); }
+    li { margin-bottom: 0.35rem; }
+    code { background: var(--card); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.9em; }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-top: 1.5rem;
+      border: 1px solid rgba(148, 163, 184, 0.15);
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+  </style>
 </head>
 <body>
-  <h1>Welcome</h1>
-  <p>Edit <code>server/index.html</code> to change this page.</p>
+  <main>
+    <h1>Game server</h1>
+    <p>This HTTP host serves the web client (OTA/assets), privacy policy, and API routes for the game.</p>
+
+    <div class="card">
+      <p style="margin-bottom: 0.75rem;"><strong>Ports</strong> (defaults in <code>server.js</code> / <code>admin-server.js</code>):</p>
+      <ul>
+        <li><strong>This page</strong> — main HTTP, typically port <code>8082</code>.</li>
+        <li><strong>Database admin</strong> — separate process on port <code>7777</code> (<code>db-admin.html</code>).</li>
+        <li><strong>WebSocket game</strong> — WSS on the port configured for SSL (see server logs).</li>
+      </ul>
+      <p style="margin-bottom: 0;"><a href="/privacy">Privacy policy</a></p>
+    </div>
+  </main>
 </body>
 </html>

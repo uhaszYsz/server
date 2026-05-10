@@ -702,7 +702,7 @@ function cleanupMessageRateLimit(wsId) {
 
 // Create Express HTTP server for file downloads
 const httpApp = express();
-const HTTP_PORT = 8082; // Update server port (8081 is used by admin-server.js)
+const HTTP_PORT = 8082; // Main HTTP; database admin runs on 7777 (admin-server.js)
 const HTTPS_PORT = 443; // HTTPS port (standard HTTPS port)
 const WS_PORT = 8080; // WebSocket port
 

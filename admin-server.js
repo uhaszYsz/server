@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const ADMIN_PORT = 8081;
+const ADMIN_PORT = 7777;
 const DB_PASS_FILE = path.join(__dirname, 'dbpass.txt');
 const BACKUP_DIR = path.join(__dirname, 'backups');
 
@@ -168,12 +168,13 @@ const authMiddleware = (req, res, next) => {
 };
 
 app.use(authMiddleware);
-app.use(express.static(__dirname));
 
-// Serve the admin HTML file
+// Must be registered before express.static — otherwise static serves index.html for `/` and the DB UI never loads.
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'db-admin.html'));
 });
+
+app.use(express.static(__dirname, { index: false }));
 
 // Login API
 app.post('/api/login', (req, res) => {
