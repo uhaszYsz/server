@@ -157,7 +157,7 @@ await Promise.all([
 ]);
 
 // Equipment slots
-const EQUIPMENT_SLOTS = ['weapon', 'armor', 'amulet', 'spellcard'];
+const EQUIPMENT_SLOTS = ['weapon', 'armor', 'amulet', 'ring', 'spellcard'];
 
 // Available stats for items
 const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback', 'recovery', 'reload', 'parry', 'destroyer', 'weakspot', 'pierce', 'medic'];
@@ -342,6 +342,7 @@ function initializeInventoryAndEquipment() {
             weapon: null,
             armor: null,
             amulet: null,
+            ring: null,
             spellcard: null
         }
     };
@@ -1830,7 +1831,7 @@ function handleWebSocketConnection(ws, req) {
         }
         
         // Generate random loot: any equipment slot (except weapon)
-        const lootTypes = ['armor', 'amulet', 'spellcard'];
+        const lootTypes = ['armor', 'amulet', 'ring', 'spellcard'];
         const randomIndex = Math.floor(Math.random() * lootTypes.length);
         const itemType = lootTypes[randomIndex];
         
@@ -1847,17 +1848,19 @@ function handleWebSocketConnection(ws, req) {
             lootItem.displayName = getSpellcardDisplayName(randomActiveAbility);
             lootItem.activeAbility = randomActiveAbility;
         } else {
-            // Regular items (armor, amulet) - have stats
+            // Regular items (armor, amulet, ring) - have stats
             const displayNames = {
                 armor: 'Armor',
-                amulet: 'Amulet'
+                amulet: 'Amulet',
+                ring: 'Ring'
             };
             lootItem.displayName = displayNames[itemType] || itemType;
             
             // Determine number of slots based on item type
             const slotCounts = {
                 armor: 2,
-                amulet: 1
+                amulet: 1,
+                ring: 1
             };
             const slotCount = slotCounts[itemType] || 0;
             
@@ -2055,8 +2058,8 @@ function handleWebSocketConnection(ws, req) {
             user.stats[statKey] = baseStats[statKey];
         });
         
-        // Apply equipment bonuses (only from armor and amulet)
-        const statContributingSlots = ['armor', 'amulet'];
+        // Apply equipment bonuses (from armor, amulet, ring)
+        const statContributingSlots = ['armor', 'amulet', 'ring'];
         statContributingSlots.forEach(slotName => {
             const equippedItem = user.equipment[slotName];
             if (equippedItem && Array.isArray(equippedItem.stats)) {
@@ -3715,7 +3718,7 @@ function handleWebSocketConnection(ws, req) {
             const memberClient = clients.get(memberId);
             if (memberClient && memberClient.username && room.clients.has(memberClient)) {
                 // Generate random loot: any equipment slot (except weapon)
-                const lootTypes = ['armor', 'amulet', 'spellcard'];
+                const lootTypes = ['armor', 'amulet', 'ring', 'spellcard'];
                 const randomIndex = Math.floor(Math.random() * lootTypes.length);
                 const itemType = lootTypes[randomIndex];
                 console.log(`[LootGeneration] Random index: ${randomIndex}, Selected type: ${itemType}`);
@@ -3733,17 +3736,19 @@ function handleWebSocketConnection(ws, req) {
                     lootItem.displayName = getSpellcardDisplayName(randomActiveAbility);
                     lootItem.activeAbility = randomActiveAbility;
                 } else {
-                    // Regular items (armor, amulet) - have stats
+                    // Regular items (armor, amulet, ring) - have stats
                     const displayNames = {
                         armor: 'Armor',
-                        amulet: 'Amulet'
+                        amulet: 'Amulet',
+                        ring: 'Ring'
                     };
                     lootItem.displayName = displayNames[itemType] || itemType;
                     
                     // Determine number of slots based on item type
                     const slotCounts = {
                         armor: 2,
-                        amulet: 1
+                        amulet: 1,
+                        ring: 1
                     };
                     const slotCount = slotCounts[itemType] || 0;
                     
