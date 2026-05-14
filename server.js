@@ -156,17 +156,46 @@ await Promise.all([
     fs.mkdir(levelsDirectory, { recursive: true })
 ]);
 
-// Equipment slots
-const EQUIPMENT_SLOTS = ['weapon', 'armor', 'amulet', 'ring', 'spellcard'];
+// Equipment: eq[0]..eq[10] (weapon1, weapon2, helmet, chest, legs, boots, gloves, amulet, ring1, ring2, outfit)
+const EQUIPMENT_SLOTS = [
+    'weapon1', 'weapon2', 'helmet', 'chest', 'legs', 'boots', 'gloves',
+    'amulet', 'ring1', 'ring2', 'outfit'
+];
 const LOOT_STORAGE_SLOTS = [...EQUIPMENT_SLOTS, 'gold', 'material', 'other', 'none'];
+
+function mapLegacyEquipSlotName(s) {
+    const x = String(s || '').trim().toLowerCase();
+    if (x === 'weapon') return 'weapon1';
+    if (x === 'armor') return 'outfit';
+    if (x === 'ring') return 'ring1';
+    if (x === 'spellcard') return 'amulet';
+    return x;
+}
+
+function primaryEquippedWeaponFromUser(user) {
+    const e = user && user.equipment;
+    if (!e) return null;
+    return e.weapon1 || e.weapon2 || null;
+}
+
+function outfitCharacterIndexFromUser(user) {
+    const o = user && user.equipment && user.equipment.outfit;
+    return (o && typeof o.characterIndex === 'number') ? o.characterIndex : null;
+}
 
 /** Emoji prefix for server-built display lines when legacy JSON has no leading emoji */
 const LOOT_SLOT_UI_EMOJI = {
-    weapon: '⚔️',
-    armor: '🛡️',
+    weapon1: '⚔️',
+    weapon2: '🗡️',
+    helmet: '🪖',
+    chest: '🛡️',
+    legs: '👖',
+    boots: '👢',
+    gloves: '🧤',
     amulet: '💎',
-    ring: '💍',
-    spellcard: '✨',
+    ring1: '💍',
+    ring2: '💠',
+    outfit: '👤',
     gold: '🪙',
     material: '🧱',
     other: '📦',
@@ -186,16 +215,16 @@ function stringStartsWithEmoji(str) {
     return /^\p{Extended_Pictographic}/u.test(t);
 }
 
-/** Equip slot only if weapon..spellcard */
+/** Equip slot if in EQUIPMENT_SLOTS (legacy item.slot/name weapon|armor|ring mapped). */
 function resolveEquipSlotFromItem(item) {
     if (!item || typeof item !== 'object') return null;
     if (typeof item.slot === 'string') {
-        const s = item.slot.trim().toLowerCase();
+        const s = mapLegacyEquipSlotName(item.slot.trim().toLowerCase());
         if (EQUIPMENT_SLOTS.includes(s)) return s;
         return null;
     }
     if (typeof item.name === 'string') {
-        const n = item.name.trim().toLowerCase();
+        const n = mapLegacyEquipSlotName(item.name.trim().toLowerCase());
         if (EQUIPMENT_SLOTS.includes(n)) return n;
     }
     return null;
@@ -203,12 +232,12 @@ function resolveEquipSlotFromItem(item) {
 
 function normalizeLootStorageSlot(item, equipSlot) {
     if (typeof item.slot === 'string') {
-        const s = item.slot.trim().toLowerCase();
+        const s = mapLegacyEquipSlotName(item.slot.trim().toLowerCase());
         if (LOOT_STORAGE_SLOTS.includes(s)) return s;
     }
     if (equipSlot) return equipSlot;
     if (typeof item.name === 'string') {
-        const n = item.name.trim().toLowerCase();
+        const n = mapLegacyEquipSlotName(item.name.trim().toLowerCase());
         if (['gold', 'material', 'other'].includes(n)) return n;
         if (EQUIPMENT_SLOTS.includes(n)) return n;
     }
@@ -233,13 +262,14 @@ function normalizeStoredLootItem(item) {
             ? item.displayName.trim()
             : (rawName.charAt(0).toUpperCase() + rawName.slice(1));
         const hinted = normalizeLootStorageSlot(item, equipSlot);
+        const mappedKey = mapLegacyEquipSlotName(keyFromName);
         const typeKey = EQUIPMENT_SLOTS.includes(hinted) ? hinted
             : (['gold', 'material', 'other'].includes(hinted) ? hinted
-                : (EQUIPMENT_SLOTS.includes(keyFromName) ? keyFromName
+                : (EQUIPMENT_SLOTS.includes(mappedKey) ? mappedKey
                     : (['gold', 'material', 'other'].includes(keyFromName) ? keyFromName : 'none')));
         const em = LOOT_SLOT_UI_EMOJI[typeKey] || '📦';
         displayLine = `${em} ${label}`;
-        if (!equipSlot && EQUIPMENT_SLOTS.includes(keyFromName)) equipSlot = keyFromName;
+        if (!equipSlot && EQUIPMENT_SLOTS.includes(mappedKey)) equipSlot = mappedKey;
     }
 
     const storageSlot = normalizeLootStorageSlot(item, equipSlot);
@@ -250,7 +280,8 @@ function normalizeStoredLootItem(item) {
         stats: Array.isArray(item.stats) ? item.stats : []
     };
 
-    if (storageSlot === 'weapon' || equipSlot === 'weapon') {
+    if (storageSlot === 'weapon1' || storageSlot === 'weapon2' || storageSlot === 'weapon'
+        || equipSlot === 'weapon1' || equipSlot === 'weapon2') {
         if (item.itemId != null) {
             lootItem.itemId = parseInt(item.itemId, 10);
             if (!Number.isInteger(lootItem.itemId) || lootItem.itemId < 1) delete lootItem.itemId;
@@ -269,31 +300,30 @@ function normalizeStoredLootItem(item) {
     return lootItem;
 }
 
-/** Random raid/debug loot (armor | amulet | ring | spellcard) with normalized name + slot */
+/** Random raid/debug loot for armor slots / jewelry; amulets may roll an active skill. */
 function buildServerGeneratedEquipmentLoot(itemType) {
     let lootItem = {
         name: '',
         slot: itemType,
         stats: []
     };
-    if (itemType === 'spellcard') {
-        const randomActiveAbility = ACTIVE_ABILITIES[Math.floor(Math.random() * ACTIVE_ABILITIES.length)];
-        const label = getSpellcardDisplayName(randomActiveAbility);
-        lootItem.name = `${LOOT_SLOT_UI_EMOJI.spellcard} ${label}`;
-        lootItem.displayName = label;
-        lootItem.activeAbility = randomActiveAbility;
-        lootItem.stats = [];
-    } else {
+    {
         const displayNames = {
-            armor: 'Armor',
+            helmet: 'Helmet',
+            chest: 'Chest',
+            legs: 'Legs',
+            boots: 'Boots',
+            gloves: 'Gloves',
             amulet: 'Amulet',
-            ring: 'Ring'
+            ring1: 'Ring',
+            ring2: 'Ring',
+            outfit: 'Outfit'
         };
         const label = displayNames[itemType] || itemType;
         const em = LOOT_SLOT_UI_EMOJI[itemType] || '📦';
         lootItem.name = `${em} ${label}`;
         lootItem.displayName = label;
-        const slotCounts = { armor: 2, amulet: 1, ring: 1 };
+        const slotCounts = { helmet: 2, chest: 3, legs: 2, boots: 2, gloves: 2, amulet: 2, ring1: 1, ring2: 1, outfit: 0 };
         const slotCount = slotCounts[itemType] || 0;
         if (slotCount > 0) {
             const availableStats = [...ITEM_STATS];
@@ -307,12 +337,19 @@ function buildServerGeneratedEquipmentLoot(itemType) {
             }
             lootItem.stats = stats;
         }
+        if (itemType === 'amulet' && Math.random() < 0.45) {
+            const randomActiveAbility = ACTIVE_ABILITIES[Math.floor(Math.random() * ACTIVE_ABILITIES.length)];
+            lootItem.activeAbility = randomActiveAbility;
+            const skillLabel = getAmuletSkillDisplayName(randomActiveAbility);
+            lootItem.displayName = `${label} (${skillLabel})`;
+            lootItem.name = `${em} ${lootItem.displayName}`;
+        }
     }
     return lootItem;
 }
 
 // Available stats for items
-const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback', 'recovery', 'reload', 'parry', 'destroyer', 'weakspot', 'pierce', 'medic'];
+const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback', 'recovery', 'reload', 'parry', 'destroyer', 'weakspot', 'pierce', 'medic', 'hitpointSize'];
 
 // Generate a random item for a given slot
 function generateRandomItem(slotName) {
@@ -473,8 +510,20 @@ function getDefaultStats() {
         destroyer: 0,
         weakspot: 0,
         pierce: 0,
-        medic: 0
+        medic: 0,
+        /** +1 shrinks collision radius by 0.5 px (world units); client base radius is 2. */
+        hitpointSize: 0
     };
+}
+
+/** Each +1 maxHp roll on armor/amulet/ring adds this many Max HP after equip (loot editor value is unchanged). */
+const EQUIP_ITEM_MAX_HP_MULTIPLIER = 20;
+
+function effectiveEquipmentStatBonus(statKey, rawValue) {
+    const v = Number(rawValue);
+    if (!Number.isFinite(v)) return 0;
+    if (statKey === 'maxHp') return v * EQUIP_ITEM_MAX_HP_MULTIPLIER;
+    return v;
 }
 
 /** Reset user.stats from base + armor/amulet/ring bonuses only */
@@ -484,7 +533,7 @@ function recalculateStatsFromEquipment(user) {
     Object.keys(baseStats).forEach(statKey => {
         user.stats[statKey] = baseStats[statKey];
     });
-    const statContributingSlots = ['armor', 'amulet', 'ring'];
+    const statContributingSlots = ['helmet', 'chest', 'legs', 'boots', 'gloves', 'amulet', 'ring1', 'ring2', 'outfit'];
     statContributingSlots.forEach(slotName => {
         const equippedItem = user.equipment && user.equipment[slotName];
         if (equippedItem && Array.isArray(equippedItem.stats)) {
@@ -492,24 +541,23 @@ function recalculateStatsFromEquipment(user) {
                 const stat = statEntry.stat;
                 const value = statEntry.value;
                 if (user.stats[stat] !== undefined) {
-                    user.stats[stat] += value;
+                    user.stats[stat] += effectiveEquipmentStatBonus(stat, value);
                 }
             });
         }
     });
 }
 
-// Active ability IDs for spellcards
+// Active ability IDs (equipped amulet skill)
 const ACTIVE_ABILITIES = ['shield', 'heal_zone', 'explosion'];
 
-// Helper function to get display name for spellcard abilities
-function getSpellcardDisplayName(abilityId) {
+function getAmuletSkillDisplayName(abilityId) {
     const names = {
-        'shield': 'Shield Spellcard',
-        'heal_zone': 'Heal Zone Spellcard',
-        'explosion': 'Explosion Spellcard'
+        'shield': 'Shield',
+        'heal_zone': 'Heal Zone',
+        'explosion': 'Explosion'
     };
-    return names[abilityId] || 'Spellcard';
+    return names[abilityId] || 'Skill';
 }
 
 // Initialize inventory and equipment for new players
@@ -517,11 +565,17 @@ function initializeInventoryAndEquipment() {
     return {
         inventory: [],
         equipment: {
-            weapon: null,
-            armor: null,
+            weapon1: null,
+            weapon2: null,
+            helmet: null,
+            chest: null,
+            legs: null,
+            boots: null,
+            gloves: null,
             amulet: null,
-            ring: null,
-            spellcard: null
+            ring1: null,
+            ring2: null,
+            outfit: null
         }
     };
 }
@@ -680,7 +734,7 @@ async function buildRoomWeaponData(clientsCollection) {
 
         let weaponCodeChildren = null;
         let weaponItemName = null;
-        const weapon = user.equipment && user.equipment.weapon;
+        const weapon = primaryEquippedWeaponFromUser(user);
         const itemId = weapon && (weapon.itemId ?? weapon.item_id);
         if (itemId != null) {
             const item = await db.getItemById(itemId);
@@ -695,9 +749,7 @@ async function buildRoomWeaponData(clientsCollection) {
             playerId: client.id,
             weaponCodeChildren: weaponCodeChildren,
             weaponItemName: weaponItemName || null,
-            armorCharacterIndex: (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
-                ? user.equipment.armor.characterIndex
-                : null
+            armorCharacterIndex: outfitCharacterIndexFromUser(user)
         });
     }
 
@@ -741,7 +793,7 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
 
         // Only include weaponCodeChildren and stats if in the same party
         if (isInSameParty) {
-            const weapon = user.equipment && user.equipment.weapon;
+            const weapon = primaryEquippedWeaponFromUser(user);
             const itemId = weapon && (weapon.itemId ?? weapon.item_id);
             if (itemId != null) {
                 const item = await db.getItemById(itemId);
@@ -751,9 +803,7 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
                 }
             }
             entry.stats = user.stats || null;
-            entry.armorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
-                ? user.equipment.armor.characterIndex
-                : null;
+            entry.armorCharacterIndex = outfitCharacterIndexFromUser(user);
         }
 
         console.log('[RoomWeapons] Init payload entry:', {
@@ -1895,16 +1945,14 @@ function handleWebSocketConnection(ws, req) {
         if (user) {
             let userDataChanged = false;
             // Migrate Sword items from 'test' to 'playa' on login
-            if (user.equipment && user.equipment.weapon && !user.equipment.weapon.displayName) {
-                user.equipment.weapon.displayName = user.equipment.weapon.name || 'Weapon';
+            if (user.equipment && user.equipment.weapon1 && !user.equipment.weapon1.displayName) {
+                user.equipment.weapon1.displayName = user.equipment.weapon1.name || 'Weapon';
                 userDataChanged = true;
             }
             if (userDataChanged) {
                 await db.updateUser(ws.googleId, user);
             }
-            ws.equippedArmorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
-                ? user.equipment.armor.characterIndex
-                : null;
+            ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
             ws.send(msgpack.encode({
                 type: 'playerData',
                 playerData: {
@@ -2009,7 +2057,7 @@ function handleWebSocketConnection(ws, req) {
         }
         
         // Generate random loot: any equipment slot (except weapon)
-        const lootTypes = ['armor', 'amulet', 'ring', 'spellcard'];
+        const lootTypes = ['helmet', 'chest', 'legs', 'boots', 'gloves', 'amulet', 'ring1', 'ring2'];
         const randomIndex = Math.floor(Math.random() * lootTypes.length);
         const itemType = lootTypes[randomIndex];
         const lootItem = buildServerGeneratedEquipmentLoot(itemType);
@@ -2092,38 +2140,6 @@ function handleWebSocketConnection(ws, req) {
             addedItem: lootItem,
             addedCount: qty
         }));
-      } else if (data.type === 'npcGiveSpellcards') {
-        // Spellcard NPC (client-rendered) - add all 3 spellcards to user inventory
-        if (!ws.googleId) {
-            console.log('[npcGiveSpellcards] Rejected: not logged in');
-            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in', fromNpcSpellcards: true }));
-            return;
-        }
-        const user = await db.getUserByGoogleId(ws.googleId);
-        if (!user) {
-            console.log('[npcGiveSpellcards] Rejected: user not found for googleId');
-            ws.send(msgpack.encode({ type: 'error', message: 'User not found', fromNpcSpellcards: true }));
-            return;
-        }
-        if (!user.inventory) user.inventory = [];
-        const spellcards = [
-            { name: `${LOOT_SLOT_UI_EMOJI.spellcard} Shield Spellcard`, slot: 'spellcard', displayName: 'Shield Spellcard', activeAbility: 'shield', stats: [] },
-            { name: `${LOOT_SLOT_UI_EMOJI.spellcard} Heal Zone Spellcard`, slot: 'spellcard', displayName: 'Heal Zone Spellcard', activeAbility: 'heal_zone', stats: [] },
-            { name: `${LOOT_SLOT_UI_EMOJI.spellcard} Explosion Spellcard`, slot: 'spellcard', displayName: 'Explosion Spellcard', activeAbility: 'explosion', stats: [] }
-        ];
-        spellcards.forEach(sc => user.inventory.push(sc));
-        await db.updateUser(ws.googleId, user);
-        console.log('[npcGiveSpellcards] Granted 3 spellcards to', ws.username || ws.googleId);
-        ws.send(msgpack.encode({
-            type: 'npcSpellcardsGranted',
-            playerData: {
-                username: user.name,
-                name: user.name,
-                stats: user.stats,
-                inventory: user.inventory,
-                equipment: user.equipment
-            }
-        }));
       } else if (data.type === 'equipItem') {
         // Handle equipping an item
         if (!ws.googleId) {
@@ -2176,7 +2192,7 @@ function handleWebSocketConnection(ws, req) {
         // Equip the new item
         user.equipment[slotName] = itemToEquip;
 
-        if (slotName === 'weapon' && (item.itemId != null || item.item_id != null)) {
+        if ((slotName === 'weapon1' || slotName === 'weapon2') && (item.itemId != null || item.item_id != null)) {
             const id = item.itemId ?? item.item_id;
             console.log(`[EquipItem] User ${ws.username} equipped weapon (itemId=${id})`);
         }
@@ -2187,9 +2203,7 @@ function handleWebSocketConnection(ws, req) {
         await db.updateUser(ws.googleId, user);
         
         // Keep socket armor sprite in sync so lobby/game broadcasts show correct sprite
-        ws.equippedArmorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
-            ? user.equipment.armor.characterIndex
-            : null;
+        ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
         
         // Send success response with updated player data
         ws.send(msgpack.encode({
@@ -2244,9 +2258,7 @@ function handleWebSocketConnection(ws, req) {
 
         await db.updateUser(ws.googleId, user);
 
-        ws.equippedArmorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
-            ? user.equipment.armor.characterIndex
-            : null;
+        ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
 
         ws.send(msgpack.encode({
             type: 'unequipSuccess',
@@ -2452,9 +2464,7 @@ function handleWebSocketConnection(ws, req) {
             if (roomData.type === 'lobby' && ws.googleId && ws.equippedArmorCharacterIndex === undefined) {
                 const user = await db.getUserByGoogleId(ws.googleId);
                 if (user) {
-                    ws.equippedArmorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
-                        ? user.equipment.armor.characterIndex
-                        : null;
+                    ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
                 }
             }
             
@@ -3097,7 +3107,7 @@ function handleWebSocketConnection(ws, req) {
         }
         try {
             const item = await db.getItemById(id);
-            if (!item || item.slot !== 'weapon') {
+            if (!item || (item.slot !== 'weapon' && item.slot !== 'weapon1' && item.slot !== 'weapon2')) {
                 ws.send(msgpack.encode({ type: 'error', message: 'Weapon not found' }));
                 return;
             }
@@ -3942,7 +3952,7 @@ function handleWebSocketConnection(ws, req) {
             const memberClient = clients.get(memberId);
             if (memberClient && memberClient.username && room.clients.has(memberClient)) {
                 // Generate random loot: any equipment slot (except weapon)
-                const lootTypes = ['armor', 'amulet', 'ring', 'spellcard'];
+                const lootTypes = ['helmet', 'chest', 'legs', 'boots', 'gloves', 'amulet', 'ring1', 'ring2'];
                 const randomIndex = Math.floor(Math.random() * lootTypes.length);
                 const itemType = lootTypes[randomIndex];
                 console.log(`[LootGeneration] Random index: ${randomIndex}, Selected type: ${itemType}`);
@@ -4368,9 +4378,7 @@ function handleWebSocketConnection(ws, req) {
             ws.sessionId = session.sessionId; // Store session ID on WebSocket
             ws.rank = user.rank || 'player';
             ws.isAdmin = (ws.rank === 'admin');
-            ws.equippedArmorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
-                ? user.equipment.armor.characterIndex
-                : null;
+            ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
             
             // Send login success with session ID
             ws.send(msgpack.encode({
@@ -4464,9 +4472,7 @@ function handleWebSocketConnection(ws, req) {
                 ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
-            ws.equippedArmorCharacterIndex = (user.equipment && user.equipment.armor && typeof user.equipment.armor.characterIndex === 'number')
-                ? user.equipment.armor.characterIndex
-                : null;
+            ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
             
             // Send session restored
             ws.send(msgpack.encode({

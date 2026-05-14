@@ -44,8 +44,36 @@ function cleanDeprecatedStats(user) {
     
     // Remove passiveAbility field (deprecated system)
     delete user.passiveAbility;
+
+    normalizeUserEquipmentShape(user);
     
     return user;
+}
+
+/** Align equipment object with current slot keys (eq[0]..eq[10]); migrate legacy weapon/armor/ring; strip spellcard → inventory as amulet. */
+function normalizeUserEquipmentShape(user) {
+    if (!user) return;
+    const ORDER = [
+        'weapon1', 'weapon2', 'helmet', 'chest', 'legs', 'boots', 'gloves',
+        'amulet', 'ring1', 'ring2', 'outfit'
+    ];
+    if (!user.equipment || typeof user.equipment !== 'object') {
+        user.equipment = {};
+    }
+    const eq = user.equipment;
+    if (eq.spellcard != null && typeof eq.spellcard === 'object') {
+        if (!Array.isArray(user.inventory)) user.inventory = [];
+        user.inventory.push({ ...eq.spellcard, slot: 'amulet' });
+    }
+    const next = {};
+    ORDER.forEach((k) => {
+        next[k] = Object.prototype.hasOwnProperty.call(eq, k) ? eq[k] : null;
+    });
+    if (eq.weapon != null && next.weapon1 == null) next.weapon1 = eq.weapon;
+    if (eq.armor != null && next.outfit == null) next.outfit = eq.armor;
+    if (eq.ring != null && next.ring1 == null) next.ring1 = eq.ring;
+    Object.keys(eq).forEach((k) => { delete eq[k]; });
+    Object.assign(eq, next);
 }
 
 const __filename = fileURLToPath(import.meta.url);
