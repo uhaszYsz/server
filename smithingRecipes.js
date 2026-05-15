@@ -95,6 +95,12 @@ export function getSmithingCatalogForClient(isAdmin) {
                     qty: req.qty
                 }))
             };
+            if (r.output.armorIcon && typeof r.output.armorIcon === 'object' && r.output.armorIcon.part) {
+                row.armorIcon = {
+                    part: String(r.output.armorIcon.part),
+                    frame: parseInt(r.output.armorIcon.frame, 10) || 0
+                };
+            }
             if (isAdmin) {
                 row.adminEdit = {
                     setId: set.setId,
@@ -111,12 +117,21 @@ export function getRecipeOutputLootItem(recipe) {
     if (!recipe || !recipe.output) return null;
     const o = recipe.output;
     const slot = o.slot || SMITH_KEY_TO_LOOT_SLOT[recipe.smithKey] || 'none';
-    return {
+    const item = {
         name: o.name,
         displayName: o.displayName,
         slot,
         stats: Array.isArray(o.stats) ? o.stats.map((s) => ({ ...s })) : []
     };
+    if (o.itemId != null) {
+        const id = parseInt(o.itemId, 10);
+        if (Number.isInteger(id) && id >= 1) item.itemId = id;
+    }
+    if (o.armorIcon && typeof o.armorIcon === 'object' && o.armorIcon.part) {
+        const frame = parseInt(o.armorIcon.frame, 10);
+        item.armorIcon = { part: String(o.armorIcon.part), frame: Number.isFinite(frame) ? frame : 0 };
+    }
+    return item;
 }
 
 export { SMITH_KEY_TO_LOOT_SLOT };

@@ -16,7 +16,9 @@ import {
     loadSmithingCatalog,
     saveSmithingCatalog,
     createBossSet,
-    saveSmithingRecipe
+    saveSmithingRecipe,
+    deleteBossSet,
+    renameBossSet
 } from './smithingStore.js';
 
 await loadSmithingCatalog();
@@ -347,6 +349,11 @@ function normalizeStoredLootItem(item) {
     const spaceIdx = displayLine.indexOf(' ');
     const lab = spaceIdx >= 0 ? displayLine.slice(spaceIdx + 1).trim() : displayLine;
     if (lab) lootItem.displayName = lab;
+
+    if (item.armorIcon && typeof item.armorIcon === 'object' && item.armorIcon.part) {
+        const frame = parseInt(item.armorIcon.frame, 10);
+        lootItem.armorIcon = { part: String(item.armorIcon.part), frame: Number.isFinite(frame) ? frame : 0 };
+    }
 
     return lootItem;
 }
@@ -2394,6 +2401,51 @@ function handleWebSocketConnection(ws, req) {
         } catch (error) {
             console.error('[Smithing] adminSaveSmithingRecipe failed', error);
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to save recipe' }));
+        }
+      } else if (data.type === 'adminDeleteSmithingBoss') {
+        if (!ws.isAdmin) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Admin only' }));
+            return;
+        }
+        const setId = typeof data.setId === 'string' ? data.setId.trim() : '';
+        try {
+            if (!deleteBossSet(setId)) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Boss set not found or cannot be deleted' }));
+                return;
+            }
+            await saveSmithingCatalog();
+            ws.send(msgpack.encode({
+                type: 'smithingCatalogUpdated',
+                sets: getSmithingCatalogForClient(true)
+            }));
+        } catch (error) {
+            console.error('[Smithing] adminDeleteSmithingBoss failed', error);
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to delete boss set' }));
+        }
+      } else if (data.type === 'adminRenameSmithingBoss') {
+        if (!ws.isAdmin) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Admin only' }));
+            return;
+        }
+        const setId = typeof data.setId === 'string' ? data.setId.trim() : '';
+        const setName = typeof data.setName === 'string' ? data.setName.trim() : '';
+        if (!setId || !setName) {
+            ws.send(msgpack.encode({ type: 'error', message: 'setId and setName required' }));
+            return;
+        }
+        try {
+            if (!renameBossSet(setId, setName)) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Boss set not found or invalid name' }));
+                return;
+            }
+            await saveSmithingCatalog();
+            ws.send(msgpack.encode({
+                type: 'smithingCatalogUpdated',
+                sets: getSmithingCatalogForClient(true)
+            }));
+        } catch (error) {
+            console.error('[Smithing] adminRenameSmithingBoss failed', error);
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to rename boss set' }));
         }
       } else if (data.type === 'unequipItem') {
         if (!ws.googleId) {

@@ -92,6 +92,29 @@ export function createBossSet() {
     return set;
 }
 
+export function isBossSmithingSetId(setId) {
+    return String(setId || '').startsWith('boss_');
+}
+
+export function deleteBossSet(setId) {
+    const sid = String(setId || '').trim();
+    if (!isBossSmithingSetId(sid)) return false;
+    const idx = sets.findIndex((s) => s.setId === sid);
+    if (idx < 0) return false;
+    sets.splice(idx, 1);
+    return true;
+}
+
+export function renameBossSet(setId, setName) {
+    const sid = String(setId || '').trim();
+    const name = String(setName || '').trim();
+    if (!isBossSmithingSetId(sid) || !name) return null;
+    const set = sets.find((s) => s.setId === sid);
+    if (!set) return null;
+    set.setName = name.slice(0, 80);
+    return set;
+}
+
 export function saveSmithingRecipe(setId, recipeId, patch) {
     const sid = String(setId || '').trim();
     const rid = String(recipeId || '').trim();
