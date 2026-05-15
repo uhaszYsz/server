@@ -3908,10 +3908,13 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to get sprites' }));
         }
       } else if (data.type === 'listCampaignLevels') {
-        // Admin only - list all campaign levels
         if (!ws.username) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
-            return;
+          ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+          return;
+        }
+        if (ws.rank !== 'admin') {
+          ws.send(msgpack.encode({ type: 'error', message: 'Admin privileges required' }));
+          return;
         }
 
         try {
