@@ -1,18 +1,18 @@
 export const BUILTIN_SMITHING_SETS = [
     {
-        setId: 'parrot',
-        setName: 'Parrot armor',
-        setEmoji: '🦜',
+        setId: 'kurvishon',
+        setName: 'Kurvishon armor',
+        setEmoji: '🛡',
         recipes: [
             {
-                recipeId: 'parrot_weapon',
+                recipeId: 'kurvishon_weapon',
                 smithKey: 'weapon',
                 equipKey: 'weapon1',
                 short: 'WPN',
                 titleHint: 'Weapon',
                 output: {
-                    name: '🦜 Parrot Cutlass',
-                    displayName: 'Parrot Cutlass',
+                    name: '🛡 Kurvishon Cutlass',
+                    displayName: 'Kurvishon Cutlass',
                     slot: 'weapon1',
                     slotLabel: 'Weapon',
                     stats: [
@@ -28,14 +28,14 @@ export const BUILTIN_SMITHING_SETS = [
                 ]
             },
             {
-                recipeId: 'parrot_head',
+                recipeId: 'kurvishon_head',
                 smithKey: 'head',
                 equipKey: 'helmet',
                 short: 'HEAD',
                 titleHint: 'Helmet',
                 output: {
-                    name: '🦜 Parrot Crest Helm',
-                    displayName: 'Parrot Crest Helm',
+                    name: '🛡 Kurvishon Crest Helm',
+                    displayName: 'Kurvishon Crest Helm',
                     slot: 'helmet',
                     slotLabel: 'Helmet',
                     stats: [
@@ -51,14 +51,14 @@ export const BUILTIN_SMITHING_SETS = [
                 ]
             },
             {
-                recipeId: 'parrot_body',
+                recipeId: 'kurvishon_body',
                 smithKey: 'body',
                 equipKey: 'chest',
                 short: 'BODY',
                 titleHint: 'Chest',
                 output: {
-                    name: '🦜 Parrot Mail',
-                    displayName: 'Parrot Mail',
+                    name: '🛡 Kurvishon Mail',
+                    displayName: 'Kurvishon Mail',
                     slot: 'chest',
                     slotLabel: 'Chest',
                     stats: [
@@ -75,14 +75,14 @@ export const BUILTIN_SMITHING_SETS = [
                 ]
             },
             {
-                recipeId: 'parrot_legs',
+                recipeId: 'kurvishon_legs',
                 smithKey: 'legs',
                 equipKey: 'legs',
                 short: 'LEGS',
                 titleHint: 'Legs',
                 output: {
-                    name: '🦜 Parrot Greaves',
-                    displayName: 'Parrot Greaves',
+                    name: '🛡 Kurvishon Greaves',
+                    displayName: 'Kurvishon Greaves',
                     slot: 'legs',
                     slotLabel: 'Legs',
                     stats: [
@@ -98,14 +98,14 @@ export const BUILTIN_SMITHING_SETS = [
                 ]
             },
             {
-                recipeId: 'parrot_gloves',
+                recipeId: 'kurvishon_gloves',
                 smithKey: 'gloves',
                 equipKey: 'gloves',
                 short: 'HAND',
                 titleHint: 'Gloves',
                 output: {
-                    name: '🦜 Parrot Talons',
-                    displayName: 'Parrot Talons',
+                    name: '🛡 Kurvishon Talons',
+                    displayName: 'Kurvishon Talons',
                     slot: 'gloves',
                     slotLabel: 'Gloves',
                     stats: [
@@ -121,14 +121,14 @@ export const BUILTIN_SMITHING_SETS = [
                 ]
             },
             {
-                recipeId: 'parrot_boots',
+                recipeId: 'kurvishon_boots',
                 smithKey: 'boots',
                 equipKey: 'boots',
                 short: 'BOOT',
                 titleHint: 'Boots',
                 output: {
-                    name: '🦜 Parrot Striders',
-                    displayName: 'Parrot Striders',
+                    name: '🛡 Kurvishon Striders',
+                    displayName: 'Kurvishon Striders',
                     slot: 'boots',
                     slotLabel: 'Boots',
                     stats: [
