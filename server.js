@@ -5,6 +5,22 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Encoder } from 'msgpackr';
 import * as db from './database.js';
+import {
+    getSmithingCatalogForClient,
+    findSmithingRecipe,
+    inventoryMeetsRequirements,
+    consumeRequirementsFromInventory,
+    getRecipeOutputLootItem
+} from './smithingRecipes.js';
+import {
+    loadSmithingCatalog,
+    saveSmithingCatalog,
+    createBossSet,
+    saveSmithingRecipe
+} from './smithingStore.js';
+
+await loadSmithingCatalog();
+console.log('✅ Smithing catalog loaded');
 import readline from 'readline';
 import bcrypt from 'bcrypt';
 import DOMPurify from 'dompurify';
@@ -156,20 +172,56 @@ await Promise.all([
     fs.mkdir(levelsDirectory, { recursive: true })
 ]);
 
-// Equipment: eq[0]..eq[10] (weapon1, weapon2, helmet, chest, legs, boots, gloves, amulet, ring1, ring2, outfit)
+// Equipment storage: ring1/ring2 worn slots; items/loot use single slot type `ring`
+const RING_EQUIP_STORAGE_SLOTS = ['ring1', 'ring2'];
+const RING_ITEM_SLOT = 'ring';
+
 const EQUIPMENT_SLOTS = [
     'weapon1', 'weapon2', 'helmet', 'chest', 'legs', 'boots', 'gloves',
     'amulet', 'ring1', 'ring2', 'outfit'
 ];
-const LOOT_STORAGE_SLOTS = [...EQUIPMENT_SLOTS, 'gold', 'material', 'other', 'none'];
+
+const LOOT_ITEM_EQUIP_SLOTS = [
+    'weapon1', 'weapon2', 'helmet', 'chest', 'legs', 'boots', 'gloves',
+    'amulet', RING_ITEM_SLOT, 'outfit'
+];
+
+const LOOT_STORAGE_SLOTS = [...LOOT_ITEM_EQUIP_SLOTS, 'gold', 'material', 'other', 'none'];
+const ITEM_EQUIP_SLOTS = new Set(LOOT_ITEM_EQUIP_SLOTS);
 
 function mapLegacyEquipSlotName(s) {
     const x = String(s || '').trim().toLowerCase();
     if (x === 'weapon') return 'weapon1';
     if (x === 'armor') return 'outfit';
-    if (x === 'ring') return 'ring1';
+    if (x === 'ring' || x === 'ring1' || x === 'ring2') return RING_ITEM_SLOT;
     if (x === 'spellcard') return 'amulet';
     return x;
+}
+
+function findFirstFreeRingEquipSlot(equipment) {
+    if (!equipment || !equipment.ring1) return 'ring1';
+    if (!equipment.ring2) return 'ring2';
+    return 'ring1';
+}
+
+function resolveEquipmentStorageSlot(item, equipment) {
+    const itemSlot = resolveEquipSlotFromItem(item);
+    if (!itemSlot) return null;
+    if (itemSlot === RING_ITEM_SLOT) return findFirstFreeRingEquipSlot(equipment);
+    return itemSlot;
+}
+
+function migrateRingItemSlotsInUser(user) {
+    if (!user) return;
+    const fixItemSlot = (item) => {
+        if (!item || typeof item.slot !== 'string') return;
+        const s = item.slot.trim().toLowerCase();
+        if (s === 'ring1' || s === 'ring2') item.slot = RING_ITEM_SLOT;
+    };
+    if (Array.isArray(user.inventory)) user.inventory.forEach(fixItemSlot);
+    if (user.equipment && typeof user.equipment === 'object') {
+        RING_EQUIP_STORAGE_SLOTS.forEach((k) => fixItemSlot(user.equipment[k]));
+    }
 }
 
 function primaryEquippedWeaponFromUser(user) {
@@ -193,8 +245,7 @@ const LOOT_SLOT_UI_EMOJI = {
     boots: '👢',
     gloves: '🧤',
     amulet: '💎',
-    ring1: '💍',
-    ring2: '💠',
+    ring: '💍',
     outfit: '👤',
     gold: '🪙',
     material: '🧱',
@@ -220,12 +271,12 @@ function resolveEquipSlotFromItem(item) {
     if (!item || typeof item !== 'object') return null;
     if (typeof item.slot === 'string') {
         const s = mapLegacyEquipSlotName(item.slot.trim().toLowerCase());
-        if (EQUIPMENT_SLOTS.includes(s)) return s;
+        if (ITEM_EQUIP_SLOTS.has(s)) return s;
         return null;
     }
     if (typeof item.name === 'string') {
         const n = mapLegacyEquipSlotName(item.name.trim().toLowerCase());
-        if (EQUIPMENT_SLOTS.includes(n)) return n;
+        if (ITEM_EQUIP_SLOTS.has(n)) return n;
     }
     return null;
 }
@@ -239,7 +290,7 @@ function normalizeLootStorageSlot(item, equipSlot) {
     if (typeof item.name === 'string') {
         const n = mapLegacyEquipSlotName(item.name.trim().toLowerCase());
         if (['gold', 'material', 'other'].includes(n)) return n;
-        if (EQUIPMENT_SLOTS.includes(n)) return n;
+        if (LOOT_ITEM_EQUIP_SLOTS.includes(n)) return n;
     }
     return 'none';
 }
@@ -263,13 +314,13 @@ function normalizeStoredLootItem(item) {
             : (rawName.charAt(0).toUpperCase() + rawName.slice(1));
         const hinted = normalizeLootStorageSlot(item, equipSlot);
         const mappedKey = mapLegacyEquipSlotName(keyFromName);
-        const typeKey = EQUIPMENT_SLOTS.includes(hinted) ? hinted
+        const typeKey = LOOT_ITEM_EQUIP_SLOTS.includes(hinted) ? hinted
             : (['gold', 'material', 'other'].includes(hinted) ? hinted
-                : (EQUIPMENT_SLOTS.includes(mappedKey) ? mappedKey
+                : (LOOT_ITEM_EQUIP_SLOTS.includes(mappedKey) ? mappedKey
                     : (['gold', 'material', 'other'].includes(keyFromName) ? keyFromName : 'none')));
         const em = LOOT_SLOT_UI_EMOJI[typeKey] || '📦';
         displayLine = `${em} ${label}`;
-        if (!equipSlot && EQUIPMENT_SLOTS.includes(mappedKey)) equipSlot = mappedKey;
+        if (!equipSlot && LOOT_ITEM_EQUIP_SLOTS.includes(mappedKey)) equipSlot = mappedKey;
     }
 
     const storageSlot = normalizeLootStorageSlot(item, equipSlot);
@@ -315,15 +366,14 @@ function buildServerGeneratedEquipmentLoot(itemType) {
             boots: 'Boots',
             gloves: 'Gloves',
             amulet: 'Amulet',
-            ring1: 'Ring',
-            ring2: 'Ring',
+            ring: 'Ring',
             outfit: 'Outfit'
         };
         const label = displayNames[itemType] || itemType;
         const em = LOOT_SLOT_UI_EMOJI[itemType] || '📦';
         lootItem.name = `${em} ${label}`;
         lootItem.displayName = label;
-        const slotCounts = { helmet: 2, chest: 3, legs: 2, boots: 2, gloves: 2, amulet: 2, ring1: 1, ring2: 1, outfit: 0 };
+        const slotCounts = { helmet: 2, chest: 3, legs: 2, boots: 2, gloves: 2, amulet: 2, ring: 1, outfit: 0 };
         const slotCount = slotCounts[itemType] || 0;
         if (slotCount > 0) {
             const availableStats = [...ITEM_STATS];
@@ -2057,7 +2107,7 @@ function handleWebSocketConnection(ws, req) {
         }
         
         // Generate random loot: any equipment slot (except weapon)
-        const lootTypes = ['helmet', 'chest', 'legs', 'boots', 'gloves', 'amulet', 'ring1', 'ring2'];
+        const lootTypes = ['helmet', 'chest', 'legs', 'boots', 'gloves', 'amulet', 'ring'];
         const randomIndex = Math.floor(Math.random() * lootTypes.length);
         const itemType = lootTypes[randomIndex];
         const lootItem = buildServerGeneratedEquipmentLoot(itemType);
@@ -2172,27 +2222,32 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         
-        const slotName = resolveEquipSlotFromItem(item);
-        if (!slotName) {
+        const itemSlot = resolveEquipSlotFromItem(item);
+        if (!itemSlot) {
+            ws.send(msgpack.encode({ type: 'error', message: 'This item cannot be equipped' }));
+            return;
+        }
+        const storageSlot = resolveEquipmentStorageSlot(item, user.equipment);
+        if (!storageSlot) {
             ws.send(msgpack.encode({ type: 'error', message: 'This item cannot be equipped' }));
             return;
         }
         
         // Remove the selected item from inventory (inventory items are not stack-count based).
         user.inventory.splice(inventoryIndex, 1);
-        const itemToEquip = item;
+        const itemToEquip = { ...item, slot: itemSlot };
         
         // If there's already an item in that slot, move it back to inventory
-        const oldItem = user.equipment[slotName];
+        const oldItem = user.equipment[storageSlot];
         if (oldItem) {
             // Return old equipped item back to inventory.
             user.inventory.push(oldItem);
         }
         
         // Equip the new item
-        user.equipment[slotName] = itemToEquip;
+        user.equipment[storageSlot] = itemToEquip;
 
-        if ((slotName === 'weapon1' || slotName === 'weapon2') && (item.itemId != null || item.item_id != null)) {
+        if ((storageSlot === 'weapon1' || storageSlot === 'weapon2') && (item.itemId != null || item.item_id != null)) {
             const id = item.itemId ?? item.item_id;
             console.log(`[EquipItem] User ${ws.username} equipped weapon (itemId=${id})`);
         }
@@ -2215,7 +2270,131 @@ function handleWebSocketConnection(ws, req) {
             }
         }));
         
-        console.log(`[EquipItem] User ${ws.username} equipped ${slotName}`);
+        console.log(`[EquipItem] User ${ws.username} equipped ${storageSlot} (item slot ${itemSlot})`);
+      } else if (data.type === 'getSmithingCatalog') {
+        const catalogNonce = data.nonce;
+        try {
+            ws.send(msgpack.encode({
+                type: 'smithingCatalog',
+                sets: getSmithingCatalogForClient(!!ws.isAdmin),
+                nonce: catalogNonce
+            }));
+        } catch (error) {
+            console.error('Failed to send smithing catalog', error);
+            ws.send(msgpack.encode({
+                type: 'error',
+                message: 'Failed to load smithing catalog',
+                fromSmithingCatalog: true,
+                nonce: catalogNonce
+            }));
+        }
+      } else if (data.type === 'craftSmithingItem') {
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+
+        const user = await db.getUserByGoogleId(ws.googleId);
+        if (!user) {
+            ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+            return;
+        }
+
+        if (db.hashGoogleId(ws.googleId) !== user.googleIdHash) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Permission denied' }));
+            return;
+        }
+
+        const recipeId = typeof data.recipeId === 'string' ? data.recipeId.trim() : '';
+        const found = findSmithingRecipe(recipeId);
+        if (!found) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Unknown smithing recipe' }));
+            return;
+        }
+
+        const { recipe } = found;
+        if (!user.inventory) user.inventory = [];
+
+        if (!inventoryMeetsRequirements(user.inventory, recipe.requirements)) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Missing required materials' }));
+            return;
+        }
+
+        if (!consumeRequirementsFromInventory(user.inventory, recipe.requirements)) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Failed to consume materials' }));
+            return;
+        }
+
+        let craftedItem;
+        try {
+            craftedItem = normalizeStoredLootItem(getRecipeOutputLootItem(recipe));
+        } catch (err) {
+            ws.send(msgpack.encode({ type: 'error', message: err.message || 'Invalid crafted item' }));
+            return;
+        }
+
+        user.inventory.push(craftedItem);
+        await db.updateUser(ws.googleId, user);
+
+        ws.send(msgpack.encode({
+            type: 'craftSmithingSuccess',
+            playerData: {
+                stats: user.stats,
+                inventory: user.inventory,
+                equipment: user.equipment
+            },
+            craftedItem,
+            recipeId
+        }));
+
+        console.log(`[Smithing] User ${ws.username} crafted ${recipeId}`);
+      } else if (data.type === 'adminAddSmithingBoss') {
+        if (!ws.isAdmin) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Admin only' }));
+            return;
+        }
+        try {
+            createBossSet();
+            await saveSmithingCatalog();
+            ws.send(msgpack.encode({
+                type: 'smithingCatalogUpdated',
+                sets: getSmithingCatalogForClient(true)
+            }));
+        } catch (error) {
+            console.error('[Smithing] adminAddSmithingBoss failed', error);
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to add boss set' }));
+        }
+      } else if (data.type === 'adminSaveSmithingRecipe') {
+        if (!ws.isAdmin) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Admin only' }));
+            return;
+        }
+        const setId = typeof data.setId === 'string' ? data.setId.trim() : '';
+        const recipeId = typeof data.recipeId === 'string' ? data.recipeId.trim() : '';
+        if (!setId || !recipeId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'setId and recipeId required' }));
+            return;
+        }
+        try {
+            const saved = saveSmithingRecipe(setId, recipeId, {
+                output: data.output,
+                requirements: data.requirements,
+                short: data.short,
+                titleHint: data.titleHint
+            });
+            if (!saved) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Recipe not found' }));
+                return;
+            }
+            await saveSmithingCatalog();
+            ws.send(msgpack.encode({
+                type: 'smithingCatalogUpdated',
+                sets: getSmithingCatalogForClient(true)
+            }));
+        } catch (error) {
+            console.error('[Smithing] adminSaveSmithingRecipe failed', error);
+            ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to save recipe' }));
+        }
       } else if (data.type === 'unequipItem') {
         if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
@@ -3952,7 +4131,7 @@ function handleWebSocketConnection(ws, req) {
             const memberClient = clients.get(memberId);
             if (memberClient && memberClient.username && room.clients.has(memberClient)) {
                 // Generate random loot: any equipment slot (except weapon)
-                const lootTypes = ['helmet', 'chest', 'legs', 'boots', 'gloves', 'amulet', 'ring1', 'ring2'];
+                const lootTypes = ['helmet', 'chest', 'legs', 'boots', 'gloves', 'amulet', 'ring'];
                 const randomIndex = Math.floor(Math.random() * lootTypes.length);
                 const itemType = lootTypes[randomIndex];
                 console.log(`[LootGeneration] Random index: ${randomIndex}, Selected type: ${itemType}`);

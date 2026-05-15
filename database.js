@@ -74,6 +74,21 @@ function normalizeUserEquipmentShape(user) {
     if (eq.ring != null && next.ring1 == null) next.ring1 = eq.ring;
     Object.keys(eq).forEach((k) => { delete eq[k]; });
     Object.assign(eq, next);
+    migrateRingItemSlotsInUser(user);
+}
+
+/** Item loot uses `ring`; legacy ring1/ring2 on items are normalized (equipment still uses ring1/ring2 storage). */
+function migrateRingItemSlotsInUser(user) {
+    if (!user) return;
+    const fixItemSlot = (item) => {
+        if (!item || typeof item.slot !== 'string') return;
+        const s = item.slot.trim().toLowerCase();
+        if (s === 'ring1' || s === 'ring2') item.slot = 'ring';
+    };
+    if (Array.isArray(user.inventory)) user.inventory.forEach(fixItemSlot);
+    if (user.equipment && typeof user.equipment === 'object') {
+        ['ring1', 'ring2'].forEach((k) => fixItemSlot(user.equipment[k]));
+    }
 }
 
 const __filename = fileURLToPath(import.meta.url);
