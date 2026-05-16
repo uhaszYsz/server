@@ -28,7 +28,10 @@ export function countMatchingInventoryItems(inventory, matchName) {
     if (!Array.isArray(inventory)) return 0;
     let n = 0;
     for (const item of inventory) {
-        if (itemMatchesRequirement(item, matchName)) n++;
+        if (itemMatchesRequirement(item, matchName)) {
+            const q = (typeof item.quantity === 'number' && item.quantity >= 1) ? Math.floor(item.quantity) : 1;
+            n += q;
+        }
     }
     return n;
 }
@@ -52,13 +55,20 @@ export function consumeRequirementsFromInventory(inventory, requirements) {
     })).filter((r) => r.remaining > 0);
 
     for (const need of needs) {
-        for (let i = inventory.length - 1; i >= 0 && need.remaining > 0; i--) {
-            if (itemMatchesRequirement(inventory[i], need.matchName)) {
+        let remaining = need.remaining;
+        for (let i = inventory.length - 1; i >= 0 && remaining > 0; i--) {
+            if (!itemMatchesRequirement(inventory[i], need.matchName)) continue;
+            const item = inventory[i];
+            const q = (typeof item.quantity === 'number' && item.quantity >= 1) ? Math.floor(item.quantity) : 1;
+            if (q <= remaining) {
+                remaining -= q;
                 inventory.splice(i, 1);
-                need.remaining--;
+            } else {
+                inventory[i] = { ...item, quantity: q - remaining };
+                remaining = 0;
             }
         }
-        if (need.remaining > 0) return false;
+        if (remaining > 0) return false;
     }
     return true;
 }

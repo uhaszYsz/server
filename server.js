@@ -358,6 +358,64 @@ function normalizeStoredLootItem(item) {
     return lootItem;
 }
 
+/** Sort stats for stable stack identity (must match client `lootStackKeyFromItem`). */
+function stableStatsForLootStackKey(stats) {
+    if (!Array.isArray(stats)) return [];
+    const out = [];
+    for (let i = 0; i < stats.length; i++) {
+        const s = stats[i];
+        if (!s || typeof s !== 'object') continue;
+        const st = s.stat != null ? String(s.stat) : '';
+        const val = Number(s.value);
+        out.push({ stat: st, value: Number.isFinite(val) ? val : 0 });
+    }
+    out.sort((a, b) => a.stat.localeCompare(b.stat) || a.value - b.value);
+    return out;
+}
+
+/**
+ * Fast stack compare: one JSON string per item (no hash needed for typical bag sizes).
+ * Ignores `quantity`; only identity fields are included.
+ */
+function lootStackKeyFromItem(item) {
+    if (!item || typeof item !== 'object') return '';
+    let armorIcon;
+    if (item.armorIcon && typeof item.armorIcon === 'object' && item.armorIcon.part) {
+        const frame = parseInt(item.armorIcon.frame, 10);
+        armorIcon = { part: String(item.armorIcon.part), frame: Number.isFinite(frame) ? frame : 0 };
+    }
+    const payload = {
+        name: item.name,
+        slot: item.slot,
+        stats: stableStatsForLootStackKey(item.stats),
+        displayName: item.displayName,
+        itemId: item.itemId,
+        activeAbility: item.activeAbility,
+        characterIndex: item.characterIndex
+    };
+    if (armorIcon) payload.armorIcon = armorIcon;
+    return JSON.stringify(payload);
+}
+
+const LOOT_MAX_STACK_PER_SLOT = 999999;
+
+function mergeLootIntoInventoryStacked(user, lootItem, qty) {
+    const addQty = Math.max(1, Math.min(100000, Math.floor(Number(qty)) || 1));
+    if (!user.inventory) user.inventory = [];
+    const key = lootStackKeyFromItem(lootItem);
+    for (let i = 0; i < user.inventory.length; i++) {
+        const cur = user.inventory[i];
+        if (!cur || typeof cur !== 'object') continue;
+        if (lootStackKeyFromItem(cur) !== key) continue;
+        const curQ = (typeof cur.quantity === 'number' && cur.quantity >= 1) ? Math.floor(cur.quantity) : 1;
+        const next = curQ + addQty;
+        user.inventory[i].quantity = Math.min(LOOT_MAX_STACK_PER_SLOT, next);
+        return;
+    }
+    const row = { ...lootItem, quantity: Math.min(LOOT_MAX_STACK_PER_SLOT, addQty) };
+    user.inventory.push(row);
+}
+
 /** Random raid/debug loot for armor slots / jewelry; amulets may roll an active skill. */
 function buildServerGeneratedEquipmentLoot(itemType) {
     let lootItem = {
@@ -2123,7 +2181,7 @@ function handleWebSocketConnection(ws, req) {
         if (!user.inventory) {
             user.inventory = [];
         }
-        user.inventory.push(lootItem);
+        mergeLootIntoInventoryStacked(user, lootItem, 1);
         await db.updateUser(ws.googleId, user);
         
         // Send loot back to client
@@ -2179,10 +2237,7 @@ function handleWebSocketConnection(ws, req) {
             }
         }
         if (!user.inventory) user.inventory = [];
-        const templateJson = JSON.stringify(lootItem);
-        for (let i = 0; i < qty; i++) {
-            user.inventory.push(JSON.parse(templateJson));
-        }
+        mergeLootIntoInventoryStacked(user, lootItem, qty);
         await db.updateUser(ws.googleId, user);
         console.log(`[addLoot] Added ${qty}x ${lootItem.displayName || lootItem.name} (${lootItem.slot}) to ${ws.username || ws.googleId}'s inventory`);
         ws.send(msgpack.encode({
@@ -2240,17 +2295,22 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         
-        // Remove the selected item from inventory (inventory items are not stack-count based).
+        // Remove one unit from stack (or entire row if quantity is 1).
+        const stackQty = (typeof item.quantity === 'number' && item.quantity >= 1) ? Math.floor(item.quantity) : 1;
         user.inventory.splice(inventoryIndex, 1);
-        const itemToEquip = { ...item, slot: itemSlot };
-        
+        if (stackQty > 1) {
+            user.inventory.splice(inventoryIndex, 0, { ...item, quantity: stackQty - 1 });
+        }
+        const baseEquip = { ...item };
+        delete baseEquip.quantity;
+        const itemToEquip = { ...baseEquip, slot: itemSlot };
+
         // If there's already an item in that slot, move it back to inventory
         const oldItem = user.equipment[storageSlot];
         if (oldItem) {
-            // Return old equipped item back to inventory.
-            user.inventory.push(oldItem);
+            mergeLootIntoInventoryStacked(user, oldItem, 1);
         }
-        
+
         // Equip the new item
         user.equipment[storageSlot] = itemToEquip;
 
@@ -2340,7 +2400,7 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
 
-        user.inventory.push(craftedItem);
+        mergeLootIntoInventoryStacked(user, craftedItem, 1);
         await db.updateUser(ws.googleId, user);
 
         ws.send(msgpack.encode({
@@ -2483,7 +2543,7 @@ function handleWebSocketConnection(ws, req) {
 
         user.equipment[equipmentSlot] = null;
         if (!user.inventory) user.inventory = [];
-        user.inventory.push(item);
+        mergeLootIntoInventoryStacked(user, item, 1);
 
         recalculateStatsFromEquipment(user);
 
@@ -2569,7 +2629,13 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({ type: 'error', message: 'Item not found in inventory' }));
             return;
         }
-        
+
+        const stackQty = (typeof item.quantity === 'number' && item.quantity >= 1) ? Math.floor(item.quantity) : 1;
+        if (stackQty > 1) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Cannot reroll stacked items. Use or split the stack first.' }));
+            return;
+        }
+
         // Validate item has stats array with at least 2 stats
         if (!Array.isArray(item.stats) || item.stats.length < 2) {
             ws.send(msgpack.encode({ type: 'error', message: 'Item must have at least 2 stats to reroll' }));
@@ -3277,7 +3343,7 @@ function handleWebSocketConnection(ws, req) {
                 itemId,
                 stats: []
             });
-            user.inventory.push(weaponItem);
+            mergeLootIntoInventoryStacked(user, weaponItem, 1);
             await db.updateUser(ws.googleId, user);
             ws.send(msgpack.encode({
                 type: 'uploadAsWeaponSuccess',
@@ -4199,7 +4265,7 @@ function handleWebSocketConnection(ws, req) {
                     if (!user.inventory) {
                         user.inventory = [];
                     }
-                    user.inventory.push(lootItem);
+                    mergeLootIntoInventoryStacked(user, lootItem, 1);
                     await db.updateUser(memberClient.googleId, user);
                     inventoryUpdated = true;
                     const itemDesc = lootItem.displayName || lootItem.name;
