@@ -632,7 +632,7 @@ function getDefaultStats() {
 }
 
 /** Each +1 maxHp roll on armor/amulet/ring adds this many Max HP after equip (loot editor value is unchanged). */
-const EQUIP_ITEM_MAX_HP_MULTIPLIER = 20;
+const EQUIP_ITEM_MAX_HP_MULTIPLIER = 10;
 
 function effectiveEquipmentStatBonus(statKey, rawValue) {
     const v = Number(rawValue);
