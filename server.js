@@ -920,6 +920,7 @@ async function buildRoomWeaponData(clientsCollection) {
             playerId: client.id,
             weaponCodeChildren: weaponCodeChildren,
             weaponItemName: weaponItemName || null,
+            weaponItemId: itemId != null ? itemId : null,
             armorCharacterIndex: outfitIdx,
             outfitCharacterIndex: outfitIdx,
             equipment: compactVisualEquipmentFromUser(user)
@@ -973,6 +974,7 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
                 if (item && item.codeChildren && item.codeChildren.length > 0) {
                     entry.weaponCodeChildren = item.codeChildren;
                     entry.weaponItemName = item.name;
+                    entry.weaponItemId = itemId;
                 }
             }
             entry.stats = user.stats || null;
