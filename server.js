@@ -310,6 +310,13 @@ const LOOT_SLOT_UI_EMOJI = {
     none: '📦'
 };
 
+/** Guests and offline stage-editor clients can read weapon catalog without Google login. */
+function ensureWsGuestIdentity(ws) {
+    if (!ws.username && ws.id != null) {
+        ws.username = 'Guest_' + ws.id;
+    }
+}
+
 function stringStartsWithEmoji(str) {
     const t = String(str || '').trim();
     if (!t) return false;
@@ -3439,13 +3446,19 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to upload as weapon' }));
         }
       } else if (data.type === 'listWeapons') {
-        if (!ws.username) {
-          ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
-          return;
-        }
+        ensureWsGuestIdentity(ws);
         try {
-          const items = await db.getItemsBySlot('weapon');
-          const weapons = items.map(i => ({ id: i.id, name: i.name }));
+          const [legacy, w1, w2] = await Promise.all([
+            db.getItemsBySlot('weapon'),
+            db.getItemsBySlot('weapon1'),
+            db.getItemsBySlot('weapon2')
+          ]);
+          const byId = new Map();
+          for (const i of [...legacy, ...w1, ...w2]) {
+            if (i && i.id != null) byId.set(i.id, { id: i.id, name: i.name });
+          }
+          const weapons = Array.from(byId.values()).sort((a, b) =>
+            String(a.name || '').localeCompare(String(b.name || '')));
           ws.send(msgpack.encode({ type: 'weaponsList', weapons }));
         } catch (error) {
           console.error('Failed to list weapons', error);
@@ -3475,10 +3488,7 @@ function handleWebSocketConnection(ws, req) {
           }));
         }
       } else if (data.type === 'getWeapon') {
-        if (!ws.username) {
-            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
-            return;
-        }
+        ensureWsGuestIdentity(ws);
         const id = data.id != null ? parseInt(data.id, 10) : NaN;
         if (!Number.isInteger(id) || id < 1) {
             ws.send(msgpack.encode({ type: 'error', message: 'Valid item id is required' }));
