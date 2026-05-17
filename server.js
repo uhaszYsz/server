@@ -1824,6 +1824,47 @@ function broadcastPartyUpdate(party) {
     }
 }
 
+function slugFromStageDisplayName(name) {
+    if (!name || typeof name !== 'string') return null;
+    const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
+    return slug || null;
+}
+
+function levelFileNameFromSlug(slug) {
+    if (!slug || typeof slug !== 'string') return null;
+    const trimmed = slug.trim().replace(/\.json$/i, '');
+    if (!trimmed || trimmed.includes('..') || trimmed.includes('/') || trimmed.includes('\\')) {
+        return null;
+    }
+    return `${trimmed}.json`;
+}
+
+/** Community stage or campaign level by slug (same resolution as getLevel). */
+async function loadLevelBySlug(identifier) {
+    if (!identifier || typeof identifier !== 'string') return null;
+    try {
+        const slug = ensureValidSlug(identifier);
+        let stage = await db.getStageBySlug(slug);
+        if (!stage) {
+            const campaignLevel = await db.getCampaignLevelBySlug(slug);
+            if (campaignLevel) {
+                stage = {
+                    name: campaignLevel.name,
+                    data: campaignLevel.data
+                };
+            }
+        }
+        if (!stage) return null;
+        return {
+            name: stage.name,
+            data: stage.data
+        };
+    } catch (error) {
+        console.warn('[loadLevelBySlug] failed for', identifier, error.message || error);
+        return null;
+    }
+}
+
 async function loadCampaignLevelByName(levelFileName) {
     if (!levelFileName || typeof levelFileName !== 'string') {
         return null;
@@ -1839,6 +1880,11 @@ async function loadCampaignLevelByName(levelFileName) {
     
     if (slug.includes('..') || slug.includes('/') || slug.includes('\\')) {
         throw new Error('Invalid level file name');
+    }
+
+    const fromStages = await loadLevelBySlug(slug);
+    if (fromStages) {
+        return fromStages;
     }
 
     // Load from database
@@ -2998,21 +3044,22 @@ function handleWebSocketConnection(ws, req) {
             }));
           }
         }
-      } else if (data.type === 'codeObjectSync' && ws.room) {
+      } else if (data.type === 'codeChildrenSnapshot' && ws.room) {
         const party = findPartyByMemberId(ws.id);
         if (!party || party.leader !== ws.id) return;
         const room = rooms.get(ws.room);
-        if (!room) return;
-        const targetTime = globalTimer + 1000;
-        const batches = Array.isArray(data.batches) ? data.batches : [];
-        for (const client of room.clients) {
-          if (client.readyState === ws.OPEN) {
-            client.send(msgpack.encode({
-              type: 'codeObjectSync',
-              targetTime,
-              batches
-            }));
-          }
+        if (!room || room.type !== 'game') return;
+        const snapshot = data.snapshot;
+        if (!snapshot || !Array.isArray(snapshot.instances)) return;
+        for (const memberId of party.members) {
+            if (memberId === ws.id) continue;
+            const memberClient = clients.get(memberId);
+            if (memberClient && memberClient.readyState === ws.OPEN && memberClient.room === ws.room) {
+                memberClient.send(msgpack.encode({
+                    type: 'codeChildrenSnapshot',
+                    snapshot: snapshot
+                }));
+            }
         }
       } else if (data.type === 'blockShield' && ws.room) {
         // Broadcast block shield instantly to all clients in the room (no buffering)
@@ -3106,7 +3153,10 @@ function handleWebSocketConnection(ws, req) {
         if (party && party.leader === ws.id) {
             console.log(`[PartyLoadLevel] leader=${ws.username || ws.id} stageDataBytes=${JSON.stringify(data.stageData || {}).length}`);
             party.stageData = data.stageData;
-            party.pendingStageConfirmations = new Set(party.members);
+            const nameSlug = slugFromStageDisplayName(data.stageData?.name);
+            if (nameSlug) {
+                party.levelSlug = nameSlug;
+            }
 
             for (const memberId of party.members) {
                 const memberClient = clients.get(memberId);
@@ -3124,49 +3174,59 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
 
-        // Use loaded stage data if available, otherwise use the requested level file
-        const requestedLevel = typeof data.level === 'string' && data.level.trim()
-            ? data.level.trim()
-            : DEFAULT_CAMPAIGN_LEVEL_FILE;
+        const requestedLevelRaw = typeof data.level === 'string' && data.level.trim() ? data.level.trim() : null;
+        const requestedSlug = requestedLevelRaw
+            ? (requestedLevelRaw.endsWith('.json') ? requestedLevelRaw.slice(0, -5) : requestedLevelRaw)
+            : null;
 
         try {
             if (!party) {
-                // Solo play: no party, create a one-member "party" just for this start
+                const soloLevelFile = requestedLevelRaw || DEFAULT_CAMPAIGN_LEVEL_FILE;
                 const soloParty = { leader: ws.id, members: new Set([ws.id]) };
-                console.log(`[PartyStartLevel] solo play: ${ws.username || ws.id} requestedLevel=${requestedLevel}`);
-                await sendPartyToGameRoom(soloParty, { levelFileName: requestedLevel });
+                console.log(`[PartyStartLevel] solo play: ${ws.username || ws.id} requestedLevel=${soloLevelFile}`);
+                await sendPartyToGameRoom(soloParty, { levelFileName: soloLevelFile });
                 return;
             }
-            console.log(`[PartyStartLevel] leader=${ws.username || ws.id} hasStageData=${party.stageData ? 'yes' : 'no'} requestedLevel=${requestedLevel}`);
-            if (party.stageData) {
-                // Use the stage data that was loaded earlier (from local or server).
-                // Still pass levelFileName so the game room has room.level set (required for addLoot / lootAdd during quest).
-                await sendPartyToGameRoom(party, { stageData: party.stageData, levelFileName: requestedLevel });
-                // Clear the stage data after using it
-                delete party.stageData;
-            } else {
-                // No stage data loaded, use the level file
-                await sendPartyToGameRoom(party, { levelFileName: requestedLevel });
+
+            const levelSlug = party.levelSlug || requestedSlug || null;
+            const levelFileName = requestedLevelRaw
+                || (levelSlug ? levelFileNameFromSlug(levelSlug) : null)
+                || DEFAULT_CAMPAIGN_LEVEL_FILE;
+
+            let stageDataForStart = party.stageData || null;
+            if (!stageDataForStart && levelSlug) {
+                const loaded = await loadLevelBySlug(levelSlug);
+                if (loaded) {
+                    stageDataForStart = loaded.data || loaded;
+                    if (!party.levelSlug && loaded.name) {
+                        party.levelSlug = slugFromStageDisplayName(loaded.name);
+                    }
+                }
             }
+            if (!stageDataForStart && levelFileName) {
+                const loadedFile = await loadCampaignLevelByName(levelFileName);
+                stageDataForStart = loadedFile?.data || loadedFile;
+            }
+
+            console.log(`[PartyStartLevel] leader=${ws.username || ws.id} hasStageData=${stageDataForStart ? 'yes' : 'no'} levelFile=${levelFileName} levelSlug=${levelSlug || 'n/a'}`);
+
+            if (!stageDataForStart) {
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(msgpack.encode({
+                        type: 'error',
+                        message: 'Party level is not loaded yet. Pick a level from the forum, browse menu, or lobby and wait until it finishes loading.'
+                    }));
+                }
+                return;
+            }
+
+            await sendPartyToGameRoom(party, { stageData: stageDataForStart, levelFileName });
+            delete party.stageData;
+            delete party.levelSlug;
         } catch (error) {
             console.error('Failed to start level for party:', error);
-        }
-      } else if (data.type === 'stageDataReceived') {
-        const party = findPartyByMemberId(ws.id);
-        if (party && party.pendingStageConfirmations) {
-            party.pendingStageConfirmations.delete(ws.id);
-
-            if (party.pendingStageConfirmations.size === 0) {
-                const stageDataForParty = party.stageData;
-                const levelFileForParty = party.pendingLevelFileName ?? null;
-                delete party.pendingStageConfirmations;
-                // Only auto-join game room if pendingLevelFileName was set (from a different flow)
-                // For partyLoadLevel, we just load the stage but stay in lobby until partyStartLevel is called
-                if (levelFileForParty) {
-                    delete party.pendingLevelFileName;
-                    delete party.stageData;
-                    await sendPartyToGameRoom(party, { stageData: stageDataForParty, levelFileName: levelFileForParty });
-                }
+            if (ws.readyState === ws.OPEN) {
+                ws.send(msgpack.encode({ type: 'error', message: 'Failed to start level for party.' }));
             }
         }
       } else if (data.type === 'partyInvite') {
@@ -3269,48 +3329,6 @@ function handleWebSocketConnection(ws, req) {
           clientTime: data.clientTime,
           serverTime: globalTimer
         }));
-      } else if (data.type === 'enemyCreated') {
-        const party = findPartyByMemberId(ws.id);
-        if (party && party.leader === ws.id) { // Only leader can spawn enemies
-            for (const memberId of party.members) {
-                if (memberId !== ws.id) { // Don't send back to the leader
-                    const memberClient = clients.get(memberId);
-                    if (memberClient && memberClient.readyState === ws.OPEN) {
-                        memberClient.send(msgpack.encode({ type: 'enemyCreated', enemyData: data.enemyData }));
-                    }
-                }
-            }
-        }
-      } else if (data.type === 'enemyRemoved') {
-        // Team leader sends instant "enemy dead" message - broadcast to all clients in room
-        const party = findPartyByMemberId(ws.id);
-        if (party && party.leader === ws.id && data.id !== undefined) { // Only leader can remove enemies
-            const room = rooms.get(ws.room);
-            if (room) {
-                const roomClients = room.clients;
-                for (const client of roomClients) {
-                    if (client.readyState === ws.OPEN) {
-                        // Send to all clients including the leader (for consistency)
-                        client.send(msgpack.encode({ type: 'enemyRemoved', id: data.id }));
-                    }
-                }
-            }
-        }
-      } else if (data.type === 'enemyEscapeRandomX') {
-        // Team leader sends random X value for escaping enemy - broadcast to all clients in room
-        const party = findPartyByMemberId(ws.id);
-        if (party && party.leader === ws.id && data.enemyId !== undefined && data.randomX !== undefined) {
-            const room = rooms.get(ws.room);
-            if (room) {
-                const roomClients = room.clients;
-                for (const client of roomClients) {
-                    if (client.readyState === ws.OPEN) {
-                        // Send to all clients including the leader (for consistency)
-                        client.send(msgpack.encode({ type: 'enemyEscapeRandomX', enemyId: data.enemyId, randomX: data.randomX }));
-                    }
-                }
-            }
-        }
       } else if (data.type === 'uploadAsWeapon') {
         // Admin only: create item from shared object (name + code) and add to admin's inventory
         if (ws.rank !== 'admin') {

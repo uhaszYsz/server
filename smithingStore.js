@@ -17,6 +17,7 @@ export const SMITH_KEY_TO_LOOT_SLOT = {
 
 const BOSS_SLOT_DEFS = [
     { smithKey: 'weapon', equipKey: 'weapon1', short: 'WPN', titleHint: 'Weapon', slot: 'weapon1', slotLabel: 'Weapon', emoji: '⚔️', piece: 'Blade' },
+    { smithKey: 'weapon', equipKey: 'weapon2', short: 'WPN II', titleHint: 'Weapon II', slot: 'weapon2', slotLabel: 'Weapon II', emoji: '🗡️', piece: 'Off-hand' },
     { smithKey: 'head', equipKey: 'helmet', short: 'HEAD', titleHint: 'Helmet', slot: 'helmet', slotLabel: 'Helmet', emoji: '🪖', piece: 'Helm' },
     { smithKey: 'body', equipKey: 'chest', short: 'BODY', titleHint: 'Chest', slot: 'chest', slotLabel: 'Chest', emoji: '🛡️', piece: 'Mail' },
     { smithKey: 'legs', equipKey: 'legs', short: 'LEGS', titleHint: 'Legs', slot: 'legs', slotLabel: 'Legs', emoji: '👖', piece: 'Greaves' },
@@ -73,7 +74,7 @@ export function createBossSet() {
         setName: 'Boss ' + bossCount,
         setEmoji: '👹',
         recipes: BOSS_SLOT_DEFS.map((d) => ({
-            recipeId: setId + '_' + d.smithKey,
+            recipeId: setId + '_' + (d.smithKey === 'weapon' ? d.equipKey : d.smithKey),
             smithKey: d.smithKey,
             equipKey: d.equipKey,
             short: d.short,

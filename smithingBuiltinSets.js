@@ -28,6 +28,29 @@ export const BUILTIN_SMITHING_SETS = [
                 ]
             },
             {
+                recipeId: 'kurvishon_weapon2',
+                smithKey: 'weapon',
+                equipKey: 'weapon2',
+                short: 'WPN II',
+                titleHint: 'Weapon II',
+                output: {
+                    name: '🛡 Kurvishon Parrying Blade',
+                    displayName: 'Kurvishon Parrying Blade',
+                    slot: 'weapon2',
+                    slotLabel: 'Weapon II',
+                    stats: [
+                        { stat: 'critical', value: 8 },
+                        { stat: 'parry', value: 10 },
+                        { stat: 'reload', value: 4 }
+                    ]
+                },
+                requirements: [
+                    { matchName: 'Polished Gold', label: '🪙 Polished Gold', qty: 22 },
+                    { matchName: 'Iron Ingot', label: '⚙️ Iron Ingot', qty: 5 },
+                    { matchName: 'Emerald Shard', label: '💎 Emerald Shard', qty: 1 }
+                ]
+            },
+            {
                 recipeId: 'kurvishon_head',
                 smithKey: 'head',
                 equipKey: 'helmet',
