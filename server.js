@@ -237,6 +237,61 @@ function outfitCharacterIndexFromUser(user) {
     return (o && typeof o.characterIndex === 'number') ? o.characterIndex : null;
 }
 
+const VISUAL_ARMOR_SYNC_SLOTS = ['helmet', 'chest', 'gloves', 'legs', 'boots'];
+
+/** Compact armor icons for IK draw on other clients (helmet/chest/gloves/legs/boots only). */
+function compactVisualEquipmentFromUser(user) {
+    const eq = user && user.equipment;
+    if (!eq || typeof eq !== 'object') return null;
+    const out = {};
+    let has = false;
+    for (const slot of VISUAL_ARMOR_SYNC_SLOTS) {
+        const it = eq[slot];
+        if (!it || !it.armorIcon || typeof it.armorIcon !== 'object' || !it.armorIcon.part) continue;
+        const frame = parseInt(it.armorIcon.frame, 10);
+        out[slot] = {
+            armorIcon: {
+                part: String(it.armorIcon.part),
+                frame: Number.isFinite(frame) ? frame : 0
+            }
+        };
+        has = true;
+    }
+    return has ? out : null;
+}
+
+function syncWsEquippedVisualFromUser(ws, user) {
+    if (!ws) return;
+    ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
+    ws.equippedVisualArmor = compactVisualEquipmentFromUser(user);
+}
+
+function visualPayloadForWs(ws) {
+    return {
+        outfitCharacterIndex: ws.equippedArmorCharacterIndex ?? null,
+        armorCharacterIndex: ws.equippedArmorCharacterIndex ?? null,
+        equipment: ws.equippedVisualArmor ?? null
+    };
+}
+
+function broadcastPlayerVisualToRoom(ws) {
+    if (!ws || !ws.room) return;
+    const room = rooms.get(ws.room);
+    if (!room || !room.clients) return;
+    const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
+    const payload = msgpack.encode({
+        type: 'playerVisualUpdate',
+        id: ws.id,
+        username: ws.username || null,
+        ...visualPayloadForWs(ws)
+    });
+    for (const client of room.clients) {
+        if (client !== ws && client.readyState === openState) {
+            client.send(payload);
+        }
+    }
+}
+
 /** Emoji prefix for server-built display lines when legacy JSON has no leading emoji */
 const LOOT_SLOT_UI_EMOJI = {
     weapon1: '⚔️',
@@ -859,12 +914,15 @@ async function buildRoomWeaponData(clientsCollection) {
             }
         }
 
+        const outfitIdx = outfitCharacterIndexFromUser(user);
         data.push({
             username: user.name || client.googleId,
             playerId: client.id,
             weaponCodeChildren: weaponCodeChildren,
             weaponItemName: weaponItemName || null,
-            armorCharacterIndex: outfitCharacterIndexFromUser(user)
+            armorCharacterIndex: outfitIdx,
+            outfitCharacterIndex: outfitIdx,
+            equipment: compactVisualEquipmentFromUser(user)
         });
     }
 
@@ -918,7 +976,10 @@ async function buildPlayerInitDataForRoom(roomName, joiningClientId) {
                 }
             }
             entry.stats = user.stats || null;
-            entry.armorCharacterIndex = outfitCharacterIndexFromUser(user);
+            const outfitIdx = outfitCharacterIndexFromUser(user);
+            entry.armorCharacterIndex = outfitIdx;
+            entry.outfitCharacterIndex = outfitIdx;
+            entry.equipment = compactVisualEquipmentFromUser(user);
         }
 
         console.log('[RoomWeapons] Init payload entry:', {
@@ -1745,11 +1806,11 @@ async function joinFirstCampaignLobby(ws) {
                     username: client.username || null,
                     x,
                     y,
-                    armorCharacterIndex: client.equippedArmorCharacterIndex ?? null
+                    ...visualPayloadForWs(client)
                 });
             }
             ws.send(msgpack.encode({ type: 'lobbyPlayersPositions', players, fullList: true }));
-            const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_LOBBY_X, y: DEFAULT_LOBBY_Y, armorCharacterIndex: ws.equippedArmorCharacterIndex ?? null }];
+            const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_LOBBY_X, y: DEFAULT_LOBBY_Y, ...visualPayloadForWs(ws) }];
             const openStateLobby = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
             for (const client of roomData.clients) {
                 if (client !== ws && client.readyState === openStateLobby) {
@@ -2113,7 +2174,7 @@ function handleWebSocketConnection(ws, req) {
             if (userDataChanged) {
                 await db.updateUser(ws.googleId, user);
             }
-            ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
+            syncWsEquippedVisualFromUser(ws, user);
             ws.send(msgpack.encode({
                 type: 'playerData',
                 playerData: {
@@ -2370,8 +2431,8 @@ function handleWebSocketConnection(ws, req) {
         // Save to database
         await db.updateUser(ws.googleId, user);
         
-        // Keep socket armor sprite in sync so lobby/game broadcasts show correct sprite
-        ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
+        syncWsEquippedVisualFromUser(ws, user);
+        broadcastPlayerVisualToRoom(ws);
         
         // Send success response with updated player data
         ws.send(msgpack.encode({
@@ -2595,7 +2656,8 @@ function handleWebSocketConnection(ws, req) {
 
         await db.updateUser(ws.googleId, user);
 
-        ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
+        syncWsEquippedVisualFromUser(ws, user);
+        broadcastPlayerVisualToRoom(ws);
 
         ws.send(msgpack.encode({
             type: 'unequipSuccess',
@@ -2807,7 +2869,7 @@ function handleWebSocketConnection(ws, req) {
             if (roomData.type === 'lobby' && ws.googleId && ws.equippedArmorCharacterIndex === undefined) {
                 const user = await db.getUserByGoogleId(ws.googleId);
                 if (user) {
-                    ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
+                    syncWsEquippedVisualFromUser(ws, user);
                 }
             }
             
@@ -2854,12 +2916,12 @@ function handleWebSocketConnection(ws, req) {
                   username: client.username || null,
                   x,
                   y,
-                  armorCharacterIndex: client.equippedArmorCharacterIndex ?? null
+                  ...visualPayloadForWs(client)
                 });
               }
               ws.send(msgpack.encode({ type: 'lobbyPlayersPositions', players, fullList: true }));
               // Notify existing clients so the new joiner appears instantly (at default position)
-              const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_X, y: DEFAULT_Y, armorCharacterIndex: ws.equippedArmorCharacterIndex ?? null }];
+              const newPlayerPayload = [{ id: ws.id, username: ws.username || null, x: DEFAULT_X, y: DEFAULT_Y, ...visualPayloadForWs(ws) }];
               const openState = ws.OPEN ?? ws.constructor?.OPEN ?? 1;
               for (const client of roomData.clients) {
                 if (client !== ws && client.readyState === openState) {
@@ -2970,7 +3032,7 @@ function handleWebSocketConnection(ws, req) {
           type: 'playerUpdate',
           id: ws.id,
           username: ws.username || null,
-          data: { x, y, hp },
+          data: { x, y, hp, ...visualPayloadForWs(ws) },
           targetTime: targetTime
         });
         for (const client of room.clients) {
@@ -3029,7 +3091,7 @@ function handleWebSocketConnection(ws, req) {
         if (isLobbyMove) {
           payload.startTime = globalTimer;
         }
-        payload.armorCharacterIndex = ws.equippedArmorCharacterIndex ?? null;
+        Object.assign(payload, visualPayloadForWs(ws));
 
         const targetTime = globalTimer + 1000;
 
@@ -4696,7 +4758,7 @@ function handleWebSocketConnection(ws, req) {
             ws.sessionId = session.sessionId; // Store session ID on WebSocket
             ws.rank = user.rank || 'player';
             ws.isAdmin = (ws.rank === 'admin');
-            ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
+            syncWsEquippedVisualFromUser(ws, user);
             
             // Send login success with session ID
             ws.send(msgpack.encode({
@@ -4790,7 +4852,7 @@ function handleWebSocketConnection(ws, req) {
                 ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
-            ws.equippedArmorCharacterIndex = outfitCharacterIndexFromUser(user);
+            syncWsEquippedVisualFromUser(ws, user);
             
             // Send session restored
             ws.send(msgpack.encode({
