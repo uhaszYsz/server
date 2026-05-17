@@ -3445,6 +3445,67 @@ function handleWebSocketConnection(ws, req) {
             console.error('uploadAsWeapon failed:', error);
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to upload as weapon' }));
         }
+      } else if (data.type === 'mayorGrantStarterWeapon') {
+        ensureWsGuestIdentity(ws);
+        const starterPayload = {
+          name: '⚔️ Butter Knife',
+          displayName: 'Butter Knife',
+          slot: 'weapon1',
+          stats: [],
+          itemId: 1
+        };
+        if (!ws.googleId) {
+          ws.send(msgpack.encode({ type: 'mayorStarterWeaponGranted', granted: true, clientOnly: true }));
+          return;
+        }
+        try {
+          const user = await db.getUserByGoogleId(ws.googleId);
+          if (!user) {
+            ws.send(msgpack.encode({ type: 'mayorStarterWeaponGranted', granted: false, message: 'User not found' }));
+            return;
+          }
+          if (user.mayorStarterGranted) {
+            ws.send(msgpack.encode({ type: 'mayorStarterWeaponGranted', granted: false, alreadyHad: true }));
+            return;
+          }
+          const lootItem = normalizeStoredLootItem(starterPayload);
+          if (!user.inventory) user.inventory = [];
+          const alreadyHas = user.inventory.some((it) => {
+            if (!it) return false;
+            if (Number(it.itemId) === 1) return true;
+            const n = String(it.displayName || it.name || '').toLowerCase();
+            return n.indexOf('butter knife') !== -1;
+          });
+          const inventoryCount = user.inventory.filter((it) => it && typeof it === 'object').length;
+          if (inventoryCount > 0 && !alreadyHas) {
+            ws.send(msgpack.encode({
+              type: 'mayorStarterWeaponGranted',
+              granted: false,
+              inventoryNotEmpty: true
+            }));
+            return;
+          }
+          if (!alreadyHas) {
+            mergeLootIntoInventoryStacked(user, lootItem, 1);
+          }
+          user.mayorStarterGranted = true;
+          await db.updateUser(ws.googleId, user);
+          syncWsEquippedVisualFromUser(ws, user);
+          ws.send(msgpack.encode({
+            type: 'mayorStarterWeaponGranted',
+            granted: true,
+            playerData: {
+              username: user.name,
+              name: user.name,
+              stats: user.stats,
+              inventory: user.inventory,
+              equipment: user.equipment
+            }
+          }));
+        } catch (error) {
+          console.error('mayorGrantStarterWeapon failed:', error);
+          ws.send(msgpack.encode({ type: 'mayorStarterWeaponGranted', granted: false, message: 'Failed to grant starter weapon' }));
+        }
       } else if (data.type === 'listWeapons') {
         ensureWsGuestIdentity(ws);
         try {
