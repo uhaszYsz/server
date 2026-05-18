@@ -1460,7 +1460,7 @@ if (other !== null) { other.hp -= 1; }[/code]`
 [color=#9acd32]volume[/color] - [i]Optional volume from 0 to 1.[/i]
 
 [b]Example:[/b]
-[code]musicPlay("$lethal-weapon-level-1.xm");
+[code]musicPlay("$lw1.xm");
 musicPlay("$song.xm", 2, 0.5);[/code]`
     },
     {
