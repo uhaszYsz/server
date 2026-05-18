@@ -236,7 +236,6 @@ function weaponDisplayNameKey(item) {
     return String(item && (item.displayName || item.name) || '').toLowerCase();
 }
 
-/** Ensure equipped weapons have itemId so clients can load codeChildren via getWeapon. */
 function hydrateWeaponItemIdsOnUser(user) {
     if (!user || !user.equipment) return false;
     let changed = false;
@@ -2514,9 +2513,6 @@ function handleWebSocketConnection(ws, req) {
 
         // Equip the new item
         user.equipment[storageSlot] = itemToEquip;
-        if (storageSlot === 'weapon1' || storageSlot === 'weapon2') {
-            hydrateWeaponItemIdsOnUser(user);
-        }
 
         if ((storageSlot === 'weapon1' || storageSlot === 'weapon2') && (item.itemId != null || item.item_id != null)) {
             const id = item.itemId ?? item.item_id;
@@ -3559,7 +3555,19 @@ function handleWebSocketConnection(ws, req) {
             return;
           }
           if (user.mayorStarterGranted) {
-            ws.send(msgpack.encode({ type: 'mayorStarterWeaponGranted', granted: false, alreadyHad: true }));
+            hydrateWeaponItemIdsOnUser(user);
+            ws.send(msgpack.encode({
+              type: 'mayorStarterWeaponGranted',
+              granted: false,
+              alreadyHad: true,
+              playerData: {
+                username: user.name,
+                name: user.name,
+                stats: user.stats,
+                inventory: user.inventory,
+                equipment: user.equipment
+              }
+            }));
             return;
           }
           const lootItem = normalizeStoredLootItem(starterPayload);
