@@ -6,12 +6,6 @@ import { fileURLToPath } from 'url';
 import { Encoder } from 'msgpackr';
 import * as db from './database.js';
 import {
-  STARTER_WEAPON_ITEM_ID,
-  repairButterKnifeLootOnUser,
-  migrateAllButterKnifeUsers,
-  scanButterKnifeCandidates
-} from './starterWeapon.js';
-import {
     getSmithingCatalogForClient,
     findSmithingRecipe,
     inventoryMeetsRequirements,
@@ -3490,7 +3484,7 @@ function handleWebSocketConnection(ws, req) {
         }
       } else if (data.type === 'mayorGrantStarterWeapon') {
         ensureWsGuestIdentity(ws);
-        const starterWeaponId = STARTER_WEAPON_ITEM_ID;
+        const starterWeaponId = 1;
         const starterPayload = {
           name: '⚔️ Butter Knife',
           displayName: 'Butter Knife',
@@ -3528,7 +3522,6 @@ function handleWebSocketConnection(ws, req) {
           if (!alreadyHas) {
             mergeLootIntoInventoryStacked(user, lootItem, 1);
           }
-          repairButterKnifeLootOnUser(user, starterWeaponId);
           autoEquipWeaponFromInventoryByItemId(user, starterWeaponId);
           user.mayorStarterGranted = true;
           recalculateStatsFromEquipment(user);
@@ -5915,49 +5908,6 @@ rl.on('line', async (input) => {
     } catch (error) {
       console.error('❌ pruneorphanstages failed:', error);
     }
-  } else if (command === 'buttermigrate') {
-    const sub = parts[1] ? parts[1].toLowerCase() : '';
-    if (sub === 'scan' || sub === 'list' || sub === 'preview') {
-      console.log('🔍 Scanning player loot (inventory/equipment) for "Butter Knife" labels…');
-      console.log(`   Shoot type comes from items table id #${STARTER_WEAPON_ITEM_ID} (e.g. TestSword), not from loot name.\n`);
-      try {
-        const { usersTotal, hits, starterWeaponItemId } = await scanButterKnifeCandidates(db);
-        if (hits.length === 0) {
-          console.log(`ℹ️  No matching loot rows on server (${usersTotal} users).`);
-          console.log('   Knife may be client-only (local save). Server never got inventory sync for that account.');
-          return;
-        }
-        console.log(` Found ${hits.length} user(s):\n`);
-        for (const h of hits) {
-          console.log(`  ${h.userName}:`);
-          for (const r of h.rows) {
-            const tag = r.matches ? '[MATCH loot label]' : '[weapon slot]';
-            const shoot = r.itemId != null
-              ? `shoot→ items#${r.itemId} "${r.shootTypeFromItemsTable || '?'}"`
-              : 'shoot→ MISSING itemId (no link to items table)';
-            console.log(
-              `    ${tag} ${r.where} lootLabel="${r.lootLabel}" slot=${r.slot || '?'} ${shoot}`
-            );
-          }
-        }
-        console.log(
-          `\nℹ️  Run buttermigrate to set itemId→#${starterWeaponItemId} on matched loot (keeps "Butter Knife" name).`
-        );
-      } catch (error) {
-        console.error('❌ buttermigrate scan failed:', error);
-      }
-      return;
-    }
-    console.log('🔄 Migrating all Butter Knife loot rows → weapon item id', STARTER_WEAPON_ITEM_ID, '...');
-    try {
-      const result = await migrateAllButterKnifeUsers(db);
-      console.log(
-        `✅ buttermigrate done: ${result.usersChanged}/${result.usersTotal} user(s) updated` +
-        (result.knivesTouched ? ` (${result.knivesTouched} butter knife row(s) touched)` : ' (no butter knives found — try buttermigrate scan)')
-      );
-    } catch (error) {
-      console.error('❌ buttermigrate failed:', error);
-    }
   } else if (command === 'purgeoutfits') {
     console.log('🔄 Purging legacy outfit items from all users...');
     try {
@@ -5996,6 +5946,74 @@ rl.on('line', async (input) => {
     } catch (error) {
       console.error('❌ purgeoutfits failed:', error);
     }
+  } else if (command === 'wipeallitems') {
+    const dry = parts[1] === 'dry' || parts[1] === 'preview' || parts[1] === 'list';
+    try {
+      const users = await db.getAllUsers();
+      let usersWithLoot = 0;
+      let totalInventoryItems = 0;
+      let totalEquippedSlots = 0;
+
+      for (const user of users) {
+        if (!user) continue;
+        const invCount = Array.isArray(user.inventory) ? user.inventory.length : 0;
+        let equipCount = 0;
+        if (user.equipment && typeof user.equipment === 'object') {
+          for (const key of Object.keys(user.equipment)) {
+            if (user.equipment[key] != null) equipCount++;
+          }
+        }
+        if (invCount > 0 || equipCount > 0) {
+          usersWithLoot += 1;
+          totalInventoryItems += invCount;
+          totalEquippedSlots += equipCount;
+        }
+      }
+
+      if (dry) {
+        console.log(
+          `ℹ️  [dry-run] ${usersWithLoot}/${users.length} user(s) would be cleared:` +
+          ` ${totalInventoryItems} inventory row(s), ${totalEquippedSlots} equipped slot(s).`
+        );
+        console.log('   Run wipeAllItems (no args) to apply.');
+        return;
+      }
+
+      console.log('🔄 Wiping inventory and equipment for all users...');
+      let usersChanged = 0;
+      let clearedInventoryRows = 0;
+      let clearedEquipSlots = 0;
+
+      for (const user of users) {
+        if (!user || !user.googleIdHash) continue;
+        const invBefore = Array.isArray(user.inventory) ? user.inventory.length : 0;
+        let equipBefore = 0;
+        if (user.equipment && typeof user.equipment === 'object') {
+          for (const key of Object.keys(user.equipment)) {
+            if (user.equipment[key] != null) equipBefore++;
+          }
+        }
+        if (invBefore === 0 && equipBefore === 0) continue;
+
+        const fresh = initializeInventoryAndEquipment();
+        user.inventory = fresh.inventory;
+        user.equipment = fresh.equipment;
+        user.weaponData = null;
+        recalculateStatsFromEquipment(user);
+
+        clearedInventoryRows += invBefore;
+        clearedEquipSlots += equipBefore;
+        usersChanged += 1;
+        await db.updateUserByGoogleIdHash(user.googleIdHash, user);
+      }
+
+      console.log(
+        `✅ wipeAllItems done: ${usersChanged}/${users.length} user(s) cleared` +
+        ` (${clearedInventoryRows} inventory row(s), ${clearedEquipSlots} equipped slot(s)); stats reset to base.`
+      );
+    } catch (error) {
+      console.error('❌ wipeAllItems failed:', error);
+    }
   } else if (command === 'help' || command === '?') {
     console.log('\nAvailable server console commands:');
     console.log('  rang <username> <rank>  - Set user rank (player, moderator, admin)');
@@ -6007,8 +6025,8 @@ rl.on('line', async (input) => {
     console.log('  pruneorphanstages      - DELETE user stages with no forum [level] slug + clean leaderboards');
     console.log('  pruneorphanstages dry - List orphan slugs without deleting');
     console.log('  purgeoutfits           - Remove legacy outfit items from all users (inventory + equipment)');
-    console.log('  buttermigrate          - Fix butter-knife / legacy mayor weapons → item id #1 (TestSword)');
-    console.log('  buttermigrate scan     - List weapon rows in DB (debug names / itemId)');
+    console.log('  wipeAllItems           - Clear ALL inventory + equipment for every user (stats → base)');
+    console.log('  wipeAllItems dry       - Preview counts without writing');
     console.log('  help                   - Show this help message');
     console.log('');
   } else {
