@@ -232,68 +232,6 @@ function primaryEquippedWeaponFromUser(user) {
     return e.weapon1 || e.weapon2 || null;
 }
 
-function weaponDisplayNameKey(item) {
-    return String(item && (item.displayName || item.name) || '').toLowerCase();
-}
-
-function summarizeEquippedWeaponsForLog(equipment) {
-    if (!equipment || typeof equipment !== 'object') return '(no equipment)';
-    const parts = [];
-    for (const slot of ['weapon1', 'weapon2']) {
-        const w = equipment[slot];
-        if (!w) continue;
-        const id = w.itemId != null ? w.itemId : (w.item_id != null ? w.item_id : '—');
-        const label = String(w.displayName || w.name || '?').slice(0, 48);
-        parts.push(`${slot} itemId=${id} "${label}"`);
-    }
-    return parts.length ? parts.join(' | ') : '(weapon slots empty)';
-}
-
-function logWeaponDebug(tag, ws, detail) {
-    const who = ws.username || ws.googleId || `socket#${ws.id}`;
-    console.log(`[WeaponDebug] ${tag} | user=${who} ws.googleId=${ws.googleId ? 'yes' : 'no'} | ${detail}`);
-}
-
-function hydrateWeaponItemIdsOnUser(user) {
-    if (!user || !user.equipment) return false;
-    let changed = false;
-    for (const slot of ['weapon1', 'weapon2']) {
-        const w = user.equipment[slot];
-        if (!w || typeof w !== 'object') continue;
-        const existing = w.itemId != null ? parseInt(w.itemId, 10) : (w.item_id != null ? parseInt(w.item_id, 10) : NaN);
-        if (Number.isInteger(existing) && existing >= 1) {
-            if (w.itemId !== existing) {
-                w.itemId = existing;
-                delete w.item_id;
-                changed = true;
-            }
-            continue;
-        }
-        const nameKey = weaponDisplayNameKey(w);
-        if (nameKey.indexOf('butter knife') !== -1) {
-            w.itemId = 1;
-            delete w.item_id;
-            changed = true;
-            continue;
-        }
-        if (Array.isArray(user.inventory)) {
-            for (const row of user.inventory) {
-                if (!row) continue;
-                const rid = row.itemId != null ? parseInt(row.itemId, 10) : NaN;
-                if (!Number.isInteger(rid) || rid < 1) continue;
-                const rname = weaponDisplayNameKey(row);
-                if (nameKey && rname && (nameKey === rname || nameKey.indexOf(rname) !== -1 || rname.indexOf(nameKey) !== -1)) {
-                    w.itemId = rid;
-                    delete w.item_id;
-                    changed = true;
-                    break;
-                }
-            }
-        }
-    }
-    return changed;
-}
-
 function outfitCharacterIndexFromUser(user) {
     const o = user && user.equipment && user.equipment.outfit;
     return (o && typeof o.characterIndex === 'number') ? o.characterIndex : null;
@@ -2245,19 +2183,12 @@ function handleWebSocketConnection(ws, req) {
       }
       
       // Validate session if sessionId is provided (for authenticated requests)
-      // Read-only types (getWeapon, etc.) must not be blocked — logged-in clients attach
-      // sessionId but often omit data.id until Google account is back in memory.
-      const WS_TYPES_SKIP_SESSION_VALIDATION = new Set(['getWeapon', 'listWeapons']);
-      if (data.sessionId && typeof data.sessionId === 'string' && !WS_TYPES_SKIP_SESSION_VALIDATION.has(data.type)) {
+      if (data.sessionId && typeof data.sessionId === 'string') {
         const googleId = data.googleId || data.id || ws.googleId || null;
         const sessionValidation = await validateSessionForRequest(ws, data.sessionId, googleId);
         if (!sessionValidation.valid) {
           // Session invalid - send error and don't process request
           // Only send error for non-login requests (to avoid loop)
-          if (data.type === 'getWeapon' || data.type === 'equipItem' || data.type === 'unequipItem' || data.type === 'mayorGrantStarterWeapon') {
-            logWeaponDebug('SESSION_REJECT', ws,
-              `type=${data.type} err=${sessionValidation.error || '?'} data.id=${data.id ? 'yes' : 'no'} sessionId=${data.sessionId ? 'yes' : 'no'}`);
-          }
           if (data.type !== 'googleLogin') {
             ws.send(msgpack.encode({ 
               type: 'error', 
@@ -2283,9 +2214,6 @@ function handleWebSocketConnection(ws, req) {
             // Migrate Sword items from 'test' to 'playa' on login
             if (user.equipment && user.equipment.weapon1 && !user.equipment.weapon1.displayName) {
                 user.equipment.weapon1.displayName = user.equipment.weapon1.name || 'Weapon';
-                userDataChanged = true;
-            }
-            if (hydrateWeaponItemIdsOnUser(user)) {
                 userDataChanged = true;
             }
             if (userDataChanged) {
@@ -2478,9 +2406,7 @@ function handleWebSocketConnection(ws, req) {
         }));
       } else if (data.type === 'equipItem') {
         // Handle equipping an item
-        logWeaponDebug('equipItem_RX', ws, `inventoryIndex=${data.inventoryIndex}`);
         if (!ws.googleId) {
-            logWeaponDebug('equipItem_REJECT', ws, 'not logged in');
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
@@ -2563,8 +2489,7 @@ function handleWebSocketConnection(ws, req) {
             }
         }));
         
-        logWeaponDebug('equipItem_OK', ws,
-            `slot=${storageSlot} itemId=${itemToEquip.itemId != null ? itemToEquip.itemId : '—'} | equip now: ${summarizeEquippedWeaponsForLog(user.equipment)}`);
+        console.log(`[EquipItem] User ${ws.username} equipped ${storageSlot} (item slot ${itemSlot})`);
       } else if (data.type === 'getSmithingCatalog') {
         const catalogNonce = data.nonce;
         try {
@@ -2735,9 +2660,7 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to rename boss set' }));
         }
       } else if (data.type === 'unequipItem') {
-        logWeaponDebug('unequipItem_RX', ws, `equipmentSlot=${data.equipmentSlot}`);
         if (!ws.googleId) {
-            logWeaponDebug('unequipItem_REJECT', ws, 'not logged in');
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
@@ -2790,8 +2713,7 @@ function handleWebSocketConnection(ws, req) {
             }
         }));
 
-        logWeaponDebug('unequipItem_OK', ws,
-            `slot=${equipmentSlot} | equip now: ${summarizeEquippedWeaponsForLog(user.equipment)}`);
+        console.log(`[UnequipItem] User ${ws.username} unequipped ${equipmentSlot}`);
       } else if (data.type === 'discardInventoryItem') {
         if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
@@ -3561,7 +3483,6 @@ function handleWebSocketConnection(ws, req) {
         }
       } else if (data.type === 'mayorGrantStarterWeapon') {
         ensureWsGuestIdentity(ws);
-        logWeaponDebug('mayorGrant_RX', ws, `loggedIn=${ws.googleId ? 'yes' : 'no (client-only)'}`);
         const starterWeaponId = 1;
         const starterPayload = {
           name: '⚔️ Butter Knife',
@@ -3586,8 +3507,6 @@ function handleWebSocketConnection(ws, req) {
             return;
           }
           if (user.mayorStarterGranted) {
-            hydrateWeaponItemIdsOnUser(user);
-            logWeaponDebug('mayorGrant_SKIP', ws, `already granted | ${summarizeEquippedWeaponsForLog(user.equipment)}`);
             ws.send(msgpack.encode({
               type: 'mayorStarterWeaponGranted',
               granted: false,
@@ -3614,13 +3533,10 @@ function handleWebSocketConnection(ws, req) {
             mergeLootIntoInventoryStacked(user, lootItem, 1);
           }
           autoEquipWeaponFromInventoryByItemId(user, starterWeaponId);
-          hydrateWeaponItemIdsOnUser(user);
           user.mayorStarterGranted = true;
           recalculateStatsFromEquipment(user);
           await db.updateUser(ws.googleId, user);
           syncWsEquippedVisualFromUser(ws, user);
-          logWeaponDebug('mayorGrant_OK', ws,
-              `starterItemId=${starterWeaponId} | ${summarizeEquippedWeaponsForLog(user.equipment)}`);
           ws.send(msgpack.encode({
             type: 'mayorStarterWeaponGranted',
             granted: true,
@@ -3634,7 +3550,7 @@ function handleWebSocketConnection(ws, req) {
             }
           }));
         } catch (error) {
-          console.error('[WeaponDebug] mayorGrant_ERROR', error);
+          console.error('mayorGrantStarterWeapon failed:', error);
           ws.send(msgpack.encode({ type: 'mayorStarterWeaponGranted', granted: false, message: 'Failed to grant starter weapon' }));
         }
       } else if (data.type === 'listWeapons') {
@@ -3681,25 +3597,17 @@ function handleWebSocketConnection(ws, req) {
         }
       } else if (data.type === 'getWeapon') {
         ensureWsGuestIdentity(ws);
-        const rawWeaponId = data.weaponItemId != null ? data.weaponItemId
-            : (data.itemId != null ? data.itemId : data.id);
-        const id = rawWeaponId != null ? parseInt(rawWeaponId, 10) : NaN;
-        logWeaponDebug('getWeapon_RX', ws,
-            `weaponItemId=${data.weaponItemId != null ? data.weaponItemId : '—'} legacyIdField=${data.id != null ? String(data.id).slice(0, 24) : '—'} parsed=${id} session=${data.sessionId ? 'yes' : 'no'} googleIdField=${data.googleId ? 'yes' : 'no'}`);
+        const id = data.weaponItemId != null ? parseInt(data.weaponItemId, 10) : NaN;
         if (!Number.isInteger(id) || id < 1) {
-            logWeaponDebug('getWeapon_REJECT', ws, `invalid parsed id (likely google id overwrote weaponItemId before fix)`);
             ws.send(msgpack.encode({ type: 'error', message: 'Valid item id is required' }));
             return;
         }
         try {
             const item = await db.getItemById(id);
             if (!item || (item.slot !== 'weapon' && item.slot !== 'weapon1' && item.slot !== 'weapon2')) {
-                logWeaponDebug('getWeapon_NOT_FOUND', ws, `db item id=${id} slot=${item ? item.slot : 'null'}`);
                 ws.send(msgpack.encode({ type: 'error', message: 'Weapon not found' }));
                 return;
             }
-            const ccLen = Array.isArray(item.codeChildren) ? item.codeChildren.length : 0;
-            logWeaponDebug('getWeapon_OK', ws, `item="${item.name}" codeChildren=${ccLen}`);
             ws.send(msgpack.encode({
                 type: 'weaponData',
                 itemId: item.id,
@@ -3707,7 +3615,7 @@ function handleWebSocketConnection(ws, req) {
                 codeChildren: item.codeChildren || []
             }));
         } catch (error) {
-            console.error('[WeaponDebug] getWeapon_ERROR', error);
+            console.error('Failed to get weapon', error);
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to load weapon' }));
         }
       } else if (data.type === 'uploadedLevel') {
