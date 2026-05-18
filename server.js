@@ -5,7 +5,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Encoder } from 'msgpackr';
 import * as db from './database.js';
-import { STARTER_WEAPON_ITEM_ID, repairButterKnifeLootOnUser, migrateAllButterKnifeUsers } from './starterWeapon.js';
+import {
+  STARTER_WEAPON_ITEM_ID,
+  repairButterKnifeLootOnUser,
+  migrateAllButterKnifeUsers,
+  scanButterKnifeCandidates
+} from './starterWeapon.js';
 import {
     getSmithingCatalogForClient,
     findSmithingRecipe,
@@ -5911,12 +5916,39 @@ rl.on('line', async (input) => {
       console.error('❌ pruneorphanstages failed:', error);
     }
   } else if (command === 'buttermigrate') {
+    const sub = parts[1] ? parts[1].toLowerCase() : '';
+    if (sub === 'scan' || sub === 'list' || sub === 'preview') {
+      console.log('🔍 Scanning all users for butter-knife / legacy mayor weapon rows...');
+      try {
+        const { usersTotal, hits } = await scanButterKnifeCandidates(db);
+        if (hits.length === 0) {
+          console.log(`ℹ️  No matching rows in server DB (${usersTotal} users).`);
+          console.log('   If you still see a knife in-game, it may be client-only (local save) — talk to mayor on a synced account or re-login after grant.');
+          return;
+        }
+        console.log(` Found ${hits.length} user(s) with weapon rows:\n`);
+        for (const h of hits) {
+          console.log(`  ${h.userName}:`);
+          for (const r of h.rows) {
+            const tag = r.matches ? '[MATCH]' : '[weapon]';
+            console.log(
+              `    ${tag} ${r.where} slot=${r.slot || '?'} itemId=${r.itemId == null ? '—' : r.itemId}` +
+              ` name="${r.name}" displayName="${r.displayName}"`
+            );
+          }
+        }
+        console.log('\nℹ️  Run buttermigrate (no args) to apply fixes.');
+      } catch (error) {
+        console.error('❌ buttermigrate scan failed:', error);
+      }
+      return;
+    }
     console.log('🔄 Migrating all Butter Knife loot rows → weapon item id', STARTER_WEAPON_ITEM_ID, '...');
     try {
       const result = await migrateAllButterKnifeUsers(db);
       console.log(
         `✅ buttermigrate done: ${result.usersChanged}/${result.usersTotal} user(s) updated` +
-        (result.knivesTouched ? ` (${result.knivesTouched} butter knife row(s) touched)` : ' (no butter knives found)')
+        (result.knivesTouched ? ` (${result.knivesTouched} butter knife row(s) touched)` : ' (no butter knives found — try buttermigrate scan)')
       );
     } catch (error) {
       console.error('❌ buttermigrate failed:', error);
@@ -5970,7 +6002,8 @@ rl.on('line', async (input) => {
     console.log('  pruneorphanstages      - DELETE user stages with no forum [level] slug + clean leaderboards');
     console.log('  pruneorphanstages dry - List orphan slugs without deleting');
     console.log('  purgeoutfits           - Remove legacy outfit items from all users (inventory + equipment)');
-    console.log('  buttermigrate          - Fix all Butter Knife loot → link item id #1 (TestSword); run once after deploy');
+    console.log('  buttermigrate          - Fix butter-knife / legacy mayor weapons → item id #1 (TestSword)');
+    console.log('  buttermigrate scan     - List weapon rows in DB (debug names / itemId)');
     console.log('  help                   - Show this help message');
     console.log('');
   } else {
