@@ -2249,7 +2249,7 @@ function handleWebSocketConnection(ws, req) {
       // sessionId but often omit data.id until Google account is back in memory.
       const WS_TYPES_SKIP_SESSION_VALIDATION = new Set(['getWeapon', 'listWeapons']);
       if (data.sessionId && typeof data.sessionId === 'string' && !WS_TYPES_SKIP_SESSION_VALIDATION.has(data.type)) {
-        const googleId = data.id || ws.googleId || null;
+        const googleId = data.googleId || data.id || ws.googleId || null;
         const sessionValidation = await validateSessionForRequest(ws, data.sessionId, googleId);
         if (!sessionValidation.valid) {
           // Session invalid - send error and don't process request
@@ -2269,11 +2269,6 @@ function handleWebSocketConnection(ws, req) {
         }
       }
 
-      if (data.type === 'getWeapon') {
-        logWeaponDebug('getWeapon_RX', ws,
-          `requestedId=${data.id} sessionId=${data.sessionId ? 'yes' : 'no'} data.id=${data.id != null && data.type === 'getWeapon' ? (data.id || '—') : '—'}`);
-      }
-      
       // (Verification removed)
       
       if (data.type === 'getPlayerData') {
@@ -2483,7 +2478,9 @@ function handleWebSocketConnection(ws, req) {
         }));
       } else if (data.type === 'equipItem') {
         // Handle equipping an item
+        logWeaponDebug('equipItem_RX', ws, `inventoryIndex=${data.inventoryIndex}`);
         if (!ws.googleId) {
+            logWeaponDebug('equipItem_REJECT', ws, 'not logged in');
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
@@ -2566,7 +2563,8 @@ function handleWebSocketConnection(ws, req) {
             }
         }));
         
-        console.log(`[EquipItem] User ${ws.username} equipped ${storageSlot} (item slot ${itemSlot})`);
+        logWeaponDebug('equipItem_OK', ws,
+            `slot=${storageSlot} itemId=${itemToEquip.itemId != null ? itemToEquip.itemId : '—'} | equip now: ${summarizeEquippedWeaponsForLog(user.equipment)}`);
       } else if (data.type === 'getSmithingCatalog') {
         const catalogNonce = data.nonce;
         try {
@@ -2737,7 +2735,9 @@ function handleWebSocketConnection(ws, req) {
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to rename boss set' }));
         }
       } else if (data.type === 'unequipItem') {
+        logWeaponDebug('unequipItem_RX', ws, `equipmentSlot=${data.equipmentSlot}`);
         if (!ws.googleId) {
+            logWeaponDebug('unequipItem_REJECT', ws, 'not logged in');
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
             return;
         }
@@ -2790,7 +2790,8 @@ function handleWebSocketConnection(ws, req) {
             }
         }));
 
-        console.log(`[UnequipItem] User ${ws.username} unequipped ${equipmentSlot}`);
+        logWeaponDebug('unequipItem_OK', ws,
+            `slot=${equipmentSlot} | equip now: ${summarizeEquippedWeaponsForLog(user.equipment)}`);
       } else if (data.type === 'discardInventoryItem') {
         if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
@@ -3560,6 +3561,7 @@ function handleWebSocketConnection(ws, req) {
         }
       } else if (data.type === 'mayorGrantStarterWeapon') {
         ensureWsGuestIdentity(ws);
+        logWeaponDebug('mayorGrant_RX', ws, `loggedIn=${ws.googleId ? 'yes' : 'no (client-only)'}`);
         const starterWeaponId = 1;
         const starterPayload = {
           name: '⚔️ Butter Knife',
@@ -3585,6 +3587,7 @@ function handleWebSocketConnection(ws, req) {
           }
           if (user.mayorStarterGranted) {
             hydrateWeaponItemIdsOnUser(user);
+            logWeaponDebug('mayorGrant_SKIP', ws, `already granted | ${summarizeEquippedWeaponsForLog(user.equipment)}`);
             ws.send(msgpack.encode({
               type: 'mayorStarterWeaponGranted',
               granted: false,
@@ -3616,6 +3619,8 @@ function handleWebSocketConnection(ws, req) {
           recalculateStatsFromEquipment(user);
           await db.updateUser(ws.googleId, user);
           syncWsEquippedVisualFromUser(ws, user);
+          logWeaponDebug('mayorGrant_OK', ws,
+              `starterItemId=${starterWeaponId} | ${summarizeEquippedWeaponsForLog(user.equipment)}`);
           ws.send(msgpack.encode({
             type: 'mayorStarterWeaponGranted',
             granted: true,
@@ -3629,7 +3634,7 @@ function handleWebSocketConnection(ws, req) {
             }
           }));
         } catch (error) {
-          console.error('mayorGrantStarterWeapon failed:', error);
+          console.error('[WeaponDebug] mayorGrant_ERROR', error);
           ws.send(msgpack.encode({ type: 'mayorStarterWeaponGranted', granted: false, message: 'Failed to grant starter weapon' }));
         }
       } else if (data.type === 'listWeapons') {
@@ -3676,17 +3681,25 @@ function handleWebSocketConnection(ws, req) {
         }
       } else if (data.type === 'getWeapon') {
         ensureWsGuestIdentity(ws);
-        const id = data.id != null ? parseInt(data.id, 10) : NaN;
+        const rawWeaponId = data.weaponItemId != null ? data.weaponItemId
+            : (data.itemId != null ? data.itemId : data.id);
+        const id = rawWeaponId != null ? parseInt(rawWeaponId, 10) : NaN;
+        logWeaponDebug('getWeapon_RX', ws,
+            `weaponItemId=${data.weaponItemId != null ? data.weaponItemId : '—'} legacyIdField=${data.id != null ? String(data.id).slice(0, 24) : '—'} parsed=${id} session=${data.sessionId ? 'yes' : 'no'} googleIdField=${data.googleId ? 'yes' : 'no'}`);
         if (!Number.isInteger(id) || id < 1) {
+            logWeaponDebug('getWeapon_REJECT', ws, `invalid parsed id (likely google id overwrote weaponItemId before fix)`);
             ws.send(msgpack.encode({ type: 'error', message: 'Valid item id is required' }));
             return;
         }
         try {
             const item = await db.getItemById(id);
             if (!item || (item.slot !== 'weapon' && item.slot !== 'weapon1' && item.slot !== 'weapon2')) {
+                logWeaponDebug('getWeapon_NOT_FOUND', ws, `db item id=${id} slot=${item ? item.slot : 'null'}`);
                 ws.send(msgpack.encode({ type: 'error', message: 'Weapon not found' }));
                 return;
             }
+            const ccLen = Array.isArray(item.codeChildren) ? item.codeChildren.length : 0;
+            logWeaponDebug('getWeapon_OK', ws, `item="${item.name}" codeChildren=${ccLen}`);
             ws.send(msgpack.encode({
                 type: 'weaponData',
                 itemId: item.id,
@@ -3694,7 +3707,7 @@ function handleWebSocketConnection(ws, req) {
                 codeChildren: item.codeChildren || []
             }));
         } catch (error) {
-            console.error('Failed to get weapon', error);
+            console.error('[WeaponDebug] getWeapon_ERROR', error);
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to load weapon' }));
         }
       } else if (data.type === 'uploadedLevel') {
