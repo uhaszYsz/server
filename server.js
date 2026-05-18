@@ -2227,9 +2227,11 @@ function handleWebSocketConnection(ws, req) {
       }
       
       // Validate session if sessionId is provided (for authenticated requests)
-      // Require both sessionId and googleId for security (bind session to Google ID)
-      if (data.sessionId && typeof data.sessionId === 'string') {
-        const googleId = data.id || null; // Get googleId from request
+      // Read-only types (getWeapon, etc.) must not be blocked — logged-in clients attach
+      // sessionId but often omit data.id until Google account is back in memory.
+      const WS_TYPES_SKIP_SESSION_VALIDATION = new Set(['getWeapon', 'listWeapons']);
+      if (data.sessionId && typeof data.sessionId === 'string' && !WS_TYPES_SKIP_SESSION_VALIDATION.has(data.type)) {
+        const googleId = data.id || ws.googleId || null;
         const sessionValidation = await validateSessionForRequest(ws, data.sessionId, googleId);
         if (!sessionValidation.valid) {
           // Session invalid - send error and don't process request
