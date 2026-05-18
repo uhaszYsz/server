@@ -3476,15 +3476,6 @@ function handleWebSocketConnection(ws, req) {
             const n = String(it.displayName || it.name || '').toLowerCase();
             return n.indexOf('butter knife') !== -1;
           });
-          const inventoryCount = user.inventory.filter((it) => it && typeof it === 'object').length;
-          if (inventoryCount > 0 && !alreadyHas) {
-            ws.send(msgpack.encode({
-              type: 'mayorStarterWeaponGranted',
-              granted: false,
-              inventoryNotEmpty: true
-            }));
-            return;
-          }
           if (!alreadyHas) {
             mergeLootIntoInventoryStacked(user, lootItem, 1);
           }
