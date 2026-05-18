@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Encoder } from 'msgpackr';
 import * as db from './database.js';
-import { STARTER_WEAPON_ITEM_ID } from './starterWeapon.js';
+import { STARTER_WEAPON_ITEM_ID, repairButterKnifeLootOnUser, migrateAllButterKnifeUsers } from './starterWeapon.js';
 import {
     getSmithingCatalogForClient,
     findSmithingRecipe,
@@ -3523,14 +3523,7 @@ function handleWebSocketConnection(ws, req) {
           if (!alreadyHas) {
             mergeLootIntoInventoryStacked(user, lootItem, 1);
           }
-          for (const it of user.inventory) {
-            if (!it) continue;
-            const n = String(it.displayName || it.name || '').toLowerCase();
-            if (n.indexOf('butter knife') !== -1 || Number(it.itemId) === starterWeaponId) {
-              it.itemId = starterWeaponId;
-              if (!it.slot || it.slot === 'weapon') it.slot = 'weapon1';
-            }
-          }
+          repairButterKnifeLootOnUser(user, starterWeaponId);
           autoEquipWeaponFromInventoryByItemId(user, starterWeaponId);
           user.mayorStarterGranted = true;
           recalculateStatsFromEquipment(user);
@@ -4864,7 +4857,7 @@ function handleWebSocketConnection(ws, req) {
                 ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
-            
+
             // Create a session for this login
             const session = await db.createSession(user.id, verifiedGoogleId);
             
@@ -5917,6 +5910,17 @@ rl.on('line', async (input) => {
     } catch (error) {
       console.error('❌ pruneorphanstages failed:', error);
     }
+  } else if (command === 'buttermigrate') {
+    console.log('🔄 Migrating all Butter Knife loot rows → weapon item id', STARTER_WEAPON_ITEM_ID, '...');
+    try {
+      const result = await migrateAllButterKnifeUsers(db);
+      console.log(
+        `✅ buttermigrate done: ${result.usersChanged}/${result.usersTotal} user(s) updated` +
+        (result.knivesTouched ? ` (${result.knivesTouched} butter knife row(s) touched)` : ' (no butter knives found)')
+      );
+    } catch (error) {
+      console.error('❌ buttermigrate failed:', error);
+    }
   } else if (command === 'purgeoutfits') {
     console.log('🔄 Purging legacy outfit items from all users...');
     try {
@@ -5966,6 +5970,7 @@ rl.on('line', async (input) => {
     console.log('  pruneorphanstages      - DELETE user stages with no forum [level] slug + clean leaderboards');
     console.log('  pruneorphanstages dry - List orphan slugs without deleting');
     console.log('  purgeoutfits           - Remove legacy outfit items from all users (inventory + equipment)');
+    console.log('  buttermigrate          - Fix all Butter Knife loot → link item id #1 (TestSword); run once after deploy');
     console.log('  help                   - Show this help message');
     console.log('');
   } else {
