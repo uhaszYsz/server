@@ -5918,26 +5918,31 @@ rl.on('line', async (input) => {
   } else if (command === 'buttermigrate') {
     const sub = parts[1] ? parts[1].toLowerCase() : '';
     if (sub === 'scan' || sub === 'list' || sub === 'preview') {
-      console.log('🔍 Scanning all users for butter-knife / legacy mayor weapon rows...');
+      console.log('🔍 Scanning player loot (inventory/equipment) for "Butter Knife" labels…');
+      console.log(`   Shoot type comes from items table id #${STARTER_WEAPON_ITEM_ID} (e.g. TestSword), not from loot name.\n`);
       try {
-        const { usersTotal, hits } = await scanButterKnifeCandidates(db);
+        const { usersTotal, hits, starterWeaponItemId } = await scanButterKnifeCandidates(db);
         if (hits.length === 0) {
-          console.log(`ℹ️  No matching rows in server DB (${usersTotal} users).`);
-          console.log('   If you still see a knife in-game, it may be client-only (local save) — talk to mayor on a synced account or re-login after grant.');
+          console.log(`ℹ️  No matching loot rows on server (${usersTotal} users).`);
+          console.log('   Knife may be client-only (local save). Server never got inventory sync for that account.');
           return;
         }
-        console.log(` Found ${hits.length} user(s) with weapon rows:\n`);
+        console.log(` Found ${hits.length} user(s):\n`);
         for (const h of hits) {
           console.log(`  ${h.userName}:`);
           for (const r of h.rows) {
-            const tag = r.matches ? '[MATCH]' : '[weapon]';
+            const tag = r.matches ? '[MATCH loot label]' : '[weapon slot]';
+            const shoot = r.itemId != null
+              ? `shoot→ items#${r.itemId} "${r.shootTypeFromItemsTable || '?'}"`
+              : 'shoot→ MISSING itemId (no link to items table)';
             console.log(
-              `    ${tag} ${r.where} slot=${r.slot || '?'} itemId=${r.itemId == null ? '—' : r.itemId}` +
-              ` name="${r.name}" displayName="${r.displayName}"`
+              `    ${tag} ${r.where} lootLabel="${r.lootLabel}" slot=${r.slot || '?'} ${shoot}`
             );
           }
         }
-        console.log('\nℹ️  Run buttermigrate (no args) to apply fixes.');
+        console.log(
+          `\nℹ️  Run buttermigrate to set itemId→#${starterWeaponItemId} on matched loot (keeps "Butter Knife" name).`
+        );
       } catch (error) {
         console.error('❌ buttermigrate scan failed:', error);
       }

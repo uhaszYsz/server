@@ -1,7 +1,20 @@
-// Mayor starter links loot "Butter Knife" to this server weapons row (loot editor weapon id).
+/**
+ * Mayor starter weapon wiring (two different names on purpose):
+ *
+ * 1) PLAYER LOOT (inventory / equipment JSON on `users` table)
+ *    - Label shown in bag: "Butter Knife" (name / displayName) — cosmetic loot identity only.
+ *    - `itemId` on that loot row = pointer into the `items` table (which script runs when equipped).
+ *
+ * 2) SERVER WEAPON DEFINITION (`items` table, loot editor "Weapon item id")
+ *    - e.g. id 1 name "TestSword" — holds `codeChildren` (actual shoot type).
+ *    - Never renamed to Butter Knife; buttermigrate does NOT touch `items`.
+ *
+ * `buttermigrate` finds loot rows whose *label* looks like the mayor knife, then sets `itemId`
+ * to STARTER_WEAPON_ITEM_ID so shooting comes from TestSword (or whatever that row is).
+ */
 export const STARTER_WEAPON_ITEM_ID = 1;
 
-/** Combine name + displayName (emoji in name is fine — we match substrings, not exact titles). */
+/** Player loot label text only (not `items.name` / TestSword). */
 export function lootRowSearchText(row) {
     if (!row || typeof row !== 'object') return '';
     const parts = [];
@@ -10,7 +23,6 @@ export function lootRowSearchText(row) {
     return parts.join(' ').toLowerCase();
 }
 
-/** Letters/digits only, for loose matching (strips ⚔️ etc.). */
 function lootRowLettersOnly(row) {
     return lootRowSearchText(row)
         .replace(/[^\p{L}\p{N}\s]/gu, ' ')
@@ -18,6 +30,7 @@ function lootRowLettersOnly(row) {
         .trim();
 }
 
+/** True if this inventory/equipment row is the mayor's Butter Knife loot (by label, not by shoot type). */
 export function isButterKnifeLootRow(row) {
     if (!row || typeof row !== 'object') return false;
     const text = lootRowSearchText(row);
@@ -27,8 +40,8 @@ export function isButterKnifeLootRow(row) {
     return false;
 }
 
-/** Old mayor grants: weapon slot, no itemId, empty stats, name hints knife/butter/starter. */
-export function isLegacyMayorStarterWeaponRow(row) {
+/** Broken grant: weapon loot slot but missing itemId link to `items` table. */
+export function isLegacyUnlinkedMayorWeaponLoot(row) {
     if (!row || typeof row !== 'object') return false;
     if (isButterKnifeLootRow(row)) return true;
     const slot = String(row.slot || '').toLowerCase();
@@ -40,23 +53,23 @@ export function isLegacyMayorStarterWeaponRow(row) {
     const letters = lootRowLettersOnly(row);
     if (!letters) return false;
     if (letters.includes('butter') || letters.includes('knife')) return true;
-    if (letters.includes('starter') && letters.includes('weapon')) return true;
     return false;
 }
 
-export function isMayorStarterWeaponRow(row) {
-    return isButterKnifeLootRow(row) || isLegacyMayorStarterWeaponRow(row);
+export function isMayorStarterLootRow(row) {
+    return isButterKnifeLootRow(row) || isLegacyUnlinkedMayorWeaponLoot(row);
 }
 
 /**
- * Fix legacy mayor knives: set itemId to TestSword (etc.) and weapon1 slot. Returns true if user changed.
+ * Fix player loot rows: keep Butter Knife label, set itemId → server weapon row (shoot type).
+ * Does not modify `items` table or rename loot to TestSword.
  */
 export function repairButterKnifeLootOnUser(user, starterWeaponId = STARTER_WEAPON_ITEM_ID) {
     if (!user || !Number.isInteger(starterWeaponId) || starterWeaponId < 1) return false;
     let changed = false;
 
     const fixRow = (row) => {
-        if (!isMayorStarterWeaponRow(row)) return;
+        if (!isMayorStarterLootRow(row)) return;
         if (Number(row.itemId) !== starterWeaponId) {
             row.itemId = starterWeaponId;
             changed = true;
@@ -79,48 +92,53 @@ export function repairButterKnifeLootOnUser(user, starterWeaponId = STARTER_WEAP
     return changed;
 }
 
-function describeLootRow(row, where) {
+function describeLootRow(row, where, itemNamesById) {
     if (!row) return null;
+    const itemId = row.itemId != null ? parseInt(row.itemId, 10) : NaN;
+    const shootName = Number.isInteger(itemId) && itemId >= 1
+        ? (itemNamesById.get(itemId) || '?')
+        : null;
     return {
         where,
-        name: row.name != null ? String(row.name) : '',
-        displayName: row.displayName != null ? String(row.displayName) : '',
+        lootLabel: row.displayName || row.name || '',
         slot: row.slot != null ? String(row.slot) : '',
-        itemId: row.itemId != null ? row.itemId : null,
-        matches: isMayorStarterWeaponRow(row)
+        itemId: Number.isInteger(itemId) && itemId >= 1 ? itemId : null,
+        shootTypeFromItemsTable: shootName,
+        matches: isMayorStarterLootRow(row)
     };
 }
 
-/** Debug: print weapon rows that might be mayor knives (buttermigrate scan). */
-export function scanButterKnifeCandidates(db) {
-    return db.getAllUsers().then((users) => {
-        const hits = [];
-        for (const user of users) {
-            if (!user) continue;
-            const userName = user.name || `user#${user.id}`;
-            const rows = [];
-            if (Array.isArray(user.inventory)) {
-                for (let i = 0; i < user.inventory.length; i++) {
-                    const d = describeLootRow(user.inventory[i], `inventory[${i}]`);
-                    if (d && (d.matches || d.slot.startsWith('weapon'))) rows.push(d);
-                }
-            }
-            if (user.equipment) {
-                ['weapon1', 'weapon2', 'weapon'].forEach((key) => {
-                    const d = describeLootRow(user.equipment[key], `equipment.${key}`);
-                    if (d) rows.push(d);
-                });
-            }
-            const matching = rows.filter((r) => r.matches);
-            if (matching.length > 0 || rows.some((r) => r.slot.startsWith('weapon') && (r.itemId == null || r.itemId === ''))) {
-                hits.push({ userName, googleIdHash: user.googleIdHash, rows, matching });
+/** Debug: player loot rows (not `items` table). */
+export async function scanButterKnifeCandidates(db) {
+    const users = await db.getAllUsers();
+    const catalog = await db.getAllItems();
+    const itemNamesById = new Map((catalog || []).map((it) => [it.id, it.name]));
+
+    const hits = [];
+    for (const user of users) {
+        if (!user) continue;
+        const userName = user.name || `user#${user.id}`;
+        const rows = [];
+        if (Array.isArray(user.inventory)) {
+            for (let i = 0; i < user.inventory.length; i++) {
+                const d = describeLootRow(user.inventory[i], `inventory[${i}]`, itemNamesById);
+                if (d && (d.matches || (d.slot && d.slot.startsWith('weapon')))) rows.push(d);
             }
         }
-        return { usersTotal: users.length, hits };
-    });
+        if (user.equipment) {
+            ['weapon1', 'weapon2', 'weapon'].forEach((key) => {
+                const d = describeLootRow(user.equipment[key], `equipment.${key}`, itemNamesById);
+                if (d) rows.push(d);
+            });
+        }
+        const matching = rows.filter((r) => r.matches);
+        if (matching.length > 0 || rows.some((r) => r.slot.startsWith('weapon') && r.itemId == null)) {
+            hits.push({ userName, rows, matching });
+        }
+    }
+    return { usersTotal: users.length, hits, starterWeaponItemId: STARTER_WEAPON_ITEM_ID };
 }
 
-/** One-shot batch migration (server console: buttermigrate). */
 export async function migrateAllButterKnifeUsers(db) {
     const users = await db.getAllUsers();
     let usersChanged = 0;
@@ -129,7 +147,7 @@ export async function migrateAllButterKnifeUsers(db) {
     const countKnives = (user) => {
         let n = 0;
         const tally = (row) => {
-            if (isMayorStarterWeaponRow(row)) n++;
+            if (isMayorStarterLootRow(row)) n++;
         };
         if (Array.isArray(user.inventory)) {
             for (let i = 0; i < user.inventory.length; i++) tally(user.inventory[i]);
