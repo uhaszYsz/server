@@ -2396,6 +2396,46 @@ export function createItem(name, slot, codeChildren) {
     });
 }
 
+export function upsertItemById(id, name, slot, codeChildren) {
+    return new Promise((resolve, reject) => {
+        const numId = parseInt(id, 10);
+        const nameStr = typeof name === 'string' ? name.trim() : '';
+        const slotStr = typeof slot === 'string' ? slot.trim() : 'weapon1';
+        const codeJson = Array.isArray(codeChildren) ? JSON.stringify(codeChildren) : '[]';
+        if (!Number.isInteger(numId) || numId < 1 || !nameStr) {
+            reject(new Error('Valid item id and name are required'));
+            return;
+        }
+        db.run(
+            'INSERT OR REPLACE INTO items (id, name, slot, codeChildren) VALUES (?, ?, ?, ?)',
+            [numId, nameStr, slotStr, codeJson],
+            function(err) {
+                if (err) reject(err);
+                else resolve(numId);
+            }
+        );
+    });
+}
+
+export function updateItemCodeChildren(id, codeChildren) {
+    return new Promise((resolve, reject) => {
+        const numId = parseInt(id, 10);
+        const codeJson = Array.isArray(codeChildren) ? JSON.stringify(codeChildren) : '[]';
+        if (!Number.isInteger(numId) || numId < 1) {
+            reject(new Error('Valid item id is required'));
+            return;
+        }
+        db.run(
+            'UPDATE items SET codeChildren = ? WHERE id = ?',
+            [codeJson, numId],
+            function(err) {
+                if (err) reject(err);
+                else resolve(numId);
+            }
+        );
+    });
+}
+
 /** All rows in `items` (id, name, slot) for client catalogs (e.g. loot editor). */
 export function getAllItems() {
     return new Promise((resolve, reject) => {

@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Encoder } from 'msgpackr';
 import * as db from './database.js';
+import { STARTER_WEAPON_ITEM_ID } from './starterWeapon.js';
 import {
     getSmithingCatalogForClient,
     findSmithingRecipe,
@@ -476,6 +477,43 @@ function mergeLootIntoInventoryStacked(user, lootItem, qty) {
     }
     const row = { ...lootItem, quantity: Math.min(LOOT_MAX_STACK_PER_SLOT, addQty) };
     user.inventory.push(row);
+}
+
+/** Equip first inventory row with itemId into weapon1 when weapon1 is empty (mayor starter, etc.). */
+function autoEquipWeaponFromInventoryByItemId(user, itemId) {
+    if (!user || !Number.isInteger(itemId) || itemId < 1) return false;
+    if (!user.equipment) user.equipment = {};
+    if (user.equipment.weapon1) return false;
+    if (!Array.isArray(user.inventory)) user.inventory = [];
+    let idx = user.inventory.findIndex((it) => it && Number(it.itemId) === itemId);
+    if (idx < 0) {
+        idx = user.inventory.findIndex((it) => {
+            if (!it) return false;
+            const n = String(it.displayName || it.name || '').toLowerCase();
+            return n.indexOf('butter knife') !== -1;
+        });
+    }
+    if (idx < 0) return false;
+    const item = user.inventory[idx];
+    const itemSlot = resolveEquipSlotFromItem(item);
+    if (!itemSlot) return false;
+    const storageSlot = resolveEquipmentStorageSlot(item, user.equipment);
+    if (!storageSlot) return false;
+    const stackQty = (typeof item.quantity === 'number' && item.quantity >= 1) ? Math.floor(item.quantity) : 1;
+    user.inventory.splice(idx, 1);
+    if (stackQty > 1) {
+        user.inventory.splice(idx, 0, { ...item, quantity: stackQty - 1 });
+    }
+    const baseEquip = { ...item };
+    delete baseEquip.quantity;
+    const itemToEquip = { ...baseEquip, slot: itemSlot };
+    const oldItem = user.equipment[storageSlot];
+    if (oldItem) {
+        mergeLootIntoInventoryStacked(user, oldItem, 1);
+    }
+    user.equipment[storageSlot] = itemToEquip;
+    recalculateStatsFromEquipment(user);
+    return true;
 }
 
 /** Random raid/debug loot for armor slots / jewelry; amulets may roll an active skill. */
@@ -3447,15 +3485,21 @@ function handleWebSocketConnection(ws, req) {
         }
       } else if (data.type === 'mayorGrantStarterWeapon') {
         ensureWsGuestIdentity(ws);
+        const starterWeaponId = STARTER_WEAPON_ITEM_ID;
         const starterPayload = {
           name: '⚔️ Butter Knife',
           displayName: 'Butter Knife',
           slot: 'weapon1',
           stats: [],
-          itemId: 1
+          itemId: starterWeaponId
         };
         if (!ws.googleId) {
-          ws.send(msgpack.encode({ type: 'mayorStarterWeaponGranted', granted: true, clientOnly: true }));
+          ws.send(msgpack.encode({
+            type: 'mayorStarterWeaponGranted',
+            granted: true,
+            clientOnly: true,
+            starterItemId: starterWeaponId
+          }));
           return;
         }
         try {
@@ -3472,19 +3516,30 @@ function handleWebSocketConnection(ws, req) {
           if (!user.inventory) user.inventory = [];
           const alreadyHas = user.inventory.some((it) => {
             if (!it) return false;
-            if (Number(it.itemId) === 1) return true;
+            if (Number(it.itemId) === starterWeaponId) return true;
             const n = String(it.displayName || it.name || '').toLowerCase();
             return n.indexOf('butter knife') !== -1;
           });
           if (!alreadyHas) {
             mergeLootIntoInventoryStacked(user, lootItem, 1);
           }
+          for (const it of user.inventory) {
+            if (!it) continue;
+            const n = String(it.displayName || it.name || '').toLowerCase();
+            if (n.indexOf('butter knife') !== -1 || Number(it.itemId) === starterWeaponId) {
+              it.itemId = starterWeaponId;
+              if (!it.slot || it.slot === 'weapon') it.slot = 'weapon1';
+            }
+          }
+          autoEquipWeaponFromInventoryByItemId(user, starterWeaponId);
           user.mayorStarterGranted = true;
+          recalculateStatsFromEquipment(user);
           await db.updateUser(ws.googleId, user);
           syncWsEquippedVisualFromUser(ws, user);
           ws.send(msgpack.encode({
             type: 'mayorStarterWeaponGranted',
             granted: true,
+            starterItemId: starterWeaponId,
             playerData: {
               username: user.name,
               name: user.name,
