@@ -232,6 +232,51 @@ function primaryEquippedWeaponFromUser(user) {
     return e.weapon1 || e.weapon2 || null;
 }
 
+function weaponDisplayNameKey(item) {
+    return String(item && (item.displayName || item.name) || '').toLowerCase();
+}
+
+/** Ensure equipped weapons have itemId so clients can load codeChildren via getWeapon. */
+function hydrateWeaponItemIdsOnUser(user) {
+    if (!user || !user.equipment) return false;
+    let changed = false;
+    for (const slot of ['weapon1', 'weapon2']) {
+        const w = user.equipment[slot];
+        if (!w || typeof w !== 'object') continue;
+        const existing = w.itemId != null ? parseInt(w.itemId, 10) : (w.item_id != null ? parseInt(w.item_id, 10) : NaN);
+        if (Number.isInteger(existing) && existing >= 1) {
+            if (w.itemId !== existing) {
+                w.itemId = existing;
+                delete w.item_id;
+                changed = true;
+            }
+            continue;
+        }
+        const nameKey = weaponDisplayNameKey(w);
+        if (nameKey.indexOf('butter knife') !== -1) {
+            w.itemId = 1;
+            delete w.item_id;
+            changed = true;
+            continue;
+        }
+        if (Array.isArray(user.inventory)) {
+            for (const row of user.inventory) {
+                if (!row) continue;
+                const rid = row.itemId != null ? parseInt(row.itemId, 10) : NaN;
+                if (!Number.isInteger(rid) || rid < 1) continue;
+                const rname = weaponDisplayNameKey(row);
+                if (nameKey && rname && (nameKey === rname || nameKey.indexOf(rname) !== -1 || rname.indexOf(nameKey) !== -1)) {
+                    w.itemId = rid;
+                    delete w.item_id;
+                    changed = true;
+                    break;
+                }
+            }
+        }
+    }
+    return changed;
+}
+
 function outfitCharacterIndexFromUser(user) {
     const o = user && user.equipment && user.equipment.outfit;
     return (o && typeof o.characterIndex === 'number') ? o.characterIndex : null;
@@ -2217,6 +2262,9 @@ function handleWebSocketConnection(ws, req) {
                 user.equipment.weapon1.displayName = user.equipment.weapon1.name || 'Weapon';
                 userDataChanged = true;
             }
+            if (hydrateWeaponItemIdsOnUser(user)) {
+                userDataChanged = true;
+            }
             if (userDataChanged) {
                 await db.updateUser(ws.googleId, user);
             }
@@ -2466,6 +2514,9 @@ function handleWebSocketConnection(ws, req) {
 
         // Equip the new item
         user.equipment[storageSlot] = itemToEquip;
+        if (storageSlot === 'weapon1' || storageSlot === 'weapon2') {
+            hydrateWeaponItemIdsOnUser(user);
+        }
 
         if ((storageSlot === 'weapon1' || storageSlot === 'weapon2') && (item.itemId != null || item.item_id != null)) {
             const id = item.itemId ?? item.item_id;
@@ -3508,18 +3559,7 @@ function handleWebSocketConnection(ws, req) {
             return;
           }
           if (user.mayorStarterGranted) {
-            ws.send(msgpack.encode({
-              type: 'mayorStarterWeaponGranted',
-              granted: false,
-              alreadyHad: true,
-              playerData: {
-                username: user.name,
-                name: user.name,
-                stats: user.stats,
-                inventory: user.inventory,
-                equipment: user.equipment
-              }
-            }));
+            ws.send(msgpack.encode({ type: 'mayorStarterWeaponGranted', granted: false, alreadyHad: true }));
             return;
           }
           const lootItem = normalizeStoredLootItem(starterPayload);
@@ -3534,6 +3574,7 @@ function handleWebSocketConnection(ws, req) {
             mergeLootIntoInventoryStacked(user, lootItem, 1);
           }
           autoEquipWeaponFromInventoryByItemId(user, starterWeaponId);
+          hydrateWeaponItemIdsOnUser(user);
           user.mayorStarterGranted = true;
           recalculateStatsFromEquipment(user);
           await db.updateUser(ws.googleId, user);
