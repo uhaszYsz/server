@@ -236,6 +236,24 @@ function weaponDisplayNameKey(item) {
     return String(item && (item.displayName || item.name) || '').toLowerCase();
 }
 
+function summarizeEquippedWeaponsForLog(equipment) {
+    if (!equipment || typeof equipment !== 'object') return '(no equipment)';
+    const parts = [];
+    for (const slot of ['weapon1', 'weapon2']) {
+        const w = equipment[slot];
+        if (!w) continue;
+        const id = w.itemId != null ? w.itemId : (w.item_id != null ? w.item_id : '—');
+        const label = String(w.displayName || w.name || '?').slice(0, 48);
+        parts.push(`${slot} itemId=${id} "${label}"`);
+    }
+    return parts.length ? parts.join(' | ') : '(weapon slots empty)';
+}
+
+function logWeaponDebug(tag, ws, detail) {
+    const who = ws.username || ws.googleId || `socket#${ws.id}`;
+    console.log(`[WeaponDebug] ${tag} | user=${who} ws.googleId=${ws.googleId ? 'yes' : 'no'} | ${detail}`);
+}
+
 function hydrateWeaponItemIdsOnUser(user) {
     if (!user || !user.equipment) return false;
     let changed = false;
@@ -2236,6 +2254,10 @@ function handleWebSocketConnection(ws, req) {
         if (!sessionValidation.valid) {
           // Session invalid - send error and don't process request
           // Only send error for non-login requests (to avoid loop)
+          if (data.type === 'getWeapon' || data.type === 'equipItem' || data.type === 'unequipItem' || data.type === 'mayorGrantStarterWeapon') {
+            logWeaponDebug('SESSION_REJECT', ws,
+              `type=${data.type} err=${sessionValidation.error || '?'} data.id=${data.id ? 'yes' : 'no'} sessionId=${data.sessionId ? 'yes' : 'no'}`);
+          }
           if (data.type !== 'googleLogin') {
             ws.send(msgpack.encode({ 
               type: 'error', 
@@ -2245,6 +2267,11 @@ function handleWebSocketConnection(ws, req) {
             return;
           }
         }
+      }
+
+      if (data.type === 'getWeapon') {
+        logWeaponDebug('getWeapon_RX', ws,
+          `requestedId=${data.id} sessionId=${data.sessionId ? 'yes' : 'no'} data.id=${data.id != null && data.type === 'getWeapon' ? (data.id || '—') : '—'}`);
       }
       
       // (Verification removed)
