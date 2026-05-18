@@ -3508,7 +3508,18 @@ function handleWebSocketConnection(ws, req) {
             return;
           }
           if (user.mayorStarterGranted) {
-            ws.send(msgpack.encode({ type: 'mayorStarterWeaponGranted', granted: false, alreadyHad: true }));
+            ws.send(msgpack.encode({
+              type: 'mayorStarterWeaponGranted',
+              granted: false,
+              alreadyHad: true,
+              playerData: {
+                username: user.name,
+                name: user.name,
+                stats: user.stats,
+                inventory: user.inventory,
+                equipment: user.equipment
+              }
+            }));
             return;
           }
           const lootItem = normalizeStoredLootItem(starterPayload);
