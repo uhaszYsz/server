@@ -109,19 +109,66 @@ export function deleteBossSet(setId) {
 export function renameBossSet(setId, setName) {
     const sid = String(setId || '').trim();
     const name = String(setName || '').trim();
-    if (!isBossSmithingSetId(sid) || !name) return null;
+    if (!sid || !name) return null;
     const set = sets.find((s) => s.setId === sid);
     if (!set) return null;
     set.setName = name.slice(0, 80);
     return set;
 }
 
-export function saveSmithingRecipe(setId, recipeId, patch) {
+function recipeIdForSlot(setId, smithKey, equipKey) {
+    const sk = String(smithKey || '').trim();
+    const ek = String(equipKey || '').trim();
+    if (sk === 'weapon') return setId + '_' + ek;
+    return setId + '_' + sk;
+}
+
+function slotDefForEquipKey(equipKey) {
+    const ek = String(equipKey || '').trim();
+    const found = BOSS_SLOT_DEFS.find((d) => d.equipKey === ek);
+    if (found) return found;
+    return {
+        smithKey: ek,
+        equipKey: ek,
+        short: ek.slice(0, 4).toUpperCase(),
+        titleHint: ek,
+        slot: ek,
+        slotLabel: ek,
+        emoji: '❓',
+        piece: 'Item'
+    };
+}
+
+export function saveSmithingRecipe(setId, recipeId, patch, createIfMissing) {
     const sid = String(setId || '').trim();
     const rid = String(recipeId || '').trim();
     const set = sets.find((s) => s.setId === sid);
     if (!set) return null;
-    const recipe = (set.recipes || []).find((r) => r.recipeId === rid);
+    if (!set.recipes) set.recipes = [];
+    let recipe = set.recipes.find((r) => r.recipeId === rid);
+    if (!recipe && createIfMissing) {
+        const smithKey = patch && patch.smithKey != null ? String(patch.smithKey) : '';
+        const equipKey = patch && patch.equipKey != null ? String(patch.equipKey) : '';
+        const def = slotDefForEquipKey(equipKey || smithKey);
+        const sk = smithKey || def.smithKey;
+        const ek = equipKey || def.equipKey;
+        recipe = {
+            recipeId: rid || recipeIdForSlot(sid, sk, ek),
+            smithKey: sk,
+            equipKey: ek,
+            short: (patch && patch.short != null) ? String(patch.short) : def.short,
+            titleHint: (patch && patch.titleHint != null) ? String(patch.titleHint) : def.titleHint,
+            output: {
+                name: def.emoji + ' Placeholder ' + def.piece,
+                displayName: 'Placeholder ' + def.piece,
+                slot: def.slot,
+                slotLabel: def.slotLabel,
+                stats: []
+            },
+            requirements: []
+        };
+        set.recipes.push(recipe);
+    }
     if (!recipe) return null;
     if (patch && patch.output && typeof patch.output === 'object') {
         recipe.output = { ...recipe.output, ...patch.output };
@@ -135,5 +182,7 @@ export function saveSmithingRecipe(setId, recipeId, patch) {
     }
     if (patch && patch.short != null) recipe.short = String(patch.short);
     if (patch && patch.titleHint != null) recipe.titleHint = String(patch.titleHint);
+    if (patch && patch.smithKey != null) recipe.smithKey = String(patch.smithKey);
+    if (patch && patch.equipKey != null) recipe.equipKey = String(patch.equipKey);
     return recipe;
 }

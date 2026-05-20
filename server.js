@@ -2599,8 +2599,10 @@ function handleWebSocketConnection(ws, req) {
                 output: data.output,
                 requirements: data.requirements,
                 short: data.short,
-                titleHint: data.titleHint
-            });
+                titleHint: data.titleHint,
+                smithKey: data.smithKey,
+                equipKey: data.equipKey
+            }, !!data.createIfMissing);
             if (!saved) {
                 ws.send(msgpack.encode({ type: 'error', message: 'Recipe not found' }));
                 return;
