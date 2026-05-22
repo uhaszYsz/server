@@ -2396,6 +2396,135 @@ export function createItem(name, slot, codeChildren) {
     });
 }
 
+/** All items with exact name (any slot), ordered by id ascending. */
+export function getItemsByName(name) {
+    return new Promise((resolve, reject) => {
+        const nameStr = typeof name === 'string' ? name.trim() : '';
+        if (!nameStr) {
+            resolve([]);
+            return;
+        }
+        db.all(
+            'SELECT id, name, slot, codeChildren FROM items WHERE name = ? ORDER BY id ASC',
+            [nameStr],
+            (err, rows) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                const items = (rows || []).map(row => {
+                    let codeChildren = [];
+                    try {
+                        codeChildren = typeof row.codeChildren === 'string'
+                            ? JSON.parse(row.codeChildren)
+                            : (row.codeChildren || []);
+                    } catch (e) {}
+                    return {
+                        id: row.id,
+                        name: row.name,
+                        slot: row.slot,
+                        codeChildren: Array.isArray(codeChildren) ? codeChildren : []
+                    };
+                });
+                resolve(items);
+            }
+        );
+    });
+}
+
+export function updateItem(id, name, slot, codeChildren) {
+    return new Promise((resolve, reject) => {
+        const numId = parseInt(id, 10);
+        if (!Number.isInteger(numId) || numId < 1) {
+            reject(new Error('Valid item id is required'));
+            return;
+        }
+        const nameStr = typeof name === 'string' ? name.trim() : '';
+        const slotStr = typeof slot === 'string' ? slot.trim() : 'weapon';
+        const codeJson = Array.isArray(codeChildren) ? JSON.stringify(codeChildren) : '[]';
+        if (!nameStr) {
+            reject(new Error('Item name is required'));
+            return;
+        }
+        db.run(
+            'UPDATE items SET name = ?, slot = ?, codeChildren = ? WHERE id = ?',
+            [nameStr, slotStr, codeJson, numId],
+            function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.changes > 0);
+                }
+            }
+        );
+    });
+}
+
+export function deleteItemsByIds(ids) {
+    return new Promise((resolve, reject) => {
+        const numericIds = (Array.isArray(ids) ? ids : [])
+            .map((id) => parseInt(id, 10))
+            .filter((id) => Number.isInteger(id) && id >= 1);
+        if (numericIds.length === 0) {
+            resolve(0);
+            return;
+        }
+        const placeholders = numericIds.map(() => '?').join(',');
+        db.run(`DELETE FROM items WHERE id IN (${placeholders})`, numericIds, function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes);
+            }
+        });
+    });
+}
+
+/** Point inventory/equipment rows at keptId when duplicate item rows are removed. */
+function remapItemIdInUser(user, fromIdSet, toId) {
+    if (!user || !fromIdSet || fromIdSet.size === 0 || !Number.isInteger(toId) || toId < 1) {
+        return false;
+    }
+    let changed = false;
+    const remap = (item) => {
+        if (!item || item.itemId == null) return;
+        const id = parseInt(item.itemId, 10);
+        if (fromIdSet.has(id)) {
+            item.itemId = toId;
+            changed = true;
+        }
+    };
+    if (Array.isArray(user.inventory)) {
+        user.inventory.forEach(remap);
+    }
+    if (user.equipment && typeof user.equipment === 'object') {
+        Object.values(user.equipment).forEach((item) => {
+            if (item && typeof item === 'object') remap(item);
+        });
+    }
+    return changed;
+}
+
+export async function remapItemIdInAllUsers(fromIds, toId) {
+    const fromIdSet = new Set(
+        (Array.isArray(fromIds) ? fromIds : [])
+            .map((id) => parseInt(id, 10))
+            .filter((id) => Number.isInteger(id) && id >= 1 && id !== toId)
+    );
+    if (fromIdSet.size === 0) {
+        return 0;
+    }
+    const users = await getAllUsers();
+    let updated = 0;
+    for (const user of users) {
+        if (!remapItemIdInUser(user, fromIdSet, toId)) continue;
+        cleanDeprecatedStats(user);
+        await updateUserByGoogleIdHash(user.googleIdHash, user);
+        updated++;
+    }
+    return updated;
+}
+
 /** All rows in `items` (id, name, slot) for client catalogs (e.g. loot editor). */
 export function getAllItems() {
     return new Promise((resolve, reject) => {

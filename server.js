@@ -3456,7 +3456,36 @@ function handleWebSocketConnection(ws, req) {
         }
         try {
             const codeChildren = [{ objectName, code }];
-            const itemId = await db.createItem(objectName, 'weapon', codeChildren);
+            const overwrite = !!data.overwrite;
+            const existing = await db.getItemsByName(objectName);
+
+            if (existing.length > 0 && !overwrite) {
+                ws.send(msgpack.encode({
+                    type: 'uploadAsWeaponExists',
+                    name: objectName,
+                    count: existing.length
+                }));
+                return;
+            }
+
+            let itemId;
+            let replaced = false;
+            if (existing.length > 0 && overwrite) {
+                const keptId = existing.length === 1
+                    ? existing[0].id
+                    : existing[existing.length - 1].id;
+                const deleteIds = existing.map((row) => row.id).filter((id) => id !== keptId);
+                if (deleteIds.length > 0) {
+                    await db.remapItemIdInAllUsers(deleteIds, keptId);
+                    await db.deleteItemsByIds(deleteIds);
+                }
+                await db.updateItem(keptId, objectName, 'weapon', codeChildren);
+                itemId = keptId;
+                replaced = true;
+            } else {
+                itemId = await db.createItem(objectName, 'weapon', codeChildren);
+            }
+
             const user = await db.getUserByGoogleId(ws.googleId);
             if (!user) {
                 ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
@@ -3476,9 +3505,12 @@ function handleWebSocketConnection(ws, req) {
                 type: 'uploadAsWeaponSuccess',
                 itemId,
                 name: objectName,
+                replaced,
                 playerData: { inventory: user.inventory, equipment: user.equipment, stats: user.stats }
             }));
-            console.log(`[uploadAsWeapon] Admin ${ws.username} created weapon item "${objectName}" (id=${itemId}) and added to inventory`);
+            console.log(
+                `[uploadAsWeapon] Admin ${ws.username} ${replaced ? 'replaced' : 'created'} weapon item "${objectName}" (id=${itemId}) and added to inventory`
+            );
         } catch (error) {
             console.error('uploadAsWeapon failed:', error);
             ws.send(msgpack.encode({ type: 'error', message: error.message || 'Failed to upload as weapon' }));
