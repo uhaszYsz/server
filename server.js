@@ -2404,6 +2404,68 @@ function handleWebSocketConnection(ws, req) {
             addedItem: lootItem,
             addedCount: qty
         }));
+      } else if (data.type === 'stashLoot') {
+        const ADD_LOOT_MAX_QUANTITY = 100;
+        const STASH_LOOT_MAX_ENTRIES = 500;
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in', fromStashLoot: true }));
+            return;
+        }
+        const room = ws.room ? rooms.get(ws.room) : null;
+        if (!room || room.type !== 'game' || room.level == null || room.level === '') {
+            ws.send(msgpack.encode({ type: 'error', message: 'Loot can only be added while playing a campaign level.', fromStashLoot: true }));
+            return;
+        }
+        const user = await db.getUserByGoogleId(ws.googleId);
+        if (!user) {
+            ws.send(msgpack.encode({ type: 'error', message: 'User not found', fromStashLoot: true }));
+            return;
+        }
+        const rawItems = data.items;
+        if (!Array.isArray(rawItems) || rawItems.length === 0) {
+            ws.send(msgpack.encode({ type: 'error', message: 'No loot to stash', fromStashLoot: true }));
+            return;
+        }
+        if (!user.inventory) user.inventory = [];
+        const addedItems = [];
+        const limit = Math.min(rawItems.length, STASH_LOOT_MAX_ENTRIES);
+        for (let i = 0; i < limit; i++) {
+            const row = rawItems[i];
+            const item = row && row.item;
+            if (!item || typeof item !== 'object' || !item.name || typeof item.name !== 'string') continue;
+            let lootItem;
+            try {
+                lootItem = normalizeStoredLootItem(item);
+            } catch (_) {
+                continue;
+            }
+            let qty = 1;
+            if (row.quantity != null && row.quantity !== '') {
+                const q = typeof row.quantity === 'number' ? row.quantity : parseInt(row.quantity, 10);
+                if (Number.isFinite(q) && q >= 1) {
+                    qty = Math.min(ADD_LOOT_MAX_QUANTITY, Math.floor(q));
+                }
+            }
+            mergeLootIntoInventoryStacked(user, lootItem, qty);
+            addedItems.push({ item: lootItem, addedCount: qty });
+        }
+        if (addedItems.length === 0) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Invalid loot stash', fromStashLoot: true }));
+            return;
+        }
+        await db.updateUser(ws.googleId, user);
+        console.log(`[stashLoot] Added ${addedItems.length} stash row(s) to ${ws.username || ws.googleId}'s inventory`);
+        ws.send(msgpack.encode({
+            type: 'lootStashed',
+            playerData: {
+                username: user.name,
+                name: user.name,
+                stats: user.stats,
+                inventory: user.inventory,
+                equipment: user.equipment
+            },
+            addedItems: addedItems
+        }));
       } else if (data.type === 'equipItem') {
         // Handle equipping an item
         if (!ws.googleId) {
