@@ -17,8 +17,8 @@ export const BUILTIN_SMITHING_SETS = [
                     slotLabel: 'Weapon',
                     stats: [
                         { stat: 'critical', value: 12 },
-                        { stat: 'pierce', value: 8 },
-                        { stat: 'reload', value: 5 }
+                        { stat: 'block', value: 8 },
+                        { stat: 'ammo', value: 5 }
                     ]
                 },
                 requirements: [
@@ -34,14 +34,14 @@ export const BUILTIN_SMITHING_SETS = [
                 short: 'WPN II',
                 titleHint: 'Weapon II',
                 output: {
-                    name: '🛡 Kurvishon Parrying Blade',
-                    displayName: 'Kurvishon Parrying Blade',
+                    name: '🛡 Kurvishon Strike Blade',
+                    displayName: 'Kurvishon Strike Blade',
                     slot: 'weapon2',
                     slotLabel: 'Weapon II',
                     stats: [
                         { stat: 'critical', value: 8 },
-                        { stat: 'parry', value: 10 },
-                        { stat: 'reload', value: 4 }
+                        { stat: 'block', value: 10 },
+                        { stat: 'ammo', value: 4 }
                     ]
                 },
                 requirements: [
@@ -111,7 +111,7 @@ export const BUILTIN_SMITHING_SETS = [
                     stats: [
                         { stat: 'maxHp', value: 55 },
                         { stat: 'recovery', value: 8 },
-                        { stat: 'hitpointSize', value: 3 }
+                        { stat: 'knockback', value: 3 }
                     ]
                 },
                 requirements: [
@@ -133,8 +133,8 @@ export const BUILTIN_SMITHING_SETS = [
                     slotLabel: 'Gloves',
                     stats: [
                         { stat: 'critical', value: 6 },
-                        { stat: 'parry', value: 9 },
-                        { stat: 'reload', value: 3 }
+                        { stat: 'block', value: 9 },
+                        { stat: 'ammo', value: 3 }
                     ]
                 },
                 requirements: [

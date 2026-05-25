@@ -605,7 +605,14 @@ function buildServerGeneratedEquipmentLoot(itemType) {
 }
 
 // Available stats for items
-const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback', 'recovery', 'reload', 'parry', 'destroyer', 'weakspot', 'pierce', 'medic', 'hitpointSize'];
+const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback', 'recovery', 'ammo', 'medic'];
+
+const LEGACY_ITEM_STAT_ALIASES = { reload: 'ammo' };
+function normalizeEquipmentStatKey(stat) {
+    if (stat == null) return stat;
+    const s = String(stat).trim();
+    return LEGACY_ITEM_STAT_ALIASES[s] || LEGACY_ITEM_STAT_ALIASES[s.toLowerCase()] || s;
+}
 
 // Generate a random item for a given slot
 function generateRandomItem(slotName) {
@@ -757,18 +764,12 @@ function getDefaultStats() {
         maxHp: 60,
         maxMp: 50,
         MpRegen: 1.0,
-        critical: 5,
-        block: 5,
+        critical: 0,
+        block: 0,
         knockback: 0,
         recovery: 0,
-        reload: 0,
-        parry: 0,
-        destroyer: 0,
-        weakspot: 0,
-        pierce: 0,
-        medic: 0,
-        /** +1 shrinks collision radius by 0.5 px (world units); client base radius is 2. */
-        hitpointSize: 0
+        ammo: 0,
+        medic: 0
     };
 }
 
@@ -794,7 +795,7 @@ function recalculateStatsFromEquipment(user) {
         const equippedItem = user.equipment && user.equipment[slotName];
         if (equippedItem && Array.isArray(equippedItem.stats)) {
             equippedItem.stats.forEach(statEntry => {
-                const stat = statEntry.stat;
+                const stat = normalizeEquipmentStatKey(statEntry.stat);
                 const value = statEntry.value;
                 if (user.stats[stat] !== undefined) {
                     user.stats[stat] += effectiveEquipmentStatBonus(stat, value);
