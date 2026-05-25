@@ -856,6 +856,80 @@ function getAmuletSkillDisplayName(abilityId) {
     return names[abilityId] || 'Skill';
 }
 
+/** Add one amulet per ACTIVE_ABILITIES entry; mutates user.inventory. */
+function grantAdminSpellcardsToUserRecord(user) {
+    if (!user.inventory) user.inventory = [];
+    const addedItems = [];
+    for (let i = 0; i < ACTIVE_ABILITIES.length; i++) {
+        const abilityId = ACTIVE_ABILITIES[i];
+        const lootItem = buildAdminSpellAmuletLoot(abilityId);
+        mergeLootIntoInventoryStacked(user, lootItem, 1);
+        addedItems.push({ item: lootItem, addedCount: 1 });
+    }
+    return addedItems;
+}
+
+function playerDataPayloadFromUser(user) {
+    return {
+        username: user.name,
+        name: user.name,
+        stats: user.stats,
+        inventory: user.inventory,
+        equipment: user.equipment
+    };
+}
+
+/** Push inventory refresh to any connected session for this user (by googleIdHash). */
+function pushGiveAdminSpellSuccessToConnectedUser(user, addedItems) {
+    if (!user || !user.googleIdHash) return 0;
+    const targetHash = user.googleIdHash;
+    let notified = 0;
+    for (const client of clients.values()) {
+        if (!client.googleId || client.readyState !== 1) continue;
+        if (db.hashGoogleId(client.googleId) !== targetHash) continue;
+        try {
+            client.send(msgpack.encode({
+                type: 'giveAdminSpellSuccess',
+                playerData: playerDataPayloadFromUser(user),
+                addedItems
+            }));
+            notified++;
+        } catch (_) { /* ignore send errors */ }
+    }
+    return notified;
+}
+
+async function grantAdminSpellcardsAndSave(user, googleIdForUpdate) {
+    const addedItems = grantAdminSpellcardsToUserRecord(user);
+    if (googleIdForUpdate) {
+        await db.updateUser(googleIdForUpdate, user);
+    } else if (user.googleIdHash) {
+        await db.updateUserByGoogleIdHash(user.googleIdHash, user);
+    } else {
+        throw new Error('User has no googleIdHash');
+    }
+    return addedItems;
+}
+
+/** Grant all spell amulets to every user with rank admin; notify connected sessions. */
+async function grantAdminSpellcardsToAllAdminUsers() {
+    const users = await db.getAllUsers();
+    const granted = [];
+    let notifiedSessions = 0;
+    for (const user of users) {
+        if (!user || !user.googleIdHash) continue;
+        if ((user.rank || 'player').toLowerCase() !== 'admin') continue;
+        const addedItems = await grantAdminSpellcardsAndSave(user);
+        granted.push({
+            name: user.name || user.googleIdHash,
+            googleIdHash: user.googleIdHash,
+            addedItems
+        });
+        notifiedSessions += pushGiveAdminSpellSuccessToConnectedUser(user, addedItems);
+    }
+    return { granted, notifiedSessions };
+}
+
 // Initialize inventory and equipment for new players
 function initializeInventoryAndEquipment() {
     return {
@@ -2402,31 +2476,23 @@ function handleWebSocketConnection(ws, req) {
             return;
         }
         try {
-            const user = await db.getUserByGoogleId(ws.googleId);
-            if (!user) {
+            const result = await grantAdminSpellcardsToAllAdminUsers();
+            const selfHash = db.hashGoogleId(ws.googleId);
+            const selfGrant = result.granted.find(g => g.googleIdHash === selfHash);
+            const selfUser = await db.getUserByGoogleId(ws.googleId);
+            console.log(
+                `[giveAdminSpell] Granted spell amulets to ${result.granted.length} admin(s)` +
+                (result.granted.length ? ': ' + result.granted.map(g => g.name).join(', ') : '')
+            );
+            if (!selfUser) {
                 ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
-            if (!user.inventory) user.inventory = [];
-            const addedItems = [];
-            for (let i = 0; i < ACTIVE_ABILITIES.length; i++) {
-                const abilityId = ACTIVE_ABILITIES[i];
-                const lootItem = buildAdminSpellAmuletLoot(abilityId);
-                mergeLootIntoInventoryStacked(user, lootItem, 1);
-                addedItems.push({ item: lootItem, addedCount: 1 });
-            }
-            await db.updateUser(ws.googleId, user);
-            console.log(`[giveAdminSpell] Added ${addedItems.length} spell amulets to ${ws.username || ws.googleId}'s inventory`);
             ws.send(msgpack.encode({
                 type: 'giveAdminSpellSuccess',
-                playerData: {
-                    username: user.name,
-                    name: user.name,
-                    stats: user.stats,
-                    inventory: user.inventory,
-                    equipment: user.equipment
-                },
-                addedItems
+                playerData: playerDataPayloadFromUser(selfUser),
+                addedItems: selfGrant ? selfGrant.addedItems : [],
+                grantedAdminCount: result.granted.length
             }));
         } catch (err) {
             console.error('[giveAdminSpell] Error:', err);
@@ -6138,8 +6204,29 @@ rl.on('line', async (input) => {
     } catch (error) {
       console.error('❌ pruneorphanstages failed:', error);
     }
-  } else if (command === 'purgeoutfits') {
-    console.log('🔄 Purging legacy outfit items from all users...');
+    } else if (command === 'giveadminspell') {
+        console.log('🔄 Granting spell amulets to all admin users...');
+        try {
+            const result = await grantAdminSpellcardsToAllAdminUsers();
+            if (result.granted.length === 0) {
+                console.log('ℹ️  No admin users found in database.');
+                return;
+            }
+            for (const row of result.granted) {
+                const labels = row.addedItems
+                    .map(entry => entry.item && (entry.item.displayName || entry.item.name) || '?')
+                    .join(', ');
+                console.log(`✅ ${row.name}: +${row.addedItems.length} amulet(s) (${labels})`);
+            }
+            console.log(
+                `✅ giveAdminSpell done: ${result.granted.length} admin(s);` +
+                ` ${result.notifiedSessions} connected session(s) refreshed.`
+            );
+        } catch (error) {
+            console.error('❌ giveAdminSpell failed:', error.message || error);
+        }
+    } else if (command === 'purgeoutfits') {
+        console.log('🔄 Purging legacy outfit items from all users...');
     try {
       const users = await db.getAllUsers();
       let usersChanged = 0;
@@ -6294,6 +6381,7 @@ rl.on('line', async (input) => {
     console.log('  updategooglehash       - Hash raw Google IDs in DB (run once on VPS to migrate existing data)');
     console.log('  pruneorphanstages      - DELETE user stages with no forum [level] slug + clean leaderboards');
     console.log('  pruneorphanstages dry - List orphan slugs without deleting');
+    console.log('  giveAdminSpell         - Grant all 3 spell amulets to every admin user\'s inventory');
     console.log('  purgeoutfits           - Remove legacy outfit items from all users (inventory + equipment)');
     console.log('  removeButter           - Remove Butter Knife from all users (inventory + weapon1/weapon2)');
     console.log('  removeButter dry       - Preview Butter Knife removal counts without writing');
