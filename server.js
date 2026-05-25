@@ -712,7 +712,7 @@ async function verifyGoogleIdToken(idToken) {
 
 function getDefaultStats() {
     return {
-        maxHp: 100,
+        maxHp: 60,
         maxMp: 50,
         MpRegen: 1.0,
         critical: 5,
@@ -760,6 +760,18 @@ function recalculateStatsFromEquipment(user) {
             });
         }
     });
+}
+
+/** Recompute user.stats from base + equipped gear and persist (login / session restore). */
+async function recalculateAndSaveUserStats(user, googleId) {
+    if (!user) return user;
+    recalculateStatsFromEquipment(user);
+    if (googleId) {
+        await db.updateUser(googleId, user);
+    } else if (user.googleIdHash) {
+        await db.updateUserByGoogleIdHash(user.googleIdHash, user);
+    }
+    return user;
 }
 
 // Active ability IDs (equipped amulet skill)
@@ -4962,6 +4974,8 @@ function handleWebSocketConnection(ws, req) {
                 return;
             }
 
+            await recalculateAndSaveUserStats(user, verifiedGoogleId);
+
             // Create a session for this login
             const session = await db.createSession(user.id, verifiedGoogleId);
             
@@ -5068,6 +5082,7 @@ function handleWebSocketConnection(ws, req) {
                 ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
                 return;
             }
+            await recalculateAndSaveUserStats(user, data.id);
             syncWsEquippedVisualFromUser(ws, user);
             
             // Send session restored
