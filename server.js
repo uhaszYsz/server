@@ -3444,12 +3444,17 @@ function handleWebSocketConnection(ws, req) {
 
         for (const client of roomClients) {
           if (client.readyState === ws.OPEN) {
-            client.send(msgpack.encode({
+            const abilityPayload = {
               type: 'abilityActivation',
               abilityId: data.abilityId,
               timestamp: data.timestamp,
               playerId: ws.id
-            }));
+            };
+            if (typeof data.x === 'number' && typeof data.y === 'number') {
+              abilityPayload.x = data.x;
+              abilityPayload.y = data.y;
+            }
+            client.send(msgpack.encode(abilityPayload));
           }
         }
       } else if (data.type === 'playerHit' && ws.room) {
