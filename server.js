@@ -604,6 +604,33 @@ function buildServerGeneratedEquipmentLoot(itemType) {
     return lootItem;
 }
 
+/** Admin grant: one amulet per spellcard skill (shield / heal_zone / explosion). */
+function buildAdminSpellAmuletLoot(abilityId) {
+    const id = String(abilityId || '').trim();
+    if (!ACTIVE_ABILITIES.includes(id)) {
+        throw new Error(`Unknown spell ability: ${abilityId}`);
+    }
+    const skillLabel = getAmuletSkillDisplayName(id);
+    const em = LOOT_SLOT_UI_EMOJI.amulet || '💎';
+    const label = 'Amulet';
+    const displayName = `${label} (${skillLabel})`;
+    const lootItem = {
+        name: `${em} ${displayName}`,
+        slot: 'amulet',
+        displayName,
+        activeAbility: id,
+        stats: []
+    };
+    const availableStats = [...ITEM_STATS];
+    for (let i = 0; i < 2; i++) {
+        const randomIndex = Math.floor(Math.random() * availableStats.length);
+        const selectedStat = availableStats[randomIndex];
+        availableStats.splice(randomIndex, 1);
+        lootItem.stats.push({ stat: selectedStat, value: i === 0 ? 2 : 1 });
+    }
+    return lootItem;
+}
+
 // Available stats for items
 const ITEM_STATS = ['maxHp', 'maxMp', 'MpRegen', 'critical', 'block', 'knockback', 'recovery', 'ammo', 'medic'];
 
@@ -2364,6 +2391,46 @@ function handleWebSocketConnection(ws, req) {
         } catch (err) {
             console.error('[purgeOutfits] Error:', err);
             ws.send(msgpack.encode({ type: 'error', message: 'Failed to purge outfits' }));
+        }
+      } else if (data.type === 'giveAdminSpell') {
+        if (ws.rank !== 'admin') {
+            ws.send(msgpack.encode({ type: 'error', message: 'Admin only' }));
+            return;
+        }
+        if (!ws.googleId) {
+            ws.send(msgpack.encode({ type: 'error', message: 'Not logged in' }));
+            return;
+        }
+        try {
+            const user = await db.getUserByGoogleId(ws.googleId);
+            if (!user) {
+                ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
+                return;
+            }
+            if (!user.inventory) user.inventory = [];
+            const addedItems = [];
+            for (let i = 0; i < ACTIVE_ABILITIES.length; i++) {
+                const abilityId = ACTIVE_ABILITIES[i];
+                const lootItem = buildAdminSpellAmuletLoot(abilityId);
+                mergeLootIntoInventoryStacked(user, lootItem, 1);
+                addedItems.push({ item: lootItem, addedCount: 1 });
+            }
+            await db.updateUser(ws.googleId, user);
+            console.log(`[giveAdminSpell] Added ${addedItems.length} spell amulets to ${ws.username || ws.googleId}'s inventory`);
+            ws.send(msgpack.encode({
+                type: 'giveAdminSpellSuccess',
+                playerData: {
+                    username: user.name,
+                    name: user.name,
+                    stats: user.stats,
+                    inventory: user.inventory,
+                    equipment: user.equipment
+                },
+                addedItems
+            }));
+        } catch (err) {
+            console.error('[giveAdminSpell] Error:', err);
+            ws.send(msgpack.encode({ type: 'error', message: err && err.message ? err.message : 'Failed to grant spellcards' }));
         }
       } else if (data.type === 'debugGiveLoot') {
         // Debug: Generate and give random loot to player
