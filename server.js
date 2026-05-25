@@ -478,11 +478,10 @@ function mergeLootIntoInventoryStacked(user, lootItem, qty) {
     user.inventory.push(row);
 }
 
-/** Equip first inventory row with itemId into weapon1 when weapon1 is empty (mayor starter, etc.). */
+/** Equip first inventory row with itemId into weapon1/weapon2 when that slot is empty (mayor starter, etc.). */
 function autoEquipWeaponFromInventoryByItemId(user, itemId) {
     if (!user || !Number.isInteger(itemId) || itemId < 1) return false;
     if (!user.equipment) user.equipment = {};
-    if (user.equipment.weapon1) return false;
     if (!Array.isArray(user.inventory)) user.inventory = [];
     let idx = user.inventory.findIndex((it) => it && Number(it.itemId) === itemId);
     if (idx < 0) {
@@ -497,7 +496,8 @@ function autoEquipWeaponFromInventoryByItemId(user, itemId) {
     const itemSlot = resolveEquipSlotFromItem(item);
     if (!itemSlot) return false;
     const storageSlot = resolveEquipmentStorageSlot(item, user.equipment);
-    if (!storageSlot) return false;
+    if (!storageSlot || (storageSlot !== 'weapon1' && storageSlot !== 'weapon2')) return false;
+    if (user.equipment[storageSlot]) return false;
     const stackQty = (typeof item.quantity === 'number' && item.quantity >= 1) ? Math.floor(item.quantity) : 1;
     user.inventory.splice(idx, 1);
     if (stackQty > 1) {
@@ -513,6 +513,48 @@ function autoEquipWeaponFromInventoryByItemId(user, itemId) {
     user.equipment[storageSlot] = itemToEquip;
     recalculateStatsFromEquipment(user);
     return true;
+}
+
+/** Mayor / legacy starter weapon catalog ids (Butter Knife). */
+const BUTTER_KNIFE_ITEM_IDS = new Set([1, 4]);
+
+function isButterKnifeLootItem(item) {
+    if (!item || typeof item !== 'object') return false;
+    const id = item.itemId != null ? parseInt(item.itemId, 10) : NaN;
+    if (Number.isInteger(id) && BUTTER_KNIFE_ITEM_IDS.has(id)) return true;
+    const label = String(item.displayName || item.name || '').toLowerCase();
+    return label.indexOf('butter knife') !== -1;
+}
+
+function countButterKnivesOnUser(user) {
+    let invRemoved = 0;
+    let equipRemoved = 0;
+    if (Array.isArray(user.inventory)) {
+        for (let i = 0; i < user.inventory.length; i++) {
+            if (isButterKnifeLootItem(user.inventory[i])) invRemoved += 1;
+        }
+    }
+    if (user.equipment && typeof user.equipment === 'object') {
+        for (const key of Object.keys(user.equipment)) {
+            if (isButterKnifeLootItem(user.equipment[key])) equipRemoved += 1;
+        }
+    }
+    return { invRemoved, equipRemoved, changed: invRemoved > 0 || equipRemoved > 0 };
+}
+
+/** Strip Butter Knife rows from inventory + weapon slots; returns counts. */
+function removeButterKnivesFromUser(user) {
+    const counts = countButterKnivesOnUser(user);
+    if (!counts.changed) return counts;
+    if (Array.isArray(user.inventory)) {
+        user.inventory = user.inventory.filter((it) => !isButterKnifeLootItem(it));
+    }
+    if (user.equipment && typeof user.equipment === 'object') {
+        for (const key of Object.keys(user.equipment)) {
+            if (isButterKnifeLootItem(user.equipment[key])) user.equipment[key] = null;
+        }
+    }
+    return counts;
 }
 
 /** Random raid/debug loot for armor slots / jewelry; amulets may roll an active skill. */
@@ -3591,11 +3633,11 @@ function handleWebSocketConnection(ws, req) {
         }
       } else if (data.type === 'mayorGrantStarterWeapon') {
         ensureWsGuestIdentity(ws);
-        const starterWeaponId = 1;
+        const starterWeaponId = 4;
         const starterPayload = {
-          name: '⚔️ Butter Knife',
+          name: 'weapon2',
           displayName: 'Butter Knife',
-          slot: 'weapon1',
+          slot: 'weapon2',
           stats: [],
           itemId: starterWeaponId
         };
@@ -3640,7 +3682,6 @@ function handleWebSocketConnection(ws, req) {
           if (!alreadyHas) {
             mergeLootIntoInventoryStacked(user, lootItem, 1);
           }
-          autoEquipWeaponFromInventoryByItemId(user, starterWeaponId);
           user.mayorStarterGranted = true;
           recalculateStatsFromEquipment(user);
           await db.updateUser(ws.googleId, user);
@@ -6067,6 +6108,46 @@ rl.on('line', async (input) => {
     } catch (error) {
       console.error('❌ purgeoutfits failed:', error);
     }
+  } else if (command === 'removebutter') {
+    const dry = parts[1] === 'dry' || parts[1] === 'preview' || parts[1] === 'list';
+    console.log(dry ? '🔄 [dry-run] Scanning for Butter Knife loot on all users...' : '🔄 Removing Butter Knife from all users (inventory + equipment)...');
+    try {
+      const users = await db.getAllUsers();
+      let usersAffected = 0;
+      let removedInventoryItems = 0;
+      let removedEquipmentSlots = 0;
+
+      for (const user of users) {
+        if (!user || !user.googleIdHash) continue;
+        const { invRemoved, equipRemoved, changed } = dry
+          ? countButterKnivesOnUser(user)
+          : removeButterKnivesFromUser(user);
+        if (!changed) continue;
+        usersAffected += 1;
+        removedInventoryItems += invRemoved;
+        removedEquipmentSlots += equipRemoved;
+        if (!dry) {
+          recalculateStatsFromEquipment(user);
+          await db.updateUserByGoogleIdHash(user.googleIdHash, user);
+        }
+      }
+
+      if (dry) {
+        console.log(
+          `ℹ️  [dry-run] ${usersAffected}/${users.length} user(s) would lose Butter Knife:` +
+          ` ${removedInventoryItems} inventory row(s), ${removedEquipmentSlots} equipped slot(s).`
+        );
+        console.log('   Run removeButter (no args) to apply.');
+        return;
+      }
+
+      console.log(
+        `✅ removeButter done: ${usersAffected}/${users.length} user(s) updated` +
+        ` (${removedInventoryItems} inventory row(s), ${removedEquipmentSlots} equipped slot(s)).`
+      );
+    } catch (error) {
+      console.error('❌ removeButter failed:', error);
+    }
   } else if (command === 'wipeallitems') {
     const dry = parts[1] === 'dry' || parts[1] === 'preview' || parts[1] === 'list';
     try {
@@ -6146,6 +6227,8 @@ rl.on('line', async (input) => {
     console.log('  pruneorphanstages      - DELETE user stages with no forum [level] slug + clean leaderboards');
     console.log('  pruneorphanstages dry - List orphan slugs without deleting');
     console.log('  purgeoutfits           - Remove legacy outfit items from all users (inventory + equipment)');
+    console.log('  removeButter           - Remove Butter Knife from all users (inventory + weapon1/weapon2)');
+    console.log('  removeButter dry       - Preview Butter Knife removal counts without writing');
     console.log('  wipeAllItems           - Clear ALL inventory + equipment for every user (stats → base)');
     console.log('  wipeAllItems dry       - Preview counts without writing');
     console.log('  help                   - Show this help message');
