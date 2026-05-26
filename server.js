@@ -3503,14 +3503,18 @@ function handleWebSocketConnection(ws, req) {
         const room = rooms.get(ws.room);
         if (!room) return;
         
-        // Broadcast to all party members
+        // Broadcast to all party members (include funModeEnabled for leader-authoritative collisions)
+        const hpUpdatePayload = {
+            type: 'playerHpUpdate',
+            players: data.players
+        };
+        if (typeof data.funModeEnabled === 'boolean') {
+            hpUpdatePayload.funModeEnabled = data.funModeEnabled;
+        }
         for (const memberId of party.members) {
             const memberClient = clients.get(memberId);
             if (memberClient && memberClient.readyState === ws.OPEN && memberClient.room === ws.room) {
-                memberClient.send(msgpack.encode({
-                    type: 'playerHpUpdate',
-                    players: data.players
-                }));
+                memberClient.send(msgpack.encode(hpUpdatePayload));
             }
         }
       } else if (data.type === 'partyLoadLevel') {
