@@ -1121,6 +1121,7 @@ async function buildRoomWeaponData(clientsCollection) {
             weaponCodeChildren: weaponCodeChildren,
             weaponItemName: weaponItemName || null,
             weaponItemId: itemId != null ? itemId : null,
+            stats: user.stats || null,
             armorCharacterIndex: outfitIdx,
             outfitCharacterIndex: outfitIdx,
             equipment: compactVisualEquipmentFromUser(user)
