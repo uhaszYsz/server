@@ -3483,9 +3483,10 @@ function handleWebSocketConnection(ws, req) {
         const room = rooms.get(ws.room);
         if (!room) return;
         // Each client sends after applying damage locally; broadcast to everyone
+        // Preserve victim playerId from sender (leader reports hits on other members by username).
         const payload = {
           type: 'playerDamageReport',
-          playerId: ws.username || data.playerId,
+          playerId: (data.playerId != null && data.playerId !== '') ? data.playerId : ws.username,
           damage: data.damage,
           hp: data.hp,
           knockbackDirection: data.knockbackDirection
