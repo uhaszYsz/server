@@ -3421,6 +3421,23 @@ function handleWebSocketConnection(ws, req) {
                 }));
             }
         }
+      } else if (data.type === 'partyEnemyDead' && ws.room) {
+        const party = findPartyByMemberId(ws.id);
+        if (!party || party.leader !== ws.id) return;
+        const room = rooms.get(ws.room);
+        if (!room || room.type !== 'game') return;
+        const ids = Array.isArray(data.codeChildIds) && data.codeChildIds.length
+          ? data.codeChildIds
+          : (data.codeChildId != null ? [data.codeChildId] : []);
+        if (!ids.length) return;
+        const payload = msgpack.encode({ type: 'partyEnemyDead', codeChildIds: ids });
+        for (const memberId of party.members) {
+          if (memberId === ws.id) continue;
+          const memberClient = clients.get(memberId);
+          if (memberClient && memberClient.readyState === ws.OPEN && memberClient.room === ws.room) {
+            memberClient.send(payload);
+          }
+        }
       } else if (data.type === 'blockShield' && ws.room) {
         // Broadcast block shield instantly to all clients in the room (no buffering)
         const room = rooms.get(ws.room);
