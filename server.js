@@ -2390,6 +2390,15 @@ function handleWebSocketConnection(ws, req) {
         } else {
             ws.send(msgpack.encode({ type: 'error', message: 'User not found' }));
         }
+      } else if (data.type === 'reportAveragePing') {
+        if (!ws.googleId) return;
+        const pingMs = Number(data.pingMs);
+        if (!Number.isFinite(pingMs) || pingMs <= 0 || pingMs > 60000) return;
+        try {
+            await db.updateUserAveragePing(ws.googleId, pingMs);
+        } catch (err) {
+            console.error('[reportAveragePing] Error:', err);
+        }
       } else if (data.type === 'getMyUserData') {
         if (!ws.googleId) {
             ws.send(msgpack.encode({ type: 'error', message: 'Not logged in', fromGetMyUserData: true }));
@@ -3423,7 +3432,7 @@ function handleWebSocketConnection(ws, req) {
         }
       } else if (data.type === 'partyEnemyDead' && ws.room) {
         const party = findPartyByMemberId(ws.id);
-        if (!party || party.leader !== ws.id) return;
+        if (!party) return;
         const room = rooms.get(ws.room);
         if (!room || room.type !== 'game') return;
         const ids = Array.isArray(data.codeChildIds) && data.codeChildIds.length

@@ -150,6 +150,12 @@ export function initDatabase() {
                 }
                 console.log('✅ Users table initialized');
 
+                db.run(`ALTER TABLE users ADD COLUMN ping INTEGER`, (err) => {
+                    if (err && !err.message.includes('duplicate column name')) {
+                        console.warn('Warning: Could not add users.ping column:', err.message);
+                    }
+                });
+
                 // Create forum tables
                 db.run(`
                     CREATE TABLE IF NOT EXISTS forum_categories (
@@ -635,10 +641,33 @@ export function getUserRawByGoogleId(googleId) {
                 weaponData: row.weaponData ? JSON.parse(row.weaponData) : null,
                 passiveAbility: row.passiveAbility || null,
                 rank: row.rank || 'player',
-                verified: row.verified || null
+                verified: row.verified || null,
+                ping: (typeof row.ping === 'number' && !isNaN(row.ping)) ? row.ping : null
             };
             resolve(raw);
         });
+    });
+}
+
+/** Last reported average RTT (ms) from client quest-room measurement. */
+export function updateUserAveragePing(googleId, pingMs) {
+    const googleIdHash = hashGoogleId(googleId);
+    const ms = Math.round(Number(pingMs));
+    if (!Number.isFinite(ms) || ms <= 0) {
+        return Promise.resolve(false);
+    }
+    return new Promise((resolve, reject) => {
+        db.run(
+            'UPDATE users SET ping = ? WHERE googleIdHash = ?',
+            [ms, googleIdHash],
+            function (err) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(this.changes > 0);
+            }
+        );
     });
 }
 
