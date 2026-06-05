@@ -1640,47 +1640,70 @@ export const shadersManualHelp = [
     {
         name: 'Shaders',
         threadTitle: 'Shaders',
-        content: `[b]shader body:[/b]
+        content: `[b]Shader body:[/b]
 
-[code]shader screen() //content of this runs for each pixel
-#var col = getPixelColor(x, y) //x and y in shader is current pixel coordinate
-#//col.h = 0 //getPixelColor returns HSV (hue, saturation, value). this line changes hue
-#setPixelColor(col) //apply new color to current pixel
-#vertex //everything under this tag is treated as vertex shader.
-#//put vertex shader codes here.[/code]
+[code]shader screen() // Content of this runs for each pixel.
+var col = getPixelColor(x, y) // x and y in the shader are the current pixel coordinates.
+//col.h = 0 // getPixelColor returns HSV (hue, saturation, value). This line changes hue.
+setPixelColor(col) // Apply new color to the current pixel.
+vertex // Everything under this tag is treated as vertex shader.
+// Put vertex shader code here.[/code]
 
-screen shader is automatically applied to whole screen layer
+The screen shader is automatically applied to the whole screen layer.
 
-other shaders can be created by:
 
-[code]shader blackWhite(valCol) //put uniforms to brackets.
-#var col = getPixelColor(x, y) //return hsv
-#col.s = 0 //set returned color saturation to 0
-#col.v = valCol //use value from uniform
-#setPixelColor(col)[/code]
+Other shaders can be created like this:
 
-shader created like this you can apply to sprites and shapes by:
+[code]shader blackWhite(valCol) // Put uniforms in the brackets.
+var col = getPixelColor(x, y) // Returns HSV.
+col.s = 0 // Set returned color saturation to 0.
+col.v = valCol // Use value from uniform.
+setPixelColor(col)[/code]
+
+
+A shader created like this can be applied to sprites and shapes by:
 
 [code]shaderSet("blackWhite")
 drawCircle(...)
 drawSprite(...)
 shaderReset()[/code]
 
-both shaders can be written in native GLSL 1.0 codes.
 
-also for both shaders you can use such helpers as:
-[color=#ffa500]getDistance[/color], [color=#ffa500]getDirection[/color], [color=#ffa500]getDistanceFromTo[/color], [color=#ffa500]getDirectionFromTo[/color], [color=#ffa500]lenDirX[/color], [color=#ffa500]lenDirY[/color], [color=#ffa500]lenDir[/color], [color=#ffa500]normalizeAngle[/color], [color=#ffa500]angleDifference[/color], [color=#ffa500]lerp[/color], [color=#ffa500]rand[/color], [color=#ffa500]random[/color], [color=#ffa500]choose[/color]
+Both shaders can be written in native GLSL 1.0 code.
 
-also builtin globals from editor works:
+For both shaders, you can use these helpers:
+[color=#ffa500]getPixelColor[/color], [color=#ffa500]setPixelColor[/color], [color=#ffa500]hsvToRgb[/color], [color=#ffa500]getDistance[/color], [color=#ffa500]getDirection[/color], [color=#ffa500]getDistanceFromTo[/color], [color=#ffa500]getDirectionFromTo[/color], [color=#ffa500]lenDirX[/color], [color=#ffa500]lenDirY[/color], [color=#ffa500]lenDir[/color], [color=#ffa500]normalizeAngle[/color], [color=#ffa500]angleDifference[/color], [color=#ffa500]lerp[/color], [color=#ffa500]rand[/color], [color=#ffa500]random[/color], [color=#ffa500]choose[/color]
+
+These built-in globals from the editor also work:
 [color=#ffa500]player.x[/color], [color=#ffa500]player.y[/color]
 
-native fragment shader variables:
+Native fragment shader variables:
 [color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]u_resolution[/color], [color=#ffa500]u_time[/color], [color=#ffa500]u_sampler[/color], [color=#ffa500]u_textureFlipY[/color], [color=#ffa500]v_texCoord[/color], [color=#ffa500]v_coord[/color], [color=#ffa500]v_color[/color], [color=#ffa500]v_shape[/color], [color=#ffa500]gl_FragColor[/color]
 
-native vertex shader variables:
+Native vertex shader variables:
 [color=#ffa500]a_quad_vertex[/color], [color=#ffa500]a_position[/color], [color=#ffa500]a_rotation[/color], [color=#ffa500]a_size[/color], [color=#ffa500]a_scaleY[/color], [color=#ffa500]a_color[/color], [color=#ffa500]u_projection_matrix[/color], [color=#ffa500]u_scaleX[/color], [color=#ffa500]v_texCoord[/color], [color=#ffa500]v_color[/color], [color=#ffa500]gl_Position[/color]
 
-functions: (available for both shaders)
-[color=#ffa500]getPixelColor[/color], [color=#ffa500]setPixelColor[/color], [color=#ffa500]hsvToRgb[/color], [color=#ffa500]getDistance[/color], [color=#ffa500]getDirection[/color], [color=#ffa500]getDistanceFromTo[/color], [color=#ffa500]getDirectionFromTo[/color], [color=#ffa500]lenDirX[/color], [color=#ffa500]lenDirY[/color], [color=#ffa500]lenDir[/color], [color=#ffa500]normalizeAngle[/color], [color=#ffa500]angleDifference[/color], [color=#ffa500]lerp[/color], [color=#ffa500]rand[/color], [color=#ffa500]random[/color], [color=#ffa500]choose[/color]`
+Functions (available for both shaders) — built-in GLSL (GLSL ES 1.0):
+
+[i]Angles and trigonometry:[/i]
+[color=#ffa500]radians[/color], [color=#ffa500]degrees[/color], [color=#ffa500]sin[/color], [color=#ffa500]cos[/color], [color=#ffa500]tan[/color], [color=#ffa500]asin[/color], [color=#ffa500]acos[/color], [color=#ffa500]atan[/color]
+
+[i]Exponential:[/i]
+[color=#ffa500]pow[/color], [color=#ffa500]exp[/color], [color=#ffa500]log[/color], [color=#ffa500]exp2[/color], [color=#ffa500]log2[/color], [color=#ffa500]sqrt[/color], [color=#ffa500]inversesqrt[/color]
+
+[i]Common:[/i]
+[color=#ffa500]abs[/color], [color=#ffa500]sign[/color], [color=#ffa500]floor[/color], [color=#ffa500]ceil[/color], [color=#ffa500]fract[/color], [color=#ffa500]mod[/color], [color=#ffa500]min[/color], [color=#ffa500]max[/color], [color=#ffa500]clamp[/color], [color=#ffa500]mix[/color], [color=#ffa500]step[/color], [color=#ffa500]smoothstep[/color]
+
+[i]Geometric:[/i]
+[color=#ffa500]length[/color], [color=#ffa500]distance[/color], [color=#ffa500]dot[/color], [color=#ffa500]cross[/color], [color=#ffa500]normalize[/color], [color=#ffa500]faceforward[/color], [color=#ffa500]reflect[/color], [color=#ffa500]refract[/color]
+
+[i]Matrix:[/i]
+[color=#ffa500]matrixCompMult[/color]
+
+[i]Vector relational:[/i]
+[color=#ffa500]lessThan[/color], [color=#ffa500]lessThanEqual[/color], [color=#ffa500]greaterThan[/color], [color=#ffa500]greaterThanEqual[/color], [color=#ffa500]equal[/color], [color=#ffa500]notEqual[/color], [color=#ffa500]any[/color], [color=#ffa500]all[/color], [color=#ffa500]not[/color]
+
+[i]Texture lookup (fragment shader):[/i]
+[color=#ffa500]texture2D[/color], [color=#ffa500]texture2DProj[/color], [color=#ffa500]textureCube[/color]`
     }
 ];
