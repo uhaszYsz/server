@@ -1120,7 +1120,7 @@ function initForumCategories() {
                                             { name: 'Built-in Variables', parent_id: manualsId, description: 'Manual for built-in variables', order: 2 },
                                             { name: 'DragonBones', parent_id: manualsId, description: 'Manual for DragonBones', order: 3 },
                                             { name: 'JavaScript Stuff', parent_id: manualsId, description: 'Manual for JavaScript stuff', order: 4 },
-                                            { name: 'Shaders', parent_id: manualsId, description: 'Shader DSL overview (single thread)', order: 5 }
+                                            { name: 'Shaders', parent_id: manualsId, description: 'Shader DSL overview', order: 5 }
                                         ];
 
                                         // Delete old granular JavaScript categories if they exist

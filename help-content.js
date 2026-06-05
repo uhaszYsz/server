@@ -1640,73 +1640,47 @@ export const shadersManualHelp = [
     {
         name: 'Shaders',
         threadTitle: 'Shaders',
-        content: `Shaders live in the [b]Main[/b] code object. Each [color=#e879f9]shader[/color] block has a [b]fragment[/b] body (runs [b]once per pixel[/b]) and an optional [color=#e879f9]vertex[/color] section. You can write [b]DSL + helpers[/b] or raw [b]GLSL 1.0[/b] in both.
+        content: `[b]shader body:[/b]
 
-[b]Screen shader[/b] — name must be [color=#ffa500]screen[/color]. It is [b]automatically[/b] applied to the whole screen layer every frame (full-frame pass).
+[code]shader screen() //content of this runs for each pixel
+#var col = getPixelColor(x, y) //x and y in shader is current pixel coordinate
+#//col.h = 0 //getPixelColor returns HSV (hue, saturation, value). this line changes hue
+#setPixelColor(col) //apply new color to current pixel
+#vertex //everything under this tag is treated as vertex shader.
+#//put vertex shader codes here.[/code]
 
-[code]shader screen() // runs for each pixel on the screen
-var col = getPixelColor(x, y) // x,y = current pixel (world pixels)
-//col.h = 0 // getPixelColor returns HSV: col.h, col.s, col.v, col.a
-setPixelColor(col) // write color to this pixel
-vertex // everything below = vertex shader (optional)
-// put vertex GLSL here, or leave empty for built-in fullscreen quad
-}[/code]
+screen shader is automatically applied to whole screen layer
 
-[b]Other shaders[/b] — any name (e.g. [color=#ffa500]blackWhite[/color]). Use on [b]sprites, circles, backgrounds[/b] via [color=#ffa500]shaderSet[/color] (not automatic).
+other shaders can be created by:
 
-[code]shader blackWhite(valCol) // params in () become uniforms
-var col = getPixelColor(x, y)
-col.s = 0
-col.v = valCol // use uniform (write valCol, not u_valCol)
-setPixelColor(col)
-}[/code]
+[code]shader blackWhite(valCol) //put uniforms to brackets.
+#var col = getPixelColor(x, y) //return hsv
+#col.s = 0 //set returned color saturation to 0
+#col.v = valCol //use value from uniform
+#setPixelColor(col)[/code]
 
-[b]Apply to draws:[/b]
+shader created like this you can apply to sprites and shapes by:
+
 [code]shaderSet("blackWhite")
-shaderUniformSet("blackWhite", "valCol", 0.85)
-drawCircle(90, 160, 8, "#FFFFFF")
-drawSprite(90, 160, "@sprite.png")
+drawCircle(...)
+drawSprite(...)
 shaderReset()[/code]
 
-[i]See Danmaku Helpers:[/i] [color=#ffa500]shaderSet[/color], [color=#ffa500]shaderUniformSet[/color], [color=#ffa500]shaderReset[/color].
+both shaders can be written in native GLSL 1.0 codes.
 
-[b]Syntax[/b]
-• [color=#ffa500]shader name()[/color] or [color=#ffa500]shader name(param, ...)[/color] — params are [b]float uniforms[/b] (plain names in body).
-• [b]Braces[/b] [color=#ffa500]{ }[/color] for the block, or [b]no braces[/b] with [color=#ffa500]#[/color] indent (same as object code).
-• [color=#ffa500]vertex[/color] on its own line splits fragment (above) and vertex (below).
-• [color=#ffa500]var[/color] / [color=#ffa500]def[/color], [color=#ffa500]if[/color] / [color=#ffa500]repeat(n)[/color], [color=#ffa500]and[/color] / [color=#ffa500]or[/color].
-• HSV color literals: [color=#ffa500]{h:0, s:255, v:255, a:255}[/color] or [color=#ffa500]{x:1, y:0, z:0, w:1}[/color] for vec4.
+also for both shaders you can use such helpers as:
+[color=#ffa500]getDistance[/color], [color=#ffa500]getDirection[/color], [color=#ffa500]getDistanceFromTo[/color], [color=#ffa500]getDirectionFromTo[/color], [color=#ffa500]lenDirX[/color], [color=#ffa500]lenDirY[/color], [color=#ffa500]lenDir[/color], [color=#ffa500]normalizeAngle[/color], [color=#ffa500]angleDifference[/color], [color=#ffa500]lerp[/color], [color=#ffa500]rand[/color], [color=#ffa500]random[/color], [color=#ffa500]choose[/color]
 
-[b]Helpers[/b] (fragment & vertex — same as game code, degrees for angles):
-[color=#ffa500]getDistance[/color], [color=#ffa500]getDirection[/color] (from current [color=#ffa500]x,y[/color] on fragment)
-[color=#ffa500]getDistanceFromTo[/color], [color=#ffa500]getDirectionFromTo[/color]
-[color=#ffa500]lenDirX[/color], [color=#ffa500]lenDirY[/color], [color=#ffa500]lenDir[/color]
-[color=#ffa500]normalizeAngle[/color], [color=#ffa500]angleDifference[/color], [color=#ffa500]lerp[/color]
-[color=#ffa500]rand(min, max)[/color], [color=#ffa500]random()[/color], [color=#ffa500]choose(a, b, ...)[/color] — per-pixel noise; animated with [color=#ffa500]u_time[/color]
-
-[b]Fragment DSL[/b]
-[color=#ffa500]getPixelColor(x, y)[/color] — sample as [b]HSV[/b] ([color=#ffa500].h .s .v .a[/color], 0–255 style)
-[color=#ffa500]setPixelColor(col)[/color] — output pixel color
-[color=#ffa500]hsvToRgb(h, s, v)[/color]
-
-[b]Editor globals[/b] (screen — only if used in shader body; compiled to uniforms):
+also builtin globals from editor works:
 [color=#ffa500]player.x[/color], [color=#ffa500]player.y[/color]
 
-[b]Native fragment[/b] (auto-injected; use in raw GLSL or know when debugging):
-[color=#ffa500]x[/color], [color=#ffa500]y[/color] — world pixels
-[color=#ffa500]u_resolution[/color], [color=#ffa500]u_time[/color], [color=#ffa500]u_sampler[/color], [color=#ffa500]u_textureFlipY[/color]
-[color=#ffa500]v_texCoord[/color] — 0..1 UV (screen/sprites)
-[color=#ffa500]v_coord[/color], [color=#ffa500]v_color[/color], [color=#ffa500]v_shape[/color] — bullet/sprite pass
-[color=#ffa500]gl_FragColor[/color] — set via [color=#ffa500]setPixelColor[/color] in DSL
+native fragment shader variables:
+[color=#ffa500]x[/color], [color=#ffa500]y[/color], [color=#ffa500]u_resolution[/color], [color=#ffa500]u_time[/color], [color=#ffa500]u_sampler[/color], [color=#ffa500]u_textureFlipY[/color], [color=#ffa500]v_texCoord[/color], [color=#ffa500]v_coord[/color], [color=#ffa500]v_color[/color], [color=#ffa500]v_shape[/color], [color=#ffa500]gl_FragColor[/color]
 
-[b]Native vertex[/b] (texture/screen draw; omit [color=#ffa500]vertex[/color] section to use built-in quad):
-[color=#ffa500]a_quad_vertex[/color], [color=#ffa500]a_position[/color], [color=#ffa500]a_rotation[/color], [color=#ffa500]a_size[/color], [color=#ffa500]a_scaleY[/color], [color=#ffa500]a_color[/color]
-[color=#ffa500]u_projection_matrix[/color], [color=#ffa500]u_scaleX[/color]
-[color=#ffa500]v_texCoord[/color], [color=#ffa500]v_color[/color]
-[color=#ffa500]gl_Position[/color]
-Bullet vertex also: [color=#ffa500]a_shape[/color], glow attrs, [color=#ffa500]u_drawPass[/color], etc.
+native vertex shader variables:
+[color=#ffa500]a_quad_vertex[/color], [color=#ffa500]a_position[/color], [color=#ffa500]a_rotation[/color], [color=#ffa500]a_size[/color], [color=#ffa500]a_scaleY[/color], [color=#ffa500]a_color[/color], [color=#ffa500]u_projection_matrix[/color], [color=#ffa500]u_scaleX[/color], [color=#ffa500]v_texCoord[/color], [color=#ffa500]v_color[/color], [color=#ffa500]gl_Position[/color]
 
-[b]GLSL 1.0[/b]
-Use [color=#ffa500]precision highp float;[/color], [color=#ffa500]attribute[/color], [color=#ffa500]uniform[/color], [color=#ffa500]varying[/color], [color=#ffa500]void main()[/color] in a full [color=#ffa500]vertex[/color] block, or mix DSL in the fragment body. Standard math: [color=#ffa500]cos[/color], [color=#ffa500]sin[/color], [color=#ffa500]mix[/color], [color=#ffa500]clamp[/color], [color=#ffa500]texture2D[/color], …`
+functions: (available for both shaders)
+[color=#ffa500]getPixelColor[/color], [color=#ffa500]setPixelColor[/color], [color=#ffa500]hsvToRgb[/color], [color=#ffa500]getDistance[/color], [color=#ffa500]getDirection[/color], [color=#ffa500]getDistanceFromTo[/color], [color=#ffa500]getDirectionFromTo[/color], [color=#ffa500]lenDirX[/color], [color=#ffa500]lenDirY[/color], [color=#ffa500]lenDir[/color], [color=#ffa500]normalizeAngle[/color], [color=#ffa500]angleDifference[/color], [color=#ffa500]lerp[/color], [color=#ffa500]rand[/color], [color=#ffa500]random[/color], [color=#ffa500]choose[/color]`
     }
 ];
