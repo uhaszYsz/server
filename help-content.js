@@ -273,6 +273,7 @@ if (myBullets.length > 10)
 ];
 
 export const danmakuHelpersHelp = [
+    ...specialKeywordsHelp,
     {
         name: 'getSelf',
         threadTitle: 'getSelf()',
@@ -1093,6 +1094,22 @@ if interval(60)
 [i]Creates a bullet and removes it after 60 frames.[/i]`
     },
     {
+        name: 'getBulletValue',
+        threadTitle: 'getBulletValue(id, prop)',
+        content: `Reads one bullet property by ID without using [color=#ffa500]inBullet()[/color]. Fast O(1) lookup — no loop, no object allocation.
+
+[b]Arguments:[/b]
+[b][color=#90ee90]id[/color][/b] - [i]Bullet ID (from [color=#ffa500]createBullet[/color]).[/i]
+[b][color=#90ee90]prop[/color][/b] - [i]Property name string — same names as [color=#ffa500]inBullet[/color] (e.g. [color=#ffa500]"Speed"[/color], [color=#ffa500]"X"[/color], [color=#ffa500]"User2"[/color]).[/i]
+
+[b][color=#ffa500]Returns:[/color][/b] the property value, or null if the bullet or property is not found.
+
+[b]Example:[/b]
+[code]var bid = createBullet(x, y, { Speed: 5, User2: 3 });
+var spd = getBulletValue(bid, "Speed");
+var u2 = getBulletValue(bid, "User2");[/code]`
+    },
+    {
         name: 'surfaceSet',
         threadTitle: 'surfaceSet(surfaceName)',
         content: `Routes subsequent drawing to a named surface. Everything drawn after this call goes to that surface until surfaceReset() or another surfaceSet().
@@ -1616,4 +1633,80 @@ export const stringNumberConstructorsHelp = [
     { name: 'new Number(n)', content: `Creates a number from the given value.` },
     { name: '123 or 12.34', content: `A number written directly is a number literal.` },
     { name: '0x123', content: `A number starting with 0x is in base 16.` }
+];
+
+/** Single overview thread for Manuals → Shaders (opens directly, not a category list). */
+export const shadersManualHelp = [
+    {
+        name: 'Shaders',
+        threadTitle: 'Shaders',
+        content: `Shaders live in the [b]Main[/b] code object. Each [color=#e879f9]shader[/color] block has a [b]fragment[/b] body (runs [b]once per pixel[/b]) and an optional [color=#e879f9]vertex[/color] section. You can write [b]DSL + helpers[/b] or raw [b]GLSL 1.0[/b] in both.
+
+[b]Screen shader[/b] — name must be [color=#ffa500]screen[/color]. It is [b]automatically[/b] applied to the whole screen layer every frame (full-frame pass).
+
+[code]shader screen() // runs for each pixel on the screen
+var col = getPixelColor(x, y) // x,y = current pixel (world pixels)
+//col.h = 0 // getPixelColor returns HSV: col.h, col.s, col.v, col.a
+setPixelColor(col) // write color to this pixel
+vertex // everything below = vertex shader (optional)
+// put vertex GLSL here, or leave empty for built-in fullscreen quad
+}[/code]
+
+[b]Other shaders[/b] — any name (e.g. [color=#ffa500]blackWhite[/color]). Use on [b]sprites, circles, backgrounds[/b] via [color=#ffa500]shaderSet[/color] (not automatic).
+
+[code]shader blackWhite(valCol) // params in () become uniforms
+var col = getPixelColor(x, y)
+col.s = 0
+col.v = valCol // use uniform (write valCol, not u_valCol)
+setPixelColor(col)
+}[/code]
+
+[b]Apply to draws:[/b]
+[code]shaderSet("blackWhite")
+shaderUniformSet("blackWhite", "valCol", 0.85)
+drawCircle(90, 160, 8, "#FFFFFF")
+drawSprite(90, 160, "@sprite.png")
+shaderReset()[/code]
+
+[i]See Danmaku Helpers:[/i] [color=#ffa500]shaderSet[/color], [color=#ffa500]shaderUniformSet[/color], [color=#ffa500]shaderReset[/color].
+
+[b]Syntax[/b]
+• [color=#ffa500]shader name()[/color] or [color=#ffa500]shader name(param, ...)[/color] — params are [b]float uniforms[/b] (plain names in body).
+• [b]Braces[/b] [color=#ffa500]{ }[/color] for the block, or [b]no braces[/b] with [color=#ffa500]#[/color] indent (same as object code).
+• [color=#ffa500]vertex[/color] on its own line splits fragment (above) and vertex (below).
+• [color=#ffa500]var[/color] / [color=#ffa500]def[/color], [color=#ffa500]if[/color] / [color=#ffa500]repeat(n)[/color], [color=#ffa500]and[/color] / [color=#ffa500]or[/color].
+• HSV color literals: [color=#ffa500]{h:0, s:255, v:255, a:255}[/color] or [color=#ffa500]{x:1, y:0, z:0, w:1}[/color] for vec4.
+
+[b]Helpers[/b] (fragment & vertex — same as game code, degrees for angles):
+[color=#ffa500]getDistance[/color], [color=#ffa500]getDirection[/color] (from current [color=#ffa500]x,y[/color] on fragment)
+[color=#ffa500]getDistanceFromTo[/color], [color=#ffa500]getDirectionFromTo[/color]
+[color=#ffa500]lenDirX[/color], [color=#ffa500]lenDirY[/color], [color=#ffa500]lenDir[/color]
+[color=#ffa500]normalizeAngle[/color], [color=#ffa500]angleDifference[/color], [color=#ffa500]lerp[/color]
+[color=#ffa500]rand(min, max)[/color], [color=#ffa500]random()[/color], [color=#ffa500]choose(a, b, ...)[/color] — per-pixel noise; animated with [color=#ffa500]u_time[/color]
+
+[b]Fragment DSL[/b]
+[color=#ffa500]getPixelColor(x, y)[/color] — sample as [b]HSV[/b] ([color=#ffa500].h .s .v .a[/color], 0–255 style)
+[color=#ffa500]setPixelColor(col)[/color] — output pixel color
+[color=#ffa500]hsvToRgb(h, s, v)[/color]
+
+[b]Editor globals[/b] (screen — only if used in shader body; compiled to uniforms):
+[color=#ffa500]player.x[/color], [color=#ffa500]player.y[/color]
+
+[b]Native fragment[/b] (auto-injected; use in raw GLSL or know when debugging):
+[color=#ffa500]x[/color], [color=#ffa500]y[/color] — world pixels
+[color=#ffa500]u_resolution[/color], [color=#ffa500]u_time[/color], [color=#ffa500]u_sampler[/color], [color=#ffa500]u_textureFlipY[/color]
+[color=#ffa500]v_texCoord[/color] — 0..1 UV (screen/sprites)
+[color=#ffa500]v_coord[/color], [color=#ffa500]v_color[/color], [color=#ffa500]v_shape[/color] — bullet/sprite pass
+[color=#ffa500]gl_FragColor[/color] — set via [color=#ffa500]setPixelColor[/color] in DSL
+
+[b]Native vertex[/b] (texture/screen draw; omit [color=#ffa500]vertex[/color] section to use built-in quad):
+[color=#ffa500]a_quad_vertex[/color], [color=#ffa500]a_position[/color], [color=#ffa500]a_rotation[/color], [color=#ffa500]a_size[/color], [color=#ffa500]a_scaleY[/color], [color=#ffa500]a_color[/color]
+[color=#ffa500]u_projection_matrix[/color], [color=#ffa500]u_scaleX[/color]
+[color=#ffa500]v_texCoord[/color], [color=#ffa500]v_color[/color]
+[color=#ffa500]gl_Position[/color]
+Bullet vertex also: [color=#ffa500]a_shape[/color], glow attrs, [color=#ffa500]u_drawPass[/color], etc.
+
+[b]GLSL 1.0[/b]
+Use [color=#ffa500]precision highp float;[/color], [color=#ffa500]attribute[/color], [color=#ffa500]uniform[/color], [color=#ffa500]varying[/color], [color=#ffa500]void main()[/color] in a full [color=#ffa500]vertex[/color] block, or mix DSL in the fragment body. Standard math: [color=#ffa500]cos[/color], [color=#ffa500]sin[/color], [color=#ffa500]mix[/color], [color=#ffa500]clamp[/color], [color=#ffa500]texture2D[/color], …`
+    }
 ];

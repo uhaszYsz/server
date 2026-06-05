@@ -1116,11 +1116,11 @@ function initForumCategories() {
                                             { name: 'Levels', parent_id: sharedId, description: 'Share levels', order: 1 },
                                             { name: 'Objects', parent_id: sharedId, description: 'Share objects', order: 2 },
                                             { name: 'functions', parent_id: sharedId, description: 'Share functions', order: 3 },
-                                            { name: 'Keywords', parent_id: manualsId, description: 'JavaScript keywords reference', order: 1 },
+                                            { name: 'Danmaku Helpers', parent_id: manualsId, description: 'Manual for danmaku helpers and engine keywords', order: 1 },
                                             { name: 'Built-in Variables', parent_id: manualsId, description: 'Manual for built-in variables', order: 2 },
-                                            { name: 'Danmaku Helpers', parent_id: manualsId, description: 'Manual for danmaku helpers', order: 3 },
-                                            { name: 'DragonBones', parent_id: manualsId, description: 'Manual for DragonBones', order: 4 },
-                                            { name: 'JavaScript Stuff', parent_id: manualsId, description: 'Manual for JavaScript stuff', order: 5 }
+                                            { name: 'DragonBones', parent_id: manualsId, description: 'Manual for DragonBones', order: 3 },
+                                            { name: 'JavaScript Stuff', parent_id: manualsId, description: 'Manual for JavaScript stuff', order: 4 },
+                                            { name: 'Shaders', parent_id: manualsId, description: 'Shader DSL overview (single thread)', order: 5 }
                                         ];
 
                                         // Delete old granular JavaScript categories if they exist
@@ -1150,7 +1150,7 @@ function initForumCategories() {
                                                 console.error('Error checking category:', err);
                                                 processed++;
                                                 if (processed === total) {
-                                                    resolve();
+                                                    finishManualsSubcategorySetup(manualsId, resolve);
                                                 }
                                                 return;
                                             }
@@ -1168,13 +1168,13 @@ function initForumCategories() {
                                                     initHelpThreads(cat.name, categoryId).then(() => {
                                                         processed++;
                                                         if (processed === total) {
-                                                            resolve();
+                                                            finishManualsSubcategorySetup(manualsId, resolve);
                                                         }
                                                     }).catch(err => {
                                                         console.error(`Error initializing help threads for ${cat.name}:`, err);
                                                         processed++;
                                                         if (processed === total) {
-                                                            resolve();
+                                                            finishManualsSubcategorySetup(manualsId, resolve);
                                                         }
                                                     });
                                                 });
@@ -1186,7 +1186,7 @@ function initForumCategories() {
                                                         console.error('Error inserting subcategory:', err);
                                                         processed++;
                                                         if (processed === total) {
-                                                            resolve();
+                                                            finishManualsSubcategorySetup(manualsId, resolve);
                                                         }
                                                         return;
                                                     }
@@ -1196,13 +1196,13 @@ function initForumCategories() {
                                                     initHelpThreads(cat.name, categoryId).then(() => {
                                                         processed++;
                                                         if (processed === total) {
-                                                            resolve();
+                                                            finishManualsSubcategorySetup(manualsId, resolve);
                                                         }
                                                     }).catch(err => {
                                                         console.error(`Error initializing help threads for ${cat.name}:`, err);
                                                         processed++;
                                                         if (processed === total) {
-                                                            resolve();
+                                                            finishManualsSubcategorySetup(manualsId, resolve);
                                                         }
                                                     });
                                                 });
@@ -1219,13 +1219,46 @@ function initForumCategories() {
     });
 }
 
+/** Remove a Manuals subcategory and all its threads (e.g. merged Keywords → Danmaku Helpers). */
+function removeManualsSubcategoryWithThreads(manualsId, categoryName) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT id FROM forum_categories WHERE name = ? AND parent_id = ?', [categoryName, manualsId], (err, row) => {
+            if (err) return reject(err);
+            if (!row) return resolve();
+            const categoryId = row.id;
+            db.all('SELECT id FROM forum_threads WHERE category_id = ?', [categoryId], (err2, threads) => {
+                if (err2) return reject(err2);
+                const ids = (threads || []).map((t) => t.id);
+                let i = 0;
+                const next = () => {
+                    if (i >= ids.length) {
+                        db.run('DELETE FROM forum_categories WHERE id = ?', [categoryId], (e) => (e ? reject(e) : resolve()));
+                        return;
+                    }
+                    deleteForumThread(ids[i++]).then(next).catch(reject);
+                };
+                next();
+            });
+        });
+    });
+}
+
+function finishManualsSubcategorySetup(manualsId, resolve) {
+    removeManualsSubcategoryWithThreads(manualsId, 'Keywords')
+        .then(resolve)
+        .catch((err) => {
+            console.error('[init] Failed to remove Keywords manuals category:', err);
+            resolve();
+        });
+}
+
 // Helper to initialize help threads for a category
 // On server start: refresh first post content from help (replies preserved), create missing threads, remove threads no longer in help.
 async function initHelpThreads(categoryName, categoryId) {
     const helpMap = {
-        'Keywords': helpContent.specialKeywordsHelp,
         'Built-in Variables': helpContent.builtInVariablesHelp,
         'Danmaku Helpers': helpContent.danmakuHelpersHelp,
+        'Shaders': helpContent.shadersManualHelp,
         'DragonBones': helpContent.dragonBonesHelp,
         'JavaScript Stuff': [
             ...helpContent.javaScriptStuffHelp,
