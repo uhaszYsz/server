@@ -238,8 +238,9 @@ function outfitCharacterIndexFromUser(user) {
 }
 
 const VISUAL_ARMOR_SYNC_SLOTS = ['helmet', 'chest', 'gloves', 'legs', 'boots'];
+const VISUAL_WEAPON_SYNC_SLOTS = ['weapon1', 'weapon2'];
 
-/** Compact armor icons for IK draw on other clients (helmet/chest/gloves/legs/boots only). */
+/** Compact armor/weapon icons for IK draw on other clients. */
 function compactVisualEquipmentFromUser(user) {
     const eq = user && user.equipment;
     if (!eq || typeof eq !== 'object') return null;
@@ -255,6 +256,14 @@ function compactVisualEquipmentFromUser(user) {
                 frame: Number.isFinite(frame) ? frame : 0
             }
         };
+        has = true;
+    }
+    for (const slot of VISUAL_WEAPON_SYNC_SLOTS) {
+        const it = eq[slot];
+        if (!it || !it.weaponIcon || typeof it.weaponIcon !== 'object' || !it.weaponIcon.path) continue;
+        const path = String(it.weaponIcon.path).trim();
+        if (!path) continue;
+        out[slot] = { weaponIcon: { path } };
         has = true;
     }
     return has ? out : null;
