@@ -416,6 +416,9 @@ function normalizeStoredLootItem(item) {
         const frame = parseInt(item.armorIcon.frame, 10);
         lootItem.armorIcon = { part: String(item.armorIcon.part), frame: Number.isFinite(frame) ? frame : 0 };
     }
+    if (item.weaponIcon && typeof item.weaponIcon === 'object' && item.weaponIcon.path) {
+        lootItem.weaponIcon = { path: String(item.weaponIcon.path).trim() };
+    }
 
     return lootItem;
 }
@@ -446,6 +449,10 @@ function lootStackKeyFromItem(item) {
         const frame = parseInt(item.armorIcon.frame, 10);
         armorIcon = { part: String(item.armorIcon.part), frame: Number.isFinite(frame) ? frame : 0 };
     }
+    let weaponIcon;
+    if (item.weaponIcon && typeof item.weaponIcon === 'object' && item.weaponIcon.path) {
+        weaponIcon = { path: String(item.weaponIcon.path).trim() };
+    }
     const payload = {
         name: item.name,
         slot: item.slot,
@@ -456,6 +463,7 @@ function lootStackKeyFromItem(item) {
         characterIndex: item.characterIndex
     };
     if (armorIcon) payload.armorIcon = armorIcon;
+    if (weaponIcon) payload.weaponIcon = weaponIcon;
     return JSON.stringify(payload);
 }
 
