@@ -263,7 +263,13 @@ function compactVisualEquipmentFromUser(user) {
         if (!it || !it.weaponIcon || typeof it.weaponIcon !== 'object' || !it.weaponIcon.path) continue;
         const path = String(it.weaponIcon.path).trim();
         if (!path) continue;
-        out[slot] = { weaponIcon: { path } };
+        const frame = parseInt(it.weaponIcon.frame, 10);
+        out[slot] = {
+            weaponIcon: {
+                path,
+                frame: Number.isFinite(frame) ? frame : 0
+            }
+        };
         has = true;
     }
     return has ? out : null;
@@ -426,7 +432,11 @@ function normalizeStoredLootItem(item) {
         lootItem.armorIcon = { part: String(item.armorIcon.part), frame: Number.isFinite(frame) ? frame : 0 };
     }
     if (item.weaponIcon && typeof item.weaponIcon === 'object' && item.weaponIcon.path) {
-        lootItem.weaponIcon = { path: String(item.weaponIcon.path).trim() };
+        const frame = parseInt(item.weaponIcon.frame, 10);
+        lootItem.weaponIcon = {
+            path: String(item.weaponIcon.path).trim(),
+            frame: Number.isFinite(frame) ? frame : 0
+        };
     }
 
     return lootItem;
@@ -460,7 +470,11 @@ function lootStackKeyFromItem(item) {
     }
     let weaponIcon;
     if (item.weaponIcon && typeof item.weaponIcon === 'object' && item.weaponIcon.path) {
-        weaponIcon = { path: String(item.weaponIcon.path).trim() };
+        const frame = parseInt(item.weaponIcon.frame, 10);
+        weaponIcon = {
+            path: String(item.weaponIcon.path).trim(),
+            frame: Number.isFinite(frame) ? frame : 0
+        };
     }
     const payload = {
         name: item.name,

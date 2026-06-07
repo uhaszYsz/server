@@ -112,7 +112,11 @@ export function getSmithingCatalogForClient(isAdmin) {
                 };
             }
             if (r.output.weaponIcon && typeof r.output.weaponIcon === 'object' && r.output.weaponIcon.path) {
-                row.weaponIcon = { path: String(r.output.weaponIcon.path) };
+                const frame = parseInt(r.output.weaponIcon.frame, 10);
+                row.weaponIcon = {
+                    path: String(r.output.weaponIcon.path).trim(),
+                    frame: Number.isFinite(frame) ? frame : 0
+                };
             }
             if (isAdmin) {
                 row.adminEdit = {
@@ -145,7 +149,11 @@ export function getRecipeOutputLootItem(recipe) {
         item.armorIcon = { part: String(o.armorIcon.part), frame: Number.isFinite(frame) ? frame : 0 };
     }
     if (o.weaponIcon && typeof o.weaponIcon === 'object' && o.weaponIcon.path) {
-        item.weaponIcon = { path: String(o.weaponIcon.path).trim() };
+        const frame = parseInt(o.weaponIcon.frame, 10);
+        item.weaponIcon = {
+            path: String(o.weaponIcon.path).trim(),
+            frame: Number.isFinite(frame) ? frame : 0
+        };
     }
     return item;
 }
