@@ -1715,9 +1715,43 @@ httpApp.get('/api/app/update/manifest', async (req, res) => {
     }
 });
 
+/** Clients without versionCode cannot OTA (must update APK from Play Store). Optional floor via OTA_MIN_VERSION_CODE. */
+const OTA_MIN_VERSION_CODE = parseInt(process.env.OTA_MIN_VERSION_CODE || '0', 10) || 0;
+
+function parseOtaClientVersionCode(bodyOrQuery) {
+    const raw = bodyOrQuery && (bodyOrQuery.versionCode ?? bodyOrQuery.versioncode);
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function otaBlockedResponse(reason) {
+    return {
+        needsUpdate: false,
+        filesToUpdate: [],
+        fileHashes: {},
+        totalFiles: 0,
+        otaBlocked: true,
+        reason
+    };
+}
+
+function isOtaClientAllowed(versionCode) {
+    if (versionCode == null) return false;
+    if (OTA_MIN_VERSION_CODE > 0 && versionCode < OTA_MIN_VERSION_CODE) return false;
+    return true;
+}
+
 // POST /api/app/update/check — compare client manifest with server manifest (snapshot or GitHub)
 httpApp.post('/api/app/update/check', async (req, res) => {
     try {
+        const clientVersionCode = parseOtaClientVersionCode(req.body || {});
+        if (!isOtaClientAllowed(clientVersionCode)) {
+            const reason = clientVersionCode == null
+                ? 'play_store_update_required'
+                : 'apk_version_too_old';
+            console.log(`[OTA] Blocked update check (versionCode=${clientVersionCode ?? 'missing'}, min=${OTA_MIN_VERSION_CODE || 'none'})`);
+            return res.json({ ...otaBlockedResponse(reason), otaChannel: req.body && req.body.otaChannel === 'test' ? 'test' : 'stable' });
+        }
         const clientManifest = req.body.manifest || {};
         const otaChannel = req.body && req.body.otaChannel === 'test' ? 'test' : 'stable';
         const serverManifest = await getGitHubFileManifest(otaChannel);
@@ -1786,6 +1820,13 @@ httpApp.get('/api/app/devkit/download', async (req, res) => {
 // GET /api/app/update/file/:filePath(*) — stream file from GitHub
 httpApp.get('/api/app/update/file/:filePath(*)', async (req, res) => {
     try {
+        const clientVersionCode = parseOtaClientVersionCode(req.query || {});
+        if (!isOtaClientAllowed(clientVersionCode)) {
+            return res.status(403).json({
+                error: clientVersionCode == null ? 'play_store_update_required' : 'apk_version_too_old',
+                otaBlocked: true
+            });
+        }
         if (!getGitHubToken()) {
             return otaUnavailable(res, 'Configure github-token.txt for private repo access');
         }
