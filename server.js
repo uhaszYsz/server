@@ -1717,6 +1717,8 @@ httpApp.get('/api/app/update/manifest', async (req, res) => {
 
 /** Clients without versionCode cannot OTA (must update APK from Play Store). Optional floor via OTA_MIN_VERSION_CODE. */
 const OTA_MIN_VERSION_CODE = parseInt(process.env.OTA_MIN_VERSION_CODE || '0', 10) || 0;
+/** Only these files may be OTA'd for blocked clients (Play Store update nudge). */
+const OTA_BLOCKED_CLIENT_ALLOWLIST = new Set(['ui/whatsNew.js']);
 
 function parseOtaClientVersionCode(bodyOrQuery) {
     const raw = bodyOrQuery && (bodyOrQuery.versionCode ?? bodyOrQuery.versioncode);
@@ -1741,19 +1743,56 @@ function isOtaClientAllowed(versionCode) {
     return true;
 }
 
+function isOtaAllowlistedForBlockedClient(filePath) {
+    return OTA_BLOCKED_CLIENT_ALLOWLIST.has(filePath);
+}
+
+async function getOtaAllowlistedUpdatesForBlockedClient(clientManifest, otaChannel) {
+    const serverManifest = await getGitHubFileManifest(otaChannel);
+    const filesToUpdate = [];
+    const fileHashes = {};
+    for (const filePath of OTA_BLOCKED_CLIENT_ALLOWLIST) {
+        const serverFile = serverManifest[filePath];
+        if (!serverFile) continue;
+        const clientFile = clientManifest[filePath];
+        if (!clientFile || clientFile.hash !== serverFile.hash) {
+            filesToUpdate.push(filePath);
+            fileHashes[filePath] = serverFile.hash;
+        }
+    }
+    return {
+        filesToUpdate,
+        fileHashes,
+        totalFiles: Object.keys(serverManifest).length
+    };
+}
+
 // POST /api/app/update/check — compare client manifest with server manifest (snapshot or GitHub)
 httpApp.post('/api/app/update/check', async (req, res) => {
     try {
         const clientVersionCode = parseOtaClientVersionCode(req.body || {});
+        const clientManifest = req.body.manifest || {};
+        const otaChannel = req.body && req.body.otaChannel === 'test' ? 'test' : 'stable';
         if (!isOtaClientAllowed(clientVersionCode)) {
             const reason = clientVersionCode == null
                 ? 'play_store_update_required'
                 : 'apk_version_too_old';
+            const allowlisted = await getOtaAllowlistedUpdatesForBlockedClient(clientManifest, otaChannel);
+            if (allowlisted.filesToUpdate.length > 0) {
+                console.log(`[OTA] Blocked client allowlist update (versionCode=${clientVersionCode ?? 'missing'}): ${allowlisted.filesToUpdate.join(', ')}`);
+                return res.json({
+                    needsUpdate: true,
+                    filesToUpdate: allowlisted.filesToUpdate,
+                    fileHashes: allowlisted.fileHashes,
+                    totalFiles: allowlisted.totalFiles,
+                    otaChannel,
+                    playStoreUpdateRequired: true,
+                    reason
+                });
+            }
             console.log(`[OTA] Blocked update check (versionCode=${clientVersionCode ?? 'missing'}, min=${OTA_MIN_VERSION_CODE || 'none'})`);
-            return res.json({ ...otaBlockedResponse(reason), otaChannel: req.body && req.body.otaChannel === 'test' ? 'test' : 'stable' });
+            return res.json({ ...otaBlockedResponse(reason), otaChannel });
         }
-        const clientManifest = req.body.manifest || {};
-        const otaChannel = req.body && req.body.otaChannel === 'test' ? 'test' : 'stable';
         const serverManifest = await getGitHubFileManifest(otaChannel);
         const filesToUpdate = [];
         for (const [filePath, serverFile] of Object.entries(serverManifest)) {
@@ -1820,8 +1859,9 @@ httpApp.get('/api/app/devkit/download', async (req, res) => {
 // GET /api/app/update/file/:filePath(*) — stream file from GitHub
 httpApp.get('/api/app/update/file/:filePath(*)', async (req, res) => {
     try {
+        const filePath = req.params.filePath;
         const clientVersionCode = parseOtaClientVersionCode(req.query || {});
-        if (!isOtaClientAllowed(clientVersionCode)) {
+        if (!isOtaClientAllowed(clientVersionCode) && !isOtaAllowlistedForBlockedClient(filePath)) {
             return res.status(403).json({
                 error: clientVersionCode == null ? 'play_store_update_required' : 'apk_version_too_old',
                 otaBlocked: true
@@ -1830,7 +1870,6 @@ httpApp.get('/api/app/update/file/:filePath(*)', async (req, res) => {
         if (!getGitHubToken()) {
             return otaUnavailable(res, 'Configure github-token.txt for private repo access');
         }
-        const filePath = req.params.filePath;
         if (filePath.includes('..') || path.isAbsolute(filePath)) {
             return res.status(400).json({ error: 'Invalid file path' });
         }
